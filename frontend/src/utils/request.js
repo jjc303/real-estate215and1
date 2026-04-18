@@ -1,4 +1,5 @@
 import axios from 'axios'
+import logger from './logger'
 
 // 创建 axios 实例
 const service = axios.create({
@@ -30,7 +31,7 @@ service.interceptors.response.use(
     return res
   },
   error => {
-    console.error('请求错误：', error)
+    logger.error('请求错误：', error)
     // 401 未登录，自动跳登录
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('token')
