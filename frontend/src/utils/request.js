@@ -30,10 +30,6 @@ service.interceptors.response.use(
     return res
   },
   error => {
-    const url = error.config ?.url || 'unknown'
-    const status = error.response ?.status || 'none'
-    logger.error('接口失败：', url, 'status:', status, 'msg:', error.message)
-
     console.error('请求错误：', error)
     // 401 未登录，自动跳登录
     if (error.response && error.response.status === 401) {
