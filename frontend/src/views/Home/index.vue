@@ -2,22 +2,23 @@
   <div class="page-wrap">
     <div class="home-container">
         <div class="home-header">
-            <img src="@/assets/images/csu-logo.png" alt="中南大学logo" class="logo" />
+            <img src="@/assets/images/csu-logo.png" alt="中南大学logo" class="csu-logo" />
+            <img src="@/assets/images/csu-name.png" alt="中南大学logo" class="csu-name" />
             <div class="home-nav-wrap">
                 <NavBar />
             </div>
              <div class="home-user">
                 <template v-if="!isLoggedIn">
-                    <button class="btn-login">
+                    <button class="home-btn-login" @click="openLoginModal">
                         <i class="fa-solid fa-user"></i> <span>登录</span>
                     </button>
-                    <button class="btn-register">
+                    <button class="home-btn-register" @click="openRegisterModal">
                         <i class="fa-solid fa-user-plus"></i> <span>注册</span>
                     </button>
                 </template>
                 <template v-else>
                     <span class="username">{{ userName }}</span>
-                    <button class="btn-logout">
+                    <button class="home-btn-logout" @click="goLogout">
                         <i class="fa-solid fa-right-from-bracket"></i> 退出
                     </button>
                 </template>
@@ -33,16 +34,218 @@
     </div>
   </div>
   
-  
+  <div class="modal-overlap" v-if="showLogin" @click.self="closeAllModal">
+    <div class="modal-box">
+      <div class="close-btn-wrap">
+        <button class="close-btn" @click="closeAllModal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-content-wrap">
+        <div class="modal-header">
+          <span
+            @click="activeTab='sms'"
+            :class="{'active-tab': activeTab === 'sms'}"
+          >
+            短信验证
+          </span>
+          <span
+            @click="activeTab='password'"
+            :class="{'active-tab': activeTab === 'password'}"
+          >
+            密码验证
+          </span>
+          <span
+            @click="activeTab='email'"
+            :class="{'active-tab': activeTab === 'email'}"
+          >
+            邮箱验证
+          </span>
+        </div>
+        <div class="modal-login-content">
+          <div v-if="activeTab === 'sms'">
+             <input v-model="loginForm.phone" type="text" placeholder="请输入手机号" />
+             <div class="code-row"> 
+                <input v-model="loginForm.code" placeholder="请输入验证码" />
+                <button class="get-code-btn" @click="getSmsCode" :disabled="countdown>0">
+                  {{ countdown>0?`${countdown}s后重试`:'获取验证码' }}
+                </button>
+              </div>
+          </div>
+          <div v-if="activeTab === 'password'">
+             <input v-model="loginForm.phone" type="text" placeholder="请输入手机号" />
+             <input v-model="loginForm.password" type="password" placeholder="请输入密码" />
+          </div>
+          <div v-if="activeTab === 'email'">
+             <input v-model="loginForm.email" type="text" placeholder="请输入邮箱" />
+             <div class="code-row">
+                <input v-model="loginForm.emailCode" type="text" placeholder="请输入验证码" />
+                <button class="get-code-btn" @click="getEmailCode" :disabled="emailCountdown>0">
+                  {{ emailCountdown>0?`${emailCountdown}s后重试`:'获取验证码' }}
+                </button>
+             </div>
+          </div>
+          <button class="modal-btn" @click="submitLogin">登录</button>
+        </div>
+        <div class="to-register">
+          <span>没有账号？</span>
+          <span class="to-other" @click="goToRegister">前往注册</span>
+        </div>
+      </div>
+      <div class="role-group">
+        <div class="role-title">请选择身份</div>
+        <div class="role-buttons">
+          <button 
+          type="button"
+          class="role-btn" 
+          :class="{ active: loginForm.role === 'tenant' }"
+          @click="loginForm.role = 'tenant'"
+          >
+          租客
+          </button>
+          <button 
+            type="button"
+            class="role-btn" 
+            :class="{ active: loginForm.role === 'landlord' }"
+            @click="loginForm.role = 'landlord'"
+          > 
+          房东
+          </button>
+          <button 
+            type="button"
+            class="role-btn" 
+            :class="{ active: loginForm.role === 'admin' }"
+            @click="loginForm.role = 'admin'"
+          >
+          管理员 
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlap" v-if="showRegister" @click.self="closeAllModal">
+    <div class="modal-box">
+      <div class="close-btn-wrap">
+        <button class="close-btn" @click="closeAllModal">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+      <div class="modal-content-wrap">
+        <div class="modal-header">
+          <span>
+            注册账号
+          </span>
+        </div>
+        <div class="modal-register-content">
+          <input v-model="registerForm.phone" type="text" placeholder="请输入手机号" />
+          <div class="code-row"> 
+                <input v-model="registerForm.code" placeholder="请输入验证码" />
+                <button class="get-code-btn" @click="getSmsCode" :disabled="countdown>0">
+                  {{ countdown>0?`${countdown}s后重试`:'获取验证码' }}
+                </button>
+              </div>
+          <input v-model="registerForm.password" type="password" placeholder="请输入密码" />
+          <button class="modal-btn" @click="submitRegister">注册</button>
+        </div>
+        <div class="to-register">
+          <span>已有账号？</span>
+          <span class="to-other" @click="goToLogin">前往登录</span>
+        </div>
+      </div>
+      <div class="role-group">
+        <div class="role-title">请选择身份</div>
+        <div class="role-buttons">
+          <button 
+          type="button"
+          class="role-btn" 
+          :class="{ active: registerForm.role === 'tenant' }"
+          @click="registerForm.role = 'tenant'"
+          >
+          租客
+          </button>
+          <button 
+            type="button"
+            class="role-btn" 
+            :class="{ active: registerForm.role === 'landlord' }"
+            @click="registerForm.role = 'landlord'"
+          > 
+          房东
+          </button>
+          <button 
+            type="button"
+            class="role-btn" 
+            :class="{ active: registerForm.role === 'admin' }"
+            @click="registerForm.role = 'admin'"
+          >
+          管理员 
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
 import NavBar from '@/components/NavBar.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+
+const router =useRouter();
+
+const goLogout=()=>{
+  // 这里可以添加实际的退出逻辑，例如清除用户信息、调用后端接口等
+  alert('退出登录成功！');
+  isLoggedIn.value = false; // 模拟退出登录状态
+  router.push('/'); // 退出后返回首页
+}
 const isLoggedIn = ref(false); // 模拟登录状态，实际项目中应根据后端返回的状态设置
 const userName = ref('张三dadada');
+
+const showLogin=ref(false);
+const showRegister=ref(false);
+const activeTab=ref('password'); //记录验证方式
+const loginForm = ref({
+  phone: '',//手机号就是账号
+  code: '',//短信验证码
+  password: '',//密码
+  email: '',//邮箱
+  emailCode: '',//邮箱验证码
+  role: 'tenant', // 默认选择租客
+})
+const registerForm = ref({
+  id: '',//账号
+  phone: '',//密码
+  password: '',//密码
+  role: 'tenant', // 默认选择租客
+})
+const countdown=ref(0);//短信验证码倒计时
+const emailCountdown=ref(0);//邮箱验证码倒计时
+
+
+const closeAllModal=()=>{
+  showLogin.value=false;
+  showRegister.value=false;
+}
+const openLoginModal=()=>{
+  showLogin.value=true;
+  showRegister.value=false;
+}
+const openRegisterModal=()=>{
+  showLogin.value=false;
+  showRegister.value=true;
+}
+const goToLogin=()=>{
+  openLoginModal();
+}
+const goToRegister=()=>{
+  openRegisterModal();
+}
+
+
 </script>
+
+
 
 <style>
 /* 全局清除浏览器默认白边 */
@@ -52,7 +255,6 @@ const userName = ref('张三dadada');
   box-sizing: border-box;
 }
 </style>
-
 <style scoped>
 
 .home-container {
@@ -67,11 +269,20 @@ const userName = ref('张三dadada');
   position: relative;
 }
 
-.logo {
+.csu-logo {
   position: absolute;
-  top: 5px;
-  left: 5px;
+  top: 32px;
+  left: 270px;
   height: 80px;
+  object-fit: contain;
+}
+
+.csu-name {
+  position: absolute;
+  top: 44px;
+  left: 350px;
+  height: 50px;
+  background: transparent;
   object-fit: contain;
 }
 .home-header {
@@ -100,7 +311,7 @@ button {
   font-family: inherit;
 }
 /* 登录按钮 */
-.btn-login {
+.home-btn-login {
   padding: 10px 20px;
   font-size: 18px;
   color: #fff;
@@ -111,14 +322,15 @@ button {
   gap: 8px;
   transition: all 0.25s ease;
 }
-.btn-login:hover {
+.home-btn-login:hover {
   background: rgba(255, 255, 255, 0.25);
   border-color: rgba(255, 255, 255, 0.5);
   transform: translateY(-1px);
 }
 
 /* 注册按钮（主按钮） */
-.btn-register {
+
+.home-btn-register{
   padding: 10px 20px;
   font-size: 18px;
   color: #fff;
@@ -129,13 +341,13 @@ button {
   gap: 8px;
   transition: all 0.25s ease;
 }
-.btn-register:hover {
+.home-btn-register:hover {
   background: #0753ab;
   transform: translateY(-1px);
 }
 
 /* 退出按钮 */
-.btn-logout {
+.home-btn-logout {
   padding: 8px 16px;
   font-size: 18px;
   color: #ff4d4f;
@@ -145,7 +357,7 @@ button {
   gap: 6px;
   transition: color 0.2s ease;
 }
-.btn-logout:hover {
+.home-btn-logout:hover {
   color: #d9363e;
 }
 
@@ -187,5 +399,183 @@ button {
 }
 .home-searchBar {
   margin-top: 30px;
+}
+/* 模态框样式 */
+.modal-overlap{
+  position:fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:rgba(0, 0, 0, 0.3);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+.modal-box{
+  width:380px;
+  height:460px;
+  background:#fff;
+  border-radius:10px;
+  position:relative;
+}
+.modal-content-wrap {
+  display:flex;
+  flex-direction:column;
+  max-height:400px;
+  margin:5px 40px;
+}
+.modal-header{
+  display:flex;
+  justify-content:space-between;
+  font-size:17px;
+  font-weight:600;
+  margin-bottom:20px;
+  justify-content: center;
+  gap: 47px;
+}
+.modal-header span.active-tab {
+  color: rgb(28, 173, 226);
+  border-bottom: 2px solid rgb(28, 173, 226);
+}
+.close-btn-wrap {
+  width:100%;
+  display:flex;
+  justify-content:flex-end;
+  padding: 10px;
+}
+.close-btn {
+  background:none;
+  border:none;
+  font-size:16px;
+  cursor:pointer;
+  color: #999;
+}
+/* 登录表单样式 */
+.modal-login-content {
+  display:flex;
+  flex-direction:column;
+  margin-top:25px;
+}
+.modal-login-content input {
+  width:100%;
+  height:50px;
+  padding:12px 15px;
+  border:1px solid #ddd;
+  margin-bottom:20px;
+  border-radius:6px;
+  font-size:16px;
+  font-weight:300;
+}
+.modal-btn {
+  width:100%;
+  height:40px;
+  display: flex;
+  align-items: center;     /* 垂直居中 */
+  justify-content: center; /* 水平居中 */
+  padding: 0 15px;        /* 只有左右 padding */
+  background:rgb(28, 173, 226);
+  color:#fff;
+  font-size:16px;
+  line-height: 17px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+}
+/* 验证码输入行 */
+.code-row {
+  position: relative;
+  width: 100%;
+}
+.code-row input {
+  width: 100%;
+  padding-right: 110px !important;
+}
+.get-code-btn {
+  position: absolute;
+  right:0px;
+  top: 34%;
+  transform: translateY(-50%);
+  background:transparent;
+  color: rgb(28, 173, 226);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.get-code-btn:disabled {
+  background: #ccc;
+}
+.to-register {
+  font-size: 14px;
+  color: #666;
+  text-align: right;
+}
+.to-other {
+  color: rgb(28, 173, 226);
+  cursor: pointer;
+  margin-left: 4px;
+}
+.to-other:hover {
+  text-decoration: underline;
+}
+/* 角色选择 */
+.role-group {
+  margin-top: 15px;
+  padding: 0 40px 30px;
+  border-top: 1px solid rgba(160, 160, 160, 0.4);
+}
+.role-title {
+  text-align: center;
+  font-size: 15px;
+  color: #333;
+  margin-top: 13px;
+}
+.role-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding-top: 15px;
+  
+}
+.role-btn {
+  width: 90px;
+  height: 36px;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  background: #fff;
+  font-size: 15px;
+  color: #666;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+.role-btn.active {
+  background: rgb(28, 173, 226);
+  color: #fff;
+  border-color: rgb(28, 173, 226);
+}
+.role-btn:hover:not(.active) {
+  border-color: rgb(28, 173, 226);
+  color: rgb(28, 173, 226);
+}
+/* 注册表单样式 */
+.modal-register-content {
+  display:flex;
+  flex-direction:column;
+}
+.modal-register-content input {
+  width:100%;
+  height:40px;
+  padding:12px 15px;
+  border:1px solid #ddd;
+  margin-bottom:20px;
+  border-radius:6px;
+  font-size:16px;
+  font-weight:300;
 }
 </style>
