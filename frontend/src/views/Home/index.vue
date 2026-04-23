@@ -1,5 +1,6 @@
 <template>
   <div class="page-wrap">
+    <!-- 首页主体内容 -->
     <div class="home-container">
         <div class="home-header">
             <img src="@/assets/images/csu-logo.png" alt="中南大学logo" class="csu-logo" />
@@ -33,7 +34,7 @@
         </div>
     </div>
   </div>
-  
+  <!-- 登录模态框 -->
   <div class="modal-overlap" v-if="showLogin" @click.self="closeAllModal">
     <div class="modal-box">
       <div class="close-btn-wrap">
@@ -123,6 +124,7 @@
       </div>
     </div>
   </div>
+  <!-- 注册模态框 -->
   <div class="modal-overlap" v-if="showRegister" @click.self="closeAllModal">
     <div class="modal-box">
       <div class="close-btn-wrap">
@@ -183,9 +185,43 @@
       </div>
     </div>
   </div>
+  <!-- 分类展区 -->
+  <div class="sort-area">
+    <div class="sort-item">
+      <div class="sort-title-wrap">
+        <div class="sort-big-title">户型多多</div>
+        <div class="sort-small-title">一屋一形制，一生一归处</div>
+      </div>
+      <div class="sort-content">
+        <!-- 这里可以放一些户型的图片或者介绍 -->
+         <HouseCard 
+            v-for="house in houseTypes" 
+            :key="house.id" 
+            :house="house"
+            @click="goToDetail(house)"
+          />
+      </div>
+    </div>
+    <div class="sort-item">
+      <div class="sort-title-wrap">
+        <div class="sort-big-title">小区精选</div>
+        <div class="sort-small-title">甄选一城佳境，安享一隅清欢</div>
+      </div>
+      <div class="sort-content">
+        <!-- 这里可以放一些户型的图片或者介绍 -->
+         <HouseCard 
+            v-for="house in houseEstates" 
+            :key="house.id" 
+            :house="house"
+            @click="goToDetail(house)"
+          />
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
+import HouseCard from '@/components/HouseCard.vue';
 import NavBar from '@/components/NavBar.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import { ref } from 'vue';
@@ -199,12 +235,14 @@ const goLogout=()=>{
   isLoggedIn.value = false; // 模拟退出登录状态
   router.push('/'); // 退出后返回首页
 }
+
 const isLoggedIn = ref(false); // 模拟登录状态，实际项目中应根据后端返回的状态设置
 const userName = ref('张三dadada');
 
 const showLogin=ref(false);
 const showRegister=ref(false);
 const activeTab=ref('password'); //记录验证方式
+//登录表单数据
 const loginForm = ref({
   phone: '',//手机号就是账号
   code: '',//短信验证码
@@ -213,12 +251,74 @@ const loginForm = ref({
   emailCode: '',//邮箱验证码
   role: 'tenant', // 默认选择租客
 })
+//注册表单数据
 const registerForm = ref({
   id: '',//账号
   phone: '',//密码
   password: '',//密码
   role: 'tenant', // 默认选择租客
 })
+//户型
+const houseTypes = ref([
+  { id: 1, 
+    title: '一室一厅' ,
+    image:'/images/type1.jpg',
+    spec:'约60㎡ | 1室1厅1卫',
+    price:'￥1000/月起',
+    badge:'热销'
+  },
+  { id: 2, 
+    title: '两室一厅' ,
+    image:'/images/type2.jpg',
+    spec:'约100㎡ | 2室1厅1卫',
+    price:'￥2000/月起',
+    badge:'特价'
+  },
+  { id: 3, 
+    title: '三室一厅' ,
+    image:'/images/type3.jpg',
+    spec:'约140㎡ | 3室1厅2卫',
+    price:'￥3000/月起',
+    badge:'推荐'
+  },
+  { id: 4, 
+    title: '四室一厅' ,
+    image:'/images/type4.jpg',
+    spec:'约180㎡ | 4室1厅2卫',
+    price:'￥4000/月起',
+    badge:'新上'
+  },
+]);
+//住宅区
+const houseEstates = ref([
+  { id: 1, 
+    title: '白沙苑' ,
+    image:'/images/house1.jpg',
+    spec:'舒适宜居住宅',
+    price:'￥2000/月起',
+
+  },
+  { id: 2, 
+    title: '山语城' ,
+    image:'/images/house2.jpg',
+    spec:'品质生活住宅',
+    price:'￥3500/月起',
+  },
+  {
+    id: 3, 
+    title: '明昇壹城',
+    image:'/images/house3.jpg',
+    spec:'高端人气住宅',
+    price:'￥5000/月起',
+  },
+  {
+    id: 4, 
+    title: '润和滨江湾',
+    image:'/images/house4.jpg',
+    spec:'豪华顶级住宅',
+    price:'￥7000/月起',
+  }
+]);
 const countdown=ref(0);//短信验证码倒计时
 const emailCountdown=ref(0);//邮箱验证码倒计时
 
@@ -363,6 +463,9 @@ const submitRegister=()=>{
   alert(`注册成功！角色：${registerForm.value.role}`);
   //自动跳转登录
   goToLogin();
+}
+const goToDetail=(house)=>{
+
 }
 </script>
 
@@ -698,5 +801,33 @@ button {
   border-radius:6px;
   font-size:16px;
   font-weight:300;
+}
+.sort-area {
+  display: flex;
+  width:1272px;
+  flex-direction:column;
+  gap: 90px;
+  margin:90px  100px;
+}
+.sort-item {
+  height: 400px;
+  border-radius: 10px;
+}
+.sort-big-title {
+  font-size: 40px;
+  font-weight: 600;
+  color: #333;
+  text-align: left;
+}
+.sort-small-title {
+  font-size: 18px;
+  color: rgba(51, 51, 51, 0.7);
+  text-align: left;
+}
+.sort-content {
+  margin-top: 30px;
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
 }
 </style>
