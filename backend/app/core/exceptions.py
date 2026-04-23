@@ -17,6 +17,8 @@ FORBIDDEN_CODE = 1004
 NOT_FOUND_CODE = 4004
 CONFLICT_CODE = 4009
 INTERNAL_SERVER_ERROR_CODE = 5000
+USER_NOT_FOUND_CODE = 1001
+INVALID_CREDENTIALS_CODE = 1002
 
 
 def _map_http_status_to_app_code(status_code: int) -> int:
@@ -96,6 +98,30 @@ class NotFoundException(AppException):
             message=message,
             code=NOT_FOUND_CODE,
             status_code=404,
+            data=data,
+        )
+
+
+class UserNotFoundException(AppException):
+    def __init__(self, message: str = "user not found", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=USER_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class InvalidCredentialsException(AppException):
+    def __init__(
+        self,
+        message: str = "用户名或密码错误",
+        data: Any | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            code=INVALID_CREDENTIALS_CODE,
+            status_code=401,
             data=data,
         )
 

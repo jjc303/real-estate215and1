@@ -46,6 +46,8 @@ class BaseConfig:
     TESTING = False
     SECRET_KEY = "dev-secret-key"
     JWT_SECRET_KEY = "dev-jwt-secret-key"
+    JWT_ALGORITHM = "HS256"
+    JWT_EXPIRE_MINUTES = 120
     DATABASE_URI = DEFAULT_DATABASE_URI
     DB_ECHO = False
     JSON_AS_ASCII = False
@@ -61,6 +63,10 @@ class BaseConfig:
             "TESTING": _get_bool("TESTING", cls.TESTING),
             "SECRET_KEY": os.getenv("SECRET_KEY", cls.SECRET_KEY),
             "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY", cls.JWT_SECRET_KEY),
+            "JWT_ALGORITHM": os.getenv("JWT_ALGORITHM", cls.JWT_ALGORITHM),
+            "JWT_EXPIRE_MINUTES": int(
+                os.getenv("JWT_EXPIRE_MINUTES", str(cls.JWT_EXPIRE_MINUTES))
+            ),
             "DATABASE_URI": os.getenv("DATABASE_URI", cls.DATABASE_URI),
             "DB_ECHO": _get_bool("DB_ECHO", cls.DB_ECHO),
             "JSON_AS_ASCII": _get_bool("JSON_AS_ASCII", cls.JSON_AS_ASCII),
