@@ -1,43 +1,24 @@
 <template>
-    <template v-if="!isLoggedIn">
-        <button class="btn-login" @click="login">
-            <i class="fa-solid fa-user"></i> <span>登录</span>
-        </button>
-        <button class="btn-register" @click="register">
-            <i class="fa-solid fa-user-plus"></i> <span>注册</span>
-        </button>
-    </template>
-    <template v-else>
-        <span class="username">{{ userName }}</span>
-        <button class="btn-logout" @click="logout">
-            <i class="fa-solid fa-right-from-bracket"></i> 退出
-        </button>
-    </template>
+<template v-if="!userStore.isLoggedIn">
+  <button class="btn-login" @click="userStore.openLoginModal">
+    <i class="fa-solid fa-user"></i> <span>登录</span>
+  </button>
+  <button class="btn-register" @click="userStore.openRegisterModal">
+    <i class="fa-solid fa-user-plus"></i> <span>注册</span>
+  </button>
 </template>
+<template v-else>
+  <span class="username">{{ userStore.userName }}</span>
+  <button class="btn-logout" @click="userStore.logout">
+    <i class="fa-solid fa-right-from-bracket"></i> 退出
+  </button>
+</template>
+</template>
+
+
 <script setup>
-const props = defineProps({
-    isLoggedIn: {
-        type: Boolean,
-        default: false
-    },
-    userName: {
-        type: String,
-        default: ''
-    }
-})
-const emit =defineEmits(['login', 'register', 'logout'])
-
-const login = () => {
-    emit('login')
-}
-
-const register = () => {
-    emit('register')
-}
-
-const logout = () => {
-    emit('logout')
-}
+import { useUserStore } from '@/stores/user.js';
+const userStore = useUserStore();
 </script>
 <style scoped>
 
