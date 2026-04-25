@@ -41,7 +41,7 @@ class ErrorHandler {
   // 全局未处理的Promise拒绝
   static setupUnhandledRejectionHandler() {
     window.addEventListener('unhandledrejection', (event) => {
-      logger.error('未处理的Promise拒绝：', {
+      logger.error('未处理的Promise拒绝:', {
         reason: event.reason
       })
     })
