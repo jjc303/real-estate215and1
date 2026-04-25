@@ -150,13 +150,13 @@ DELETE /api/v1/favorites/{house_id}
 
 ## v1.1 - 2026-04-23
 
-### House 模块最小闭环完成
+> House 模块最小闭环完成
 
 ------
 
-## Added
+### Added
 
-### House 模块
+#### House 模块
 
 新增房源模块完整第一版，包括：
 
@@ -179,7 +179,7 @@ DELETE /api/v1/favorites/{house_id}
 
 ------
 
-### House 数据模型
+#### House 数据模型
 
 新增 `houses` 表。
 
@@ -213,7 +213,7 @@ DELETE /api/v1/favorites/{house_id}
 
 ------
 
-### House 接口
+#### House 接口
 
 新增接口：
 
@@ -241,7 +241,7 @@ DELETE /api/v1/houses/{id}
 
 ------
 
-### House 状态机
+#### House 状态机
 
 House 第一版状态固定为：
 
@@ -268,7 +268,7 @@ DELETE：deleted_at = now，status = offline
 
 ------
 
-### House 可见性规则
+#### House 可见性规则
 
 新增并验证以下可见性规则：
 
@@ -282,7 +282,7 @@ DELETE：deleted_at = now，status = offline
 
 ------
 
-### House 最小所有权校验
+#### House 最小所有权校验
 
 新增最小所有权控制：
 
@@ -293,7 +293,7 @@ DELETE：deleted_at = now，status = offline
 
 ------
 
-### House 参数校验
+#### House 参数校验
 
 新增 Pydantic schema：
 
@@ -323,7 +323,7 @@ DELETE：deleted_at = now，status = offline
 
 ------
 
-### 自动建表（开发阶段）
+#### 自动建表（开发阶段）
 
 开发阶段在 `app.core.database.init_database(app)` 中支持自动创建缺失表：
 
@@ -355,7 +355,7 @@ if flask_app.config.get("ENV") == "development":
 
 ------
 
-### Docker 开发模式调整
+#### Docker 开发模式调整
 
 后端开发模式建议调整为：
 
@@ -380,9 +380,9 @@ command: gunicorn -w 1 --reload -b 0.0.0.0:8000 app.main:app
 
 ------
 
-## Changed
+### Changed
 
-### House 删除策略
+#### House 删除策略
 
 明确 `DELETE /api/v1/houses/{id}` 为逻辑删除：
 
@@ -394,7 +394,7 @@ command: gunicorn -w 1 --reload -b 0.0.0.0:8000 app.main:app
 
 ------
 
-### House 状态更新策略
+#### House 状态更新策略
 
 明确普通更新接口不允许修改状态：
 
@@ -407,7 +407,7 @@ command: gunicorn -w 1 --reload -b 0.0.0.0:8000 app.main:app
 
 ------
 
-### House 查询策略
+#### House 查询策略
 
 明确列表查询分为两条独立分支：
 
@@ -418,9 +418,9 @@ command: gunicorn -w 1 --reload -b 0.0.0.0:8000 app.main:app
 
 ------
 
-## Fixed
+### Fixed
 
-### 修复 House 路由 404
+#### 修复 House 路由 404
 
 问题：
 
@@ -442,7 +442,7 @@ app.register_blueprint(house_bp, url_prefix="/api/v1/houses")
 
 ------
 
-### 修复 houses 表不存在导致 5000
+#### 修复 houses 表不存在导致 5000
 
 问题：
 
@@ -465,7 +465,7 @@ import_module("app.modules.house.model")
 
 ------
 
-### 修复 `import app.modules.xxx` 覆盖 Flask app 参数的问题
+#### 修复 `import app.modules.xxx` 覆盖 Flask app 参数的问题
 
 问题：
 
@@ -491,7 +491,7 @@ import app.modules.house.model
 
 ------
 
-## Verified
+### Verified
 
 House 模块已手动验证通过：
 
@@ -515,7 +515,7 @@ House 模块已手动验证通过：
 
 ------
 
-## Notes
+### Notes
 
 当前仍未实现：
 
@@ -538,13 +538,13 @@ House 模块已手动验证通过：
 
 ## v1.0 - 2026-04-22
 
-### Initial Release（基础版本完成）
+> Initial Release（基础版本完成）
 
 ------
 
-## Added
+### Added
 
-### Core 基础层
+#### Core 基础层
 
 - 实现配置系统（config.py）
 - 实现 SQLAlchemy 数据库连接与 session 管理（g.db）
@@ -554,7 +554,7 @@ House 模块已手动验证通过：
 
 ------
 
-### User 模块（最小读写闭环）
+#### User 模块（最小读写闭环）
 
 - 用户表（users）建模完成
 - 支持用户创建：
@@ -571,7 +571,7 @@ House 模块已手动验证通过：
 
 ------
 
-### Auth 模块（最小认证闭环）
+#### Auth 模块（最小认证闭环）
 
 - 实现登录接口：
   - POST /api/v1/auth/login
@@ -585,15 +585,15 @@ House 模块已手动验证通过：
 
 ------
 
-## Changed
+### Changed
 
-### 认证错误统一策略
+#### 认证错误统一策略
 
 - 登录失败（用户不存在 / 密码错误）统一返回：
   - code = 1002
   - message = 用户名或密码错误
 
-### token 错误统一策略
+#### token 错误统一策略
 
 以下情况统一返回 1003：
 
@@ -604,7 +604,7 @@ House 模块已手动验证通过：
 
 ------
 
-## Fixed
+### Fixed
 
 - 修复 created_at 无默认值导致插入失败的问题
 - 修复 MySQL + PyMySQL 在 caching_sha2_password 下依赖 cryptography 的问题
@@ -612,7 +612,7 @@ House 模块已手动验证通过：
 
 ------
 
-## Design Decisions
+### Design Decisions
 
 - 采用分层架构：
   - router → service → repository → model
@@ -624,7 +624,7 @@ House 模块已手动验证通过：
 
 ------
 
-## Notes
+### Notes
 
 v1.0 阶段未实现：
 
