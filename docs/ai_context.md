@@ -35,6 +35,20 @@ Status: User + Auth 最小闭环已完成
 - Werkzeug（密码哈希）
 - Pydantic（数据校验）
 
+## 部署方式
+
+项目使用 Docker Compose 部署：
+
+- 后端：Flask（gunicorn 启动）
+- 数据库：MySQL（服务名 mysql）
+- 数据库连接：mysql:3306
+
+说明：
+
+- 不使用 localhost
+- 服务间通过 Docker 网络通信
+- 配置通过环境变量注入
+
 ------
 
 # 2. 架构设计（强约束）

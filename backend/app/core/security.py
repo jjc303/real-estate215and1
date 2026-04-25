@@ -63,3 +63,16 @@ def extract_bearer_token(authorization_header: str | None) -> str:
         raise UnauthorizedException(message="未登录")
 
     return parts[1]
+
+
+def get_current_user_id_from_token(token: str) -> int:
+    payload = decode_access_token(token)
+
+    user_id = payload.get("sub")
+    if not user_id:
+        raise UnauthorizedException("无效 token")
+
+    try:
+        return int(user_id)
+    except (TypeError, ValueError):
+        raise UnauthorizedException("无效 token")

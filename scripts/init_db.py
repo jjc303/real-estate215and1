@@ -13,6 +13,7 @@ if str(BACKEND_DIR) not in sys.path:
 
 from app.factory import create_app
 from app.core import database
+import app.modules.house.model  # noqa: F401
 import app.modules.user.model  # noqa: F401
 
 

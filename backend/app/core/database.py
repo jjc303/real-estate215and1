@@ -30,6 +30,10 @@ def init_database(app) -> None:
     )
     SessionLocal.remove()
     SessionLocal.configure(bind=engine)
+    if app.config.get("ENV") == "development":
+        import app.modules.user.model
+        import app.modules.house.model
+        Base.metadata.create_all(bind=engine)
     register_db_hooks(app)
 
 

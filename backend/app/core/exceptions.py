@@ -19,6 +19,7 @@ CONFLICT_CODE = 4009
 INTERNAL_SERVER_ERROR_CODE = 5000
 USER_NOT_FOUND_CODE = 1001
 INVALID_CREDENTIALS_CODE = 1002
+HOUSE_NOT_FOUND_CODE = 2001
 
 
 def _map_http_status_to_app_code(status_code: int) -> int:
@@ -107,6 +108,16 @@ class UserNotFoundException(AppException):
         super().__init__(
             message=message,
             code=USER_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class HouseNotFoundException(AppException):
+    def __init__(self, message: str = "house not found", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=HOUSE_NOT_FOUND_CODE,
             status_code=404,
             data=data,
         )
