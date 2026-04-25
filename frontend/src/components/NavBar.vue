@@ -20,7 +20,7 @@ defineProps({
     type: Array,
     default: () => [
       { name: '首页', path: '/' },
-      { name: '房源列表', path: '/houses' },
+      { name: '房源列表', path: '/houseList' },
       { name: '我要租房', path: '/rent' },
       { name: '消息', path: '/messages' },
       { name: '投诉维修', path: '/complaints' },

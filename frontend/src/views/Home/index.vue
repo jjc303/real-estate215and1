@@ -8,21 +8,13 @@
             <div class="home-nav-wrap">
                 <NavBar />
             </div>
-             <div class="home-user">
-                <template v-if="!isLoggedIn">
-                    <button class="home-btn-login" @click="openLoginModal">
-                        <i class="fa-solid fa-user"></i> <span>登录</span>
-                    </button>
-                    <button class="home-btn-register" @click="openRegisterModal">
-                        <i class="fa-solid fa-user-plus"></i> <span>注册</span>
-                    </button>
-                </template>
-                <template v-else>
-                    <span class="username">{{ userName }}</span>
-                    <button class="home-btn-logout" @click="goLogout">
-                        <i class="fa-solid fa-right-from-bracket"></i> 退出
-                    </button>
-                </template>
+            <div class="home-user">
+              <UserButton 
+                :isLoggedIn="isLoggedIn" 
+                :userName="userName" 
+                @login="openLoginModal" 
+                @register="openRegisterModal" 
+                @logout="goLogout" />
             </div>
         </div>
         <div class="home-content">
@@ -226,7 +218,7 @@ import NavBar from '@/components/NavBar.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-
+import UserButton from '@/components/UserButton.vue';
 const router =useRouter();
 
 const goLogout=()=>{
@@ -527,70 +519,6 @@ const goToDetail=(house)=>{
   display: flex;
   gap: 10px;
   align-items: center;
-}
-button {
-  border: none;
-  outline: none;
-  cursor: pointer;
-  font-family: inherit;
-}
-/* 登录按钮 */
-.home-btn-login {
-  padding: 10px 20px;
-  font-size: 18px;
-  color: #fff;
-  background: transparent;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.25s ease;
-}
-.home-btn-login:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-1px);
-}
-
-/* 注册按钮（主按钮） */
-
-.home-btn-register{
-  padding: 10px 20px;
-  font-size: 18px;
-  color: #fff;
-  background: transparent;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition: all 0.25s ease;
-}
-.home-btn-register:hover {
-  background: #0753ab;
-  transform: translateY(-1px);
-}
-
-/* 退出按钮 */
-.home-btn-logout {
-  padding: 8px 16px;
-  font-size: 18px;
-  color: #ff4d4f;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: color 0.2s ease;
-}
-.home-btn-logout:hover {
-  color: #d9363e;
-}
-
-/* 用户名 */
-.username {
-  font-size: 20px;
-  color: #fff;
-  font-weight: 500;
-  margin-right: 6px;
 }
 .home-content {
   position: absolute;
