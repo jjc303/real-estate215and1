@@ -20,6 +20,7 @@ INTERNAL_SERVER_ERROR_CODE = 5000
 USER_NOT_FOUND_CODE = 1001
 INVALID_CREDENTIALS_CODE = 1002
 HOUSE_NOT_FOUND_CODE = 2001
+FAVORITE_NOT_FOUND_CODE = 2101
 
 
 def _map_http_status_to_app_code(status_code: int) -> int:
@@ -118,6 +119,16 @@ class HouseNotFoundException(AppException):
         super().__init__(
             message=message,
             code=HOUSE_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class FavoriteNotFoundException(AppException):
+    def __init__(self, message: str = "收藏不存在", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=FAVORITE_NOT_FOUND_CODE,
             status_code=404,
             data=data,
         )

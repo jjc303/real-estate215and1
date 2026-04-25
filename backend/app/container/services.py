@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from app.container.repositories import get_house_repository, get_user_repository
+from app.container.repositories import get_favorite_repository, get_house_repository, get_user_repository
 from app.modules.auth.service import AuthService
+from app.modules.favorite.service import FavoriteService
 from app.modules.house.service import HouseService
 from app.modules.user.service import UserService
 
@@ -9,6 +10,7 @@ from app.modules.user.service import UserService
 _user_service = UserService(get_user_repository())
 _auth_service = AuthService(get_user_repository())
 _house_service = HouseService(get_house_repository())
+_favorite_service = FavoriteService(get_favorite_repository(), get_house_repository())
 
 
 def get_user_service() -> UserService:
@@ -21,3 +23,7 @@ def get_auth_service() -> AuthService:
 
 def get_house_service() -> HouseService:
     return _house_service
+
+
+def get_favorite_service() -> FavoriteService:
+    return _favorite_service

@@ -37,6 +37,7 @@ def init_database(flask_app) -> None:
     if flask_app.config.get("ENV") == "development":
         import_module("app.modules.user.model")
         import_module("app.modules.house.model")
+        import_module("app.modules.favorite.model")
 
         Base.metadata.create_all(bind=engine)
 
