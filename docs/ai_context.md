@@ -1,8 +1,8 @@
 # AI Context（Backend Project）
 
-Version: v1.2  
+Version: v1.3  
 Last Updated: 2026-04-25  
-Status: User + Auth + House 最小闭环已完成，House 列表筛选已增强
+Status: User + Auth + House + Favorite 最小闭环已完成，House 列表筛选已增强
 
 ------
 
@@ -538,6 +538,76 @@ GET /api/v1/houses/{id}
 - 删除后不出现在任何列表和详情中
 - 删除后不可再次 update/publish/offline/delete
 
+------
+
+## 5.4 Favorite 模块
+
+### 当前状态
+
+Favorite 第一版最小闭环已完成。
+
+### 表
+
+```text
+favorites
+```
+
+字段：
+
+- id
+- user_id
+- house_id
+- created_at
+
+说明：
+
+- `user_id + house_id` 唯一约束，禁止重复收藏。
+- Favorite 不引入状态字段。
+- Favorite 不改变 House 的状态流转。
+
+### 接口
+
+#### POST /api/v1/favorites
+
+收藏房源。
+
+规则：
+
+- 必须登录
+- 从 JWT 获取 `current_user_id`
+- 只允许收藏未删除且 `listed` 的房源
+- 房源不存在、已删除、非 `listed`，统一返回 `2001`
+- 重复收藏返回 `4009`
+- 成功返回：
+  - `house_id`
+  - `favorite_created_at`
+  - `house`
+
+#### GET /api/v1/favorites
+
+我的收藏列表。
+
+规则：
+
+- 必须登录
+- 只返回当前用户自己的收藏
+- 只返回当前仍 `listed` 且未删除的房源
+- 分页返回 `list/total/page/page_size`
+- 列表项结构：
+  - `house_id`
+  - `favorite_created_at`
+  - `house`
+
+#### DELETE /api/v1/favorites/{house_id}
+
+取消收藏。
+
+规则：
+
+- 必须登录
+- 只删除当前用户自己的收藏
+- 若当前用户没有收藏该房源，返回 `2101 收藏不存在`
+
 
 
 ------
@@ -648,6 +718,7 @@ app/common/dependencies.py
 | 1002 | 用户名或密码错误      |
 | 1003 | 未登录 / token 无效   |
 | 2001 | 房源不存在 / 无权访问 |
+| 2101 | 收藏不存在            |
 | 3001 | 参数错误              |
 | 4004 | 路由不存在            |
 | 4009 | 资源冲突              |
@@ -666,7 +737,6 @@ app/common/dependencies.py
 - Alembic 迁移
 - 房源图片 / 视频
 - 房源审核流
-- 收藏
 - 预约
 - 聊天
 - 合同
@@ -679,7 +749,7 @@ app/common/dependencies.py
 # 9. 当前阶段
 
 ```text
-User + Auth + House 最小闭环已完成，House 列表筛选已增强
+User + Auth + House + Favorite 最小闭环已完成，House 列表筛选已增强
 ```
 
 系统能力：
@@ -697,6 +767,9 @@ User + Auth + House 最小闭环已完成，House 列表筛选已增强
 - 房源发布
 - 房源下架
 - 房源逻辑删除
+- 收藏房源
+- 我的收藏列表
+- 取消收藏
 - 最小所有权校验
 - 统一响应 + 异常体系
 
@@ -727,6 +800,11 @@ House 模块已验证：
 - 筛选参数可与分页同时使用
 - `min_rent > max_rent` 返回 `3001`
 - `min_area > max_area` 返回 `3001`
+- 收藏未删除且 `listed` 房源成功
+- 收藏不存在 / 已删除 / 非 `listed` 房源返回 `2001`
+- 重复收藏返回 `4009`
+- 我的收藏列表只返回当前仍 `listed` 且未删除的房源
+- 取消未收藏房源返回 `2101`
 
 ------
 
@@ -735,20 +813,20 @@ House 模块已验证：
 建议下一步优先做：
 
 ```text
-Favorite / 收藏
+Appointment / 预约
 ```
 
 原因：
 
-- 和现有 House 列表、用户侧体验强相关
-- 可以复用当前最小认证和所有权校验方式
-- 不需要改 House 状态流转
-- 能自然衔接后续 Appointment / Conversation
+- 和 House、Favorite 已有能力衔接自然
+- 能复用当前最小认证与所有权校验方式
+- 可以作为后续 Conversation / Contract 的上游流程
+- 不需要引入复杂权限系统
 
 之后再考虑：
 
 ```text
-Appointment → Conversation → Contract/Bill/Payment
+Conversation → Contract/Bill/Payment
 ```
 
 ------
