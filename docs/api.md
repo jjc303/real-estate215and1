@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.2
+Version: v1.3
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -62,6 +62,8 @@ Authorization: Bearer <token>
 | 1001 | 用户不存在          |
 | 1002 | 用户名或密码错误    |
 | 1003 | 未登录 / token 无效 |
+| 2001 | 房源不存在          |
+| 2101 | 收藏不存在          |
 | 4009 | 资源冲突            |
 | 5000 | 系统错误            |
 
@@ -107,6 +109,9 @@ PUT    /api/v1/houses/{id}
 PATCH  /api/v1/houses/{id}/publish
 PATCH  /api/v1/houses/{id}/offline
 DELETE /api/v1/houses/{id}
+POST   /api/v1/favorites
+GET    /api/v1/favorites
+DELETE /api/v1/favorites/{house_id}
 ```
 
 #### get_optional_current_user_id
@@ -1010,7 +1015,184 @@ DELETE /api/v1/houses/{id}
 
 ------
 
-# 五、Windows CMD 测试命令示例
+# 五、Favorite 模块
+
+## 1. 收藏房源
+
+### 接口
+
+```http
+POST /api/v1/favorites
+```
+
+### 是否需要认证
+
+需要。
+
+```http
+Authorization: Bearer <token>
+```
+
+### 请求体
+
+```json
+{
+  "house_id": 1
+}
+```
+
+### 业务规则
+
+- 只允许收藏未删除且 `status = listed` 的房源。
+- 房源不存在、已删除、非 `listed`，统一返回 `2001 房源不存在`。
+- 不允许重复收藏。
+- 同一用户对同一房源只能有一条收藏记录。
+
+### 成功响应（201）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "house_id": 1,
+    "favorite_created_at": "2026-04-24T10:00:00",
+    "house": {
+      "id": 1,
+      "title": "测试房源",
+      "region": "区域A",
+      "address": "地址A",
+      "house_type": "1室1厅",
+      "area": "50.00",
+      "rent": "2000.00",
+      "deposit": "2000.00",
+      "status": "listed"
+    }
+  }
+}
+```
+
+### 房源不存在（404）
+
+```json
+{
+  "code": 2001,
+  "message": "house not found",
+  "data": null
+}
+```
+
+### 重复收藏（409）
+
+```json
+{
+  "code": 4009,
+  "message": "favorite already exists",
+  "data": null
+}
+```
+
+------
+
+## 2. 我的收藏列表
+
+### 接口
+
+```http
+GET /api/v1/favorites?page=1&page_size=10
+```
+
+### 是否需要认证
+
+需要。
+
+### Query 参数
+
+| 参数      | 类型 | 默认值 | 说明                 |
+| --------- | ---- | ------ | -------------------- |
+| page      | int  | 1      | 页码                 |
+| page_size | int  | 10     | 每页数量（最大 100） |
+
+### 业务规则
+
+- 只返回当前用户自己的收藏。
+- 只返回当前仍 `listed` 且未删除的房源。
+- 默认按收藏时间倒序。
+- 返回结构为 `house_id + favorite_created_at + house`。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "house_id": 1,
+        "favorite_created_at": "2026-04-24T10:00:00",
+        "house": {
+          "id": 1,
+          "title": "测试房源",
+          "region": "区域A",
+          "address": "地址A",
+          "house_type": "1室1厅",
+          "area": "50.00",
+          "rent": "2000.00",
+          "deposit": "2000.00",
+          "status": "listed"
+        }
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "page_size": 10
+  }
+}
+```
+
+------
+
+## 3. 取消收藏
+
+### 接口
+
+```http
+DELETE /api/v1/favorites/{house_id}
+```
+
+### 是否需要认证
+
+需要。
+
+### 业务规则
+
+- 只取消当前用户自己的收藏。
+- 若当前用户未收藏该房源，返回 `2101 收藏不存在`。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": null
+}
+```
+
+### 收藏不存在（404）
+
+```json
+{
+  "code": 2101,
+  "message": "收藏不存在",
+  "data": null
+}
+```
+
+------
+
+# 六、Windows CMD 测试命令示例
 
 ## 1. 注册用户
 
@@ -1062,10 +1244,11 @@ curl -X DELETE http://127.0.0.1:8000/api/v1/houses/1 -H "Authorization: Bearer %
 
 ------
 
-# 六、说明
+# 七、说明
 
-- User/Auth/House 三个模块当前均使用统一响应结构。
-- House 模块第一版不实现图片/视频、审核流、收藏、预约、合同、支付等功能。
+- User/Auth/House/Favorite 四个模块当前均使用统一响应结构。
+- House 模块第一版不实现图片/视频、审核流、预约、合同、支付等功能。
 - House 模块第一版仅做最小所有权校验，不做完整 RBAC 权限系统。
 - House 列表筛选当前仅增强现有 `GET /api/v1/houses` 和 `GET /api/v1/houses?mine=true`，未新增独立 Search 模块。
+- Favorite 第一版不做“是否已收藏”字段回填到 House 接口。
 - 当前开发阶段可使用 `Base.metadata.create_all()` 自动创建缺失表，后续如进入正式迁移阶段再引入 Alembic。

@@ -1,5 +1,90 @@
 # Changelog
 
+## v1.3 - 2026-04-25
+
+### Added
+
+#### Favorite 模块最小闭环
+
+新增 Favorite 第一版完整模块：
+
+- `app/modules/favorite/model.py`
+- `app/modules/favorite/schema.py`
+- `app/modules/favorite/repository.py`
+- `app/modules/favorite/service.py`
+- `app/modules/favorite/router.py`
+
+新增接线：
+
+- 注册 `/api/v1/favorites` blueprint
+- 新增 `FavoriteRepository`
+- 新增 `FavoriteService`
+- 开发环境自动建表时显式导入 `app.modules.favorite.model`
+
+#### Favorite 数据模型
+
+新增 `favorites` 表。
+
+字段包括：
+
+- id
+- user_id
+- house_id
+- created_at
+
+设计决策：
+
+- `user_id + house_id` 唯一约束，禁止重复收藏
+- Favorite 不引入状态字段
+- Favorite 不改变 House 的状态流转
+
+#### Favorite 接口
+
+新增接口：
+
+```text
+POST   /api/v1/favorites
+GET    /api/v1/favorites
+DELETE /api/v1/favorites/{house_id}
+```
+
+实现能力：
+
+- 收藏房源
+- 我的收藏列表
+- 取消收藏
+
+### Changed
+
+#### Favorite 收藏规则
+
+- 只允许收藏未删除且 `listed` 的房源
+- 房源不存在、已删除、非 `listed`，统一返回 `2001 house not found`
+- 我的收藏列表只返回当前仍 `listed` 且未删除的房源
+- 收藏成功响应返回：
+  - `house_id`
+  - `favorite_created_at`
+  - `house`
+
+#### Favorite 专属错误码
+
+新增错误码：
+
+- `2101 收藏不存在`
+
+用于：
+
+- `DELETE /api/v1/favorites/{house_id}` 时，当前用户未收藏该房源
+
+### Verified
+
+- Favorite 三个接口均必须登录，统一复用现有认证 helper
+- 收藏未删除且 `listed` 房源成功
+- 收藏不存在 / 已删除 / 非 `listed` 房源返回 `2001`
+- 重复收藏返回 `4009`
+- 我的收藏列表支持分页，且只返回当前仍 `listed` 且未删除的房源
+- 取消未收藏房源返回 `2101`
+
 ## v1.2 - 2026-04-25
 
 ### Changed
