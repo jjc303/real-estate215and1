@@ -1,23 +1,25 @@
 from __future__ import annotations
 
-from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy.sql import func
 
-from app.core.database import Base
-
-
-HouseStatus = Literal["draft", "listed", "offline"]
+from app.common.base_model import BaseModel, SoftDeleteMixin
+from app.common.enums import HouseStatus as HouseStatusValues
 
 
-class House(Base):
+HouseStatus = Literal[
+    HouseStatusValues.DRAFT,
+    HouseStatusValues.LISTED,
+    HouseStatusValues.OFFLINE,
+]
+
+
+class House(BaseModel, SoftDeleteMixin):
     __tablename__ = "houses"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     landlord_id: Mapped[int] = mapped_column(
         Integer,
         ForeignKey("users.id"),
@@ -39,17 +41,5 @@ class House(Base):
     status: Mapped[HouseStatus] = mapped_column(
         String(20),
         nullable=False,
-        server_default="draft",
+        server_default=HouseStatusValues.DRAFT,
     )
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        server_default=func.now(),
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime,
-        nullable=False,
-        server_default=func.now(),
-        onupdate=func.now(),
-    )
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

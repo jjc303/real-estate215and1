@@ -38,6 +38,7 @@ def init_database(flask_app) -> None:
         import_module("app.modules.user.model")
         import_module("app.modules.house.model")
         import_module("app.modules.favorite.model")
+        import_module("app.modules.appointment.model")
 
         Base.metadata.create_all(bind=engine)
 

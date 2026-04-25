@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.3
+Version: v1.3.1
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -55,17 +55,21 @@ Authorization: Bearer <token>
 
 ## 3. 错误码
 
-| code | 含义                |
-| ---- | ------------------- |
-| 0    | 成功                |
-| 3001 | 参数错误            |
-| 1001 | 用户不存在          |
-| 1002 | 用户名或密码错误    |
-| 1003 | 未登录 / token 无效 |
-| 2001 | 房源不存在          |
-| 2101 | 收藏不存在          |
-| 4009 | 资源冲突            |
-| 5000 | 系统错误            |
+| code | 含义                   |
+| ---- | ---------------------- |
+| 0    | 成功                   |
+| 3001 | 参数错误               |
+| 1001 | 用户不存在             |
+| 1002 | 用户名或密码错误       |
+| 1003 | 未登录 / token 无效    |
+| 2001 | 房源不存在             |
+| 2101 | 收藏不存在             |
+| 2201 | 预约不存在             |
+| 2202 | 非法预约状态           |
+| 2203 | 不能预约自己的房源     |
+| 2204 | 预约时间必须是未来时间 |
+| 4009 | 资源冲突               |
+| 5000 | 系统错误               |
 
 ------
 
@@ -112,6 +116,11 @@ DELETE /api/v1/houses/{id}
 POST   /api/v1/favorites
 GET    /api/v1/favorites
 DELETE /api/v1/favorites/{house_id}
+POST   /api/v1/appointments
+GET    /api/v1/appointments
+PATCH  /api/v1/appointments/{id}/confirm
+PATCH  /api/v1/appointments/{id}/reject
+PATCH  /api/v1/appointments/{id}/cancel
 ```
 
 #### get_optional_current_user_id
@@ -590,17 +599,17 @@ GET /api/v1/houses?page=1&page_size=10
 
 ### Query 参数
 
-| 参数       | 类型    | 默认值 | 说明                                                |
-| ---------- | ------- | ------ | --------------------------------------------------- |
-| page       | int     | 1      | 页码，必须 `>= 1`                                   |
-| page_size  | int     | 10     | 每页数量，最大 100                                  |
-| region     | string  | 无     | 按区域精确筛选                                      |
-| house_type | string  | 无     | 按户型精确筛选                                      |
-| min_rent   | decimal | 无     | 月租下限，必须 `>= 0`                               |
-| max_rent   | decimal | 无     | 月租上限，必须 `>= 0`                               |
+| 参数       | 类型    | 默认值 | 说明                                                 |
+| ---------- | ------- | ------ | ---------------------------------------------------- |
+| page       | int     | 1      | 页码，必须 `>= 1`                                    |
+| page_size  | int     | 10     | 每页数量，最大 100                                   |
+| region     | string  | 无     | 按区域精确筛选                                       |
+| house_type | string  | 无     | 按户型精确筛选                                       |
+| min_rent   | decimal | 无     | 月租下限，必须 `>= 0`                                |
+| max_rent   | decimal | 无     | 月租上限，必须 `>= 0`                                |
 | keyword    | string  | 无     | 关键字模糊匹配 `title/address/community/description` |
-| min_area   | decimal | 无     | 面积下限，必须 `>= 0`                               |
-| max_area   | decimal | 无     | 面积上限，必须 `>= 0`                               |
+| min_area   | decimal | 无     | 面积下限，必须 `>= 0`                                |
+| max_area   | decimal | 无     | 面积上限，必须 `>= 0`                                |
 
 ### 业务规则
 
@@ -610,11 +619,28 @@ GET /api/v1/houses?page=1&page_size=10
 - 不返回 `draft/offline`。
 - 支持筛选条件与分页同时使用。
 - 当 `min_rent > max_rent` 或 `min_area > max_area` 时，返回 `3001 bad request`。
+- 参数校验失败时，统一返回 JSON 结构，不返回 HTML 500 页面。
 
 ### 筛选示例
 
 ```http
 GET /api/v1/houses?page=1&page_size=10&region=区域A&house_type=1室1厅&min_rent=1000&max_rent=3000&keyword=地铁&min_area=30&max_area=80
+```
+
+### 非法范围响应示例（400）
+
+```json
+{
+  "code": 3001,
+  "message": "bad request",
+  "data": [
+    {
+      "type": "value_error",
+      "loc": [],
+      "msg": "Value error, min_rent cannot be greater than max_rent"
+    }
+  ]
+}
 ```
 
 ### 成功响应（200）
@@ -684,18 +710,18 @@ Authorization: Bearer <token>
 
 ### Query 参数
 
-| 参数       | 类型    | 默认值 | 说明                                                |
-| ---------- | ------- | ------ | --------------------------------------------------- |
-| mine       | bool    | true   | 固定表示查询当前用户自己的房源                      |
-| page       | int     | 1      | 页码，必须 `>= 1`                                   |
-| page_size  | int     | 10     | 每页数量，最大 100                                  |
-| region     | string  | 无     | 按区域精确筛选                                      |
-| house_type | string  | 无     | 按户型精确筛选                                      |
-| min_rent   | decimal | 无     | 月租下限，必须 `>= 0`                               |
-| max_rent   | decimal | 无     | 月租上限，必须 `>= 0`                               |
+| 参数       | 类型    | 默认值 | 说明                                                 |
+| ---------- | ------- | ------ | ---------------------------------------------------- |
+| mine       | bool    | true   | 固定表示查询当前用户自己的房源                       |
+| page       | int     | 1      | 页码，必须 `>= 1`                                    |
+| page_size  | int     | 10     | 每页数量，最大 100                                   |
+| region     | string  | 无     | 按区域精确筛选                                       |
+| house_type | string  | 无     | 按户型精确筛选                                       |
+| min_rent   | decimal | 无     | 月租下限，必须 `>= 0`                                |
+| max_rent   | decimal | 无     | 月租上限，必须 `>= 0`                                |
 | keyword    | string  | 无     | 关键字模糊匹配 `title/address/community/description` |
-| min_area   | decimal | 无     | 面积下限，必须 `>= 0`                               |
-| max_area   | decimal | 无     | 面积上限，必须 `>= 0`                               |
+| min_area   | decimal | 无     | 面积下限，必须 `>= 0`                                |
+| max_area   | decimal | 无     | 面积上限，必须 `>= 0`                                |
 
 ### 请求示例
 
@@ -1250,5 +1276,278 @@ curl -X DELETE http://127.0.0.1:8000/api/v1/houses/1 -H "Authorization: Bearer %
 - House 模块第一版不实现图片/视频、审核流、预约、合同、支付等功能。
 - House 模块第一版仅做最小所有权校验，不做完整 RBAC 权限系统。
 - House 列表筛选当前仅增强现有 `GET /api/v1/houses` 和 `GET /api/v1/houses?mine=true`，未新增独立 Search 模块。
+- Pydantic 参数校验异常当前统一转换为 JSON `3001 bad request`，不再返回 Flask 默认 HTML 500。
 - Favorite 第一版不做“是否已收藏”字段回填到 House 接口。
 - 当前开发阶段可使用 `Base.metadata.create_all()` 自动创建缺失表，后续如进入正式迁移阶段再引入 Alembic。
+
+
+------
+
+# 九、Appointment 模块补充
+
+> 本节为 v1.4 新增内容。保留前文所有 User / Auth / House / Favorite 文档。
+
+## 1. 业务规则总览
+
+所有 Appointment 接口都必须登录。
+
+Appointment 第一版状态：
+
+| status    | 含义       |
+| --------- | ---------- |
+| pending   | 待房东确认 |
+| confirmed | 房东已确认 |
+| rejected  | 房东已拒绝 |
+| cancelled | 租客已取消 |
+| expired   | 已过期     |
+
+`status` 是数据库真实状态。`display_status` 是前端展示状态。
+
+第一版约定：
+
+- 数据库正常业务流转只主动写入 `pending / confirmed / rejected / cancelled`。
+- `expired` 不通过定时任务写回数据库。
+- 如果 `status = pending` 且 `appointment_time` 已经过期，则返回 `display_status = expired`。
+- 其他情况 `display_status = status`。
+
+`relation_role` 表示当前用户在预约中的身份：
+
+| relation_role | 含义           |
+| ------------- | -------------- |
+| tenant        | 当前用户是租客 |
+| landlord      | 当前用户是房东 |
+
+## 2. 创建预约
+
+### 接口
+
+```http
+POST /api/v1/appointments
+```
+
+### 请求体
+
+```json
+{
+  "house_id": 1,
+  "appointment_time": "2026-04-25T15:00:00",
+  "remark": "想下午看房"
+}
+```
+
+### 规则
+
+- 必须登录。
+- `tenant_id` 从 token 获取。
+- `landlord_id` 从 House 表读取，前端不能传。
+- 只能预约未删除且 `listed` 的房源。
+- 不能预约自己的房源。
+- `appointment_time` 必须是未来时间。
+- 创建后 `status = pending`。
+- 房源不存在、已删除、非 `listed`，统一返回 `2001`。
+
+### 成功响应
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "house_id": 1,
+    "tenant_id": 2,
+    "landlord_id": 1,
+    "appointment_time": "2026-04-25T15:00:00",
+    "remark": "想下午看房",
+    "status": "pending",
+    "display_status": "pending",
+    "created_at": "2026-04-26T10:00:00",
+    "updated_at": "2026-04-26T10:00:00",
+    "relation_role": "tenant",
+    "house": {
+      "id": 1,
+      "title": "测试房源",
+      "region": "区域A",
+      "address": "地址A",
+      "house_type": "1室1厅",
+      "area": "50.00",
+      "rent": "2000.00",
+      "deposit": "2000.00",
+      "status": "listed"
+    }
+  }
+}
+```
+
+## 3. 查看预约列表
+
+### 接口
+
+```http
+GET /api/v1/appointments?page=1&page_size=10
+```
+
+### 规则
+
+- 必须登录。
+- 返回与当前用户相关的预约：`tenant_id == current_user_id OR landlord_id == current_user_id`。
+- 支持分页。
+- 默认按 `created_at DESC, id DESC`。
+- 返回 `list / total / page / page_size`。
+
+## 4. 房东确认预约
+
+### 接口
+
+```http
+PATCH /api/v1/appointments/{id}/confirm
+```
+
+规则：
+
+- 只有房东本人可以确认。
+- 仅允许有效 `pending -> confirmed`。
+- 已过期 pending 不能确认，返回 `2202`。
+- 非房东或预约不存在，返回 `2201`。
+
+## 5. 房东拒绝预约
+
+### 接口
+
+```http
+PATCH /api/v1/appointments/{id}/reject
+```
+
+规则：
+
+- 只有房东本人可以拒绝。
+- 仅允许有效 `pending -> rejected`。
+- 已过期 pending 不能拒绝，返回 `2202`。
+- 非房东或预约不存在，返回 `2201`。
+
+## 6. 租客取消预约
+
+### 接口
+
+```http
+PATCH /api/v1/appointments/{id}/cancel
+```
+
+规则：
+
+- 只有租客本人可以取消。
+- 允许 `pending -> cancelled`、`confirmed -> cancelled`。
+- `rejected / cancelled / expired` 不允许取消，返回 `2202`。
+- 非租客或预约不存在，返回 `2201`。
+
+## 7. Appointment 错误码
+
+| code | 含义                   |
+| ---- | ---------------------- |
+| 2201 | 预约不存在             |
+| 2202 | 非法预约状态           |
+| 2203 | 不能预约自己的房源     |
+| 2204 | 预约时间必须是未来时间 |
+
+------
+
+# 十、common 公共能力补充
+
+当前项目已完成 common 公共能力替换重构。
+
+## 1. base_model.py
+
+文件：
+
+```text
+app/common/base_model.py
+```
+
+提供：
+
+- `BaseModel`
+- `SoftDeleteMixin`
+
+当前继承关系：
+
+| Model       | 继承关系                            |
+| ----------- | ----------------------------------- |
+| User        | `User(BaseModel)`                   |
+| House       | `House(BaseModel, SoftDeleteMixin)` |
+| Favorite    | `Favorite(BaseModel)`               |
+| Appointment | `Appointment(BaseModel)`            |
+
+说明：
+
+- `BaseModel` 提供 `id / created_at / updated_at`。
+- `SoftDeleteMixin` 提供 `deleted_at`。
+- `deleted_at` 只用于 House。
+- Favorite / Appointment 有 `updated_at`。
+- Favorite / Appointment 没有 `deleted_at`。
+
+## 2. pagination.py
+
+文件：
+
+```text
+app/common/pagination.py
+```
+
+提供：
+
+- `get_offset(page, page_size)`
+- `build_page_result(items, total, page, page_size)`
+
+统一分页响应：
+
+```json
+{
+  "list": [],
+  "total": 0,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+## 3. enums.py
+
+文件：
+
+```text
+app/common/enums.py
+```
+
+提供：
+
+- `HouseStatus`
+- `AppointmentStatus`
+
+说明：
+
+- 数据库存储仍是字符串。
+- 接口返回仍是字符串。
+- 不改变状态流转规则。
+
+## 4. base_schema.py
+
+文件：
+
+```text
+app/common/base_schema.py
+```
+
+提供：
+
+- `BaseSchema`
+
+默认配置：
+
+```text
+from_attributes=True
+extra="forbid"
+```
+
+说明：
+
+- 不改变现有接口请求校验语义。
+- 对原本不强制 forbid 的 schema 保留旧行为。

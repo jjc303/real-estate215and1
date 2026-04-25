@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import ConfigDict, Field
+
+from app.common.base_schema import BaseSchema
 
 
-class UserReadSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class UserReadSchema(BaseSchema):
 
     id: int
     username: str
@@ -19,7 +20,9 @@ class UserReadSchema(BaseModel):
     created_at: datetime
 
 
-class UserCreateSchema(BaseModel):
+class UserCreateSchema(BaseSchema):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
     username: str = Field(min_length=1, max_length=50)
     password: str = Field(min_length=6, max_length=255)
     role: str = Field(default="tenant", min_length=1, max_length=20)
@@ -30,6 +33,8 @@ class UserCreateSchema(BaseModel):
     status: str = Field(default="active", min_length=1, max_length=20)
 
 
-class UserListQuerySchema(BaseModel):
+class UserListQuerySchema(BaseSchema):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=100)

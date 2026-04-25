@@ -3,6 +3,7 @@ from __future__ import annotations
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.common.pagination import build_page_result, get_offset
 from app.core.exceptions import ConflictException, UserNotFoundException
 from app.core.security import hash_password
 from app.modules.user.model import User
@@ -52,13 +53,8 @@ class UserService:
         return schema.model_dump(mode="json")
 
     def list_users(self, db: Session, page: int, page_size: int) -> dict[str, object]:
-        offset = (page - 1) * page_size
+        offset = get_offset(page, page_size)
         users = self.user_repository.list_users(db, offset=offset, limit=page_size)
         total = self.user_repository.count_users(db)
         items = [UserReadSchema.model_validate(user).model_dump(mode="json") for user in users]
-        return {
-            "list": items,
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-        }
+        return build_page_result(items=items, total=total, page=page, page_size=page_size)

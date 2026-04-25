@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.common.enums import HouseStatus
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -34,7 +35,7 @@ class FavoriteRepository:
             .where(
                 Favorite.user_id == user_id,
                 House.deleted_at.is_(None),
-                House.status == "listed",
+                House.status == HouseStatus.LISTED,
             )
             .order_by(Favorite.created_at.desc(), Favorite.id.desc())
             .offset(offset)
@@ -50,7 +51,7 @@ class FavoriteRepository:
             .where(
                 Favorite.user_id == user_id,
                 House.deleted_at.is_(None),
-                House.status == "listed",
+                House.status == HouseStatus.LISTED,
             )
         )
         return int(db.execute(stmt).scalar_one())

@@ -1,5 +1,252 @@
 # Changelog
 
+## v1.4.1 - 2026-04-26
+
+### Changed
+
+#### common 公共能力替换重构完成
+
+本轮只做 common 抽取与替换，不新增业务能力，不改变接口路径、响应字段、错误码、业务规则和状态流转。
+
+新增 common 文件：
+
+- `app/common/base_model.py`
+- `app/common/base_schema.py`
+- `app/common/pagination.py`
+- `app/common/enums.py`
+
+### Model Refactor
+
+新增 `BaseModel`：
+
+- `id`
+- `created_at`
+- `updated_at`
+
+新增 `SoftDeleteMixin`：
+
+- `deleted_at`
+
+当前 model 继承关系：
+
+- `User(BaseModel)`
+- `House(BaseModel, SoftDeleteMixin)`
+- `Favorite(BaseModel)`
+- `Appointment(BaseModel)`
+
+约束：
+
+- `deleted_at` 只保留在 House。
+- User / Favorite / Appointment 没有新增 `deleted_at`。
+- Favorite / Appointment 通过 `BaseModel` 统一拥有 `updated_at`。
+- 未修改任何 `__tablename__`。
+- 未修改已有字段名。
+
+### Schema Refactor
+
+新增 `BaseSchema`：
+
+- `from_attributes=True`
+- `extra="forbid"`
+
+说明：
+
+- Read schema 复用 `from_attributes=True`。
+- 对原本不强制 `extra="forbid"` 的 schema，显式覆盖配置，保持旧行为。
+- 未改变接口请求校验语义。
+
+### Pagination Refactor
+
+新增并使用：
+
+- `get_offset()`
+- `build_page_result()`
+
+已用于：
+
+- User 列表
+- House 列表
+- Favorite 列表
+- Appointment 列表
+
+分页响应结构保持不变：
+
+```text
+list / total / page / page_size
+```
+
+### Enum Refactor
+
+新增字符串常量类：
+
+- `HouseStatus`
+- `AppointmentStatus`
+
+说明：
+
+- 数据库存储值不变。
+- 接口返回值不变。
+- 状态流转规则不变。
+- 不引入复杂 Python Enum 行为。
+
+### Fixed
+
+#### Pydantic 参数校验异常统一返回 JSON
+
+修复 `app/core/exceptions.py` 中的参数校验异常处理：
+
+- 继续统一捕获 `pydantic.ValidationError`
+- 统一返回：
+  - `code = 3001`
+  - `message = bad request`
+  - `data = error.errors()`
+- 对 `ValidationError.errors()` 中可能出现的非 JSON 可序列化对象做规范化处理。
+- 避免参数校验失败时掉回 Flask 默认 HTML `500 Internal Server Error`。
+
+影响场景：
+
+- `GET /api/v1/houses?min_rent=3000&max_rent=1000`
+- `GET /api/v1/houses?min_area=100&max_area=50`
+
+修复后，这些请求统一返回 JSON `3001 bad request`，不再返回 HTML 500。
+
+------
+
+## v1.4 - 2026-04-26
+
+### Added
+
+#### Appointment 预约看房模块最小闭环
+
+新增 Appointment 第一版完整模块：
+
+- `app/modules/appointment/model.py`
+- `app/modules/appointment/schema.py`
+- `app/modules/appointment/repository.py`
+- `app/modules/appointment/service.py`
+- `app/modules/appointment/router.py`
+
+新增接线：
+
+- 注册 `/api/v1/appointments` blueprint
+- 新增 `AppointmentRepository`
+- 新增 `AppointmentService`
+- 开发环境自动建表时显式导入 `app.modules.appointment.model`
+
+#### Appointment 数据模型
+
+新增 `appointments` 表。
+
+字段包括：
+
+- id
+- house_id
+- tenant_id
+- landlord_id
+- appointment_time
+- remark
+- status
+- created_at
+- updated_at
+
+#### Appointment 接口
+
+新增接口：
+
+```text
+POST   /api/v1/appointments
+GET    /api/v1/appointments
+PATCH  /api/v1/appointments/{id}/confirm
+PATCH  /api/v1/appointments/{id}/reject
+PATCH  /api/v1/appointments/{id}/cancel
+```
+
+实现能力：
+
+- 租客创建预约
+- 查看与当前用户相关的预约列表
+- 房东确认预约
+- 房东拒绝预约
+- 租客取消预约
+
+#### Appointment 状态
+
+新增预约状态：
+
+```text
+pending / confirmed / rejected / cancelled / expired
+```
+
+说明：
+
+- 创建预约默认 `pending`。
+- `confirmed` 表示房东已确认。
+- `rejected` 表示房东已拒绝。
+- `cancelled` 表示租客已取消。
+- `expired` 第一版不自动写回数据库，只通过 `display_status` 和操作校验体现。
+
+#### Appointment 错误码
+
+新增错误码：
+
+- `2201 预约不存在`
+- `2202 非法预约状态`
+- `2203 不能预约自己的房源`
+- `2204 预约时间必须是未来时间`
+
+### Changed
+
+#### Appointment 业务规则
+
+- 只能预约未删除且 `listed` 的房源。
+- 租客不能预约自己的房源。
+- `tenant_id` 从 token 获取。
+- `landlord_id` 从 House 表读取。
+- `appointment_time` 必须是未来时间。
+- 预约列表返回与当前用户相关的预约。
+- 列表项返回预约字段、`status`、`display_status`、`relation_role`、`house` 摘要。
+- 越权访问预约统一按“预约不存在”处理，返回 `2201`。
+- 非法状态流转返回 `2202`。
+
+### Verified
+
+- 未登录访问 Appointment 接口返回 `1003`。
+- 租客创建预约成功，状态为 `pending`。
+- 房东可确认自己的有效 pending 预约。
+- 房东可拒绝自己的有效 pending 预约。
+- 租客可取消自己的 pending / confirmed 预约。
+- 房东不能预约自己的房源，返回 `2203`。
+- 非未来时间预约返回 `2204`。
+- 预约不存在 / 越权操作返回 `2201`。
+- 非法状态流转返回 `2202`。
+- 预约列表返回 `status`、`display_status`、`relation_role`、`house`。
+
+------
+
+
+## v1.3.1 - 2026-04-26
+
+### Fixed
+
+#### Pydantic 参数校验异常统一返回 JSON
+
+修复 `app/core/exceptions.py` 中的参数校验异常处理：
+
+- 继续统一捕获 `pydantic.ValidationError`
+- 统一返回：
+  - `code = 3001`
+  - `message = bad request`
+  - `data = error.errors()`
+- 对 `ValidationError.errors()` 中可能出现的非 JSON 可序列化对象做规范化处理
+- 避免参数校验失败时掉回 Flask 默认 HTML `500 Internal Server Error`
+
+影响场景：
+
+- `GET /api/v1/houses?min_rent=3000&max_rent=1000`
+- `GET /api/v1/houses?min_area=100&max_area=50`
+
+修复后，这些请求统一返回 JSON `3001 bad request`，不再返回 HTML 500。
+
 ## v1.3 - 2026-04-25
 
 ### Added

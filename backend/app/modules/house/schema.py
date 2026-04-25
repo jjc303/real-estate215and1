@@ -4,31 +4,19 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import Field, field_validator, model_validator
+
+from app.common.base_schema import BaseSchema
+from app.common.enums import HouseStatus as HouseStatusValues
+
+HouseStatus = Literal[
+    HouseStatusValues.DRAFT,
+    HouseStatusValues.LISTED,
+    HouseStatusValues.OFFLINE,
+]
 
 
-HouseStatus = Literal["draft", "listed", "offline"]
-
-
-class HouseCreateSchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    title: str = Field(min_length=1, max_length=100)
-    address: str = Field(min_length=1, max_length=255)
-    region: str = Field(min_length=1, max_length=100)
-    community: str | None = Field(default=None, max_length=100)
-    house_type: str = Field(min_length=1, max_length=50)
-    area: Decimal = Field(gt=0)
-    rent: Decimal = Field(ge=0)
-    deposit: Decimal = Field(ge=0)
-    decoration: str | None = Field(default=None, max_length=50)
-    floor: str | None = Field(default=None, max_length=50)
-    orientation: str | None = Field(default=None, max_length=50)
-    description: str | None = None
-
-
-class HouseUpdateSchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class HouseCreateSchema(BaseSchema):
 
     title: str = Field(min_length=1, max_length=100)
     address: str = Field(min_length=1, max_length=255)
@@ -44,8 +32,23 @@ class HouseUpdateSchema(BaseModel):
     description: str | None = None
 
 
-class HouseListQuerySchema(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+class HouseUpdateSchema(BaseSchema):
+
+    title: str = Field(min_length=1, max_length=100)
+    address: str = Field(min_length=1, max_length=255)
+    region: str = Field(min_length=1, max_length=100)
+    community: str | None = Field(default=None, max_length=100)
+    house_type: str = Field(min_length=1, max_length=50)
+    area: Decimal = Field(gt=0)
+    rent: Decimal = Field(ge=0)
+    deposit: Decimal = Field(ge=0)
+    decoration: str | None = Field(default=None, max_length=50)
+    floor: str | None = Field(default=None, max_length=50)
+    orientation: str | None = Field(default=None, max_length=50)
+    description: str | None = None
+
+
+class HouseListQuerySchema(BaseSchema):
 
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=100)
@@ -78,8 +81,7 @@ class HouseListQuerySchema(BaseModel):
         return self
 
 
-class HouseReadSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
+class HouseReadSchema(BaseSchema):
 
     id: int
     landlord_id: int

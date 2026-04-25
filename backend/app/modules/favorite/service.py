@@ -3,6 +3,8 @@ from __future__ import annotations
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.common.enums import HouseStatus
+from app.common.pagination import build_page_result, get_offset
 from app.core.exceptions import ConflictException, FavoriteNotFoundException, HouseNotFoundException
 from app.modules.favorite.model import Favorite
 from app.modules.favorite.repository import FavoriteRepository
@@ -22,7 +24,7 @@ class FavoriteService:
 
     def add_favorite(self, db: Session, current_user_id: int, house_id: int) -> dict[str, object]:
         house = self.house_repository.get_by_id(db, house_id)
-        if house is None or house.deleted_at is not None or house.status != "listed":
+        if house is None or house.deleted_at is not None or house.status != HouseStatus.LISTED:
             raise HouseNotFoundException()
 
         if self.favorite_repository.get_by_user_id_and_house_id(db, current_user_id, house_id) is not None:
@@ -43,15 +45,15 @@ class FavoriteService:
         return self._serialize(favorite, house)
 
     def list_favorites(self, db: Session, current_user_id: int, page: int, page_size: int) -> dict[str, object]:
-        offset = (page - 1) * page_size
+        offset = get_offset(page, page_size)
         rows = self.favorite_repository.list_by_user_id(db, current_user_id, offset=offset, limit=page_size)
         total = self.favorite_repository.count_by_user_id(db, current_user_id)
-        return {
-            "list": [self._serialize(favorite, house) for favorite, house in rows],
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-        }
+        return build_page_result(
+            items=[self._serialize(favorite, house) for favorite, house in rows],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
 
     def remove_favorite(self, db: Session, current_user_id: int, house_id: int) -> None:
         favorite = self.favorite_repository.get_by_user_id_and_house_id(db, current_user_id, house_id)

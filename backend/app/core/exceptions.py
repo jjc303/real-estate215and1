@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any
 
 from flask import current_app
@@ -21,6 +22,10 @@ USER_NOT_FOUND_CODE = 1001
 INVALID_CREDENTIALS_CODE = 1002
 HOUSE_NOT_FOUND_CODE = 2001
 FAVORITE_NOT_FOUND_CODE = 2101
+APPOINTMENT_NOT_FOUND_CODE = 2201
+INVALID_APPOINTMENT_STATUS_CODE = 2202
+OWN_HOUSE_APPOINTMENT_FORBIDDEN_CODE = 2203
+APPOINTMENT_TIME_INVALID_CODE = 2204
 
 
 def _map_http_status_to_app_code(status_code: int) -> int:
@@ -134,6 +139,46 @@ class FavoriteNotFoundException(AppException):
         )
 
 
+class AppointmentNotFoundException(AppException):
+    def __init__(self, message: str = "预约不存在", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=APPOINTMENT_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class InvalidAppointmentStatusException(AppException):
+    def __init__(self, message: str = "非法预约状态", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=INVALID_APPOINTMENT_STATUS_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class OwnHouseAppointmentForbiddenException(AppException):
+    def __init__(self, message: str = "不能预约自己的房源", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=OWN_HOUSE_APPOINTMENT_FORBIDDEN_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class AppointmentTimeInvalidException(AppException):
+    def __init__(self, message: str = "预约时间必须是未来时间", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=APPOINTMENT_TIME_INVALID_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
 class InvalidCredentialsException(AppException):
     def __init__(
         self,
@@ -169,6 +214,12 @@ class InternalServerException(AppException):
 
 
 def register_error_handlers(app) -> None:
+    def _build_validation_error_data(exc: ValidationError):
+        # Pydantic v2 may include non-JSON-serializable objects such as
+        # ValueError instances inside error context. Normalize them to strings
+        # so the unified JSON error response can always be returned.
+        return json.loads(json.dumps(exc.errors(), default=str, ensure_ascii=False))
+
     @app.errorhandler(AppException)
     def handle_app_exception(exc: AppException):
         return fail(
@@ -183,7 +234,7 @@ def register_error_handlers(app) -> None:
         return fail(
             message="bad request",
             code=BAD_REQUEST_CODE,
-            data=exc.errors(),
+            data=_build_validation_error_data(exc),
             status_code=400,
         )
 

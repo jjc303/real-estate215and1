@@ -1,8 +1,8 @@
 # AI Context（Backend Project）
 
-Version: v1.3  
-Last Updated: 2026-04-25  
-Status: User + Auth + House + Favorite 最小闭环已完成，House 列表筛选已增强
+Version: v1.3.1  
+Last Updated: 2026-04-26  
+Status: User + Auth + House + Favorite + Appointment 最小闭环已完成；House 列表筛选、参数异常处理与 common 公共能力重构已完成
 
 ------
 
@@ -707,6 +707,29 @@ app/common/dependencies.py
 
 ------
 
+## 6.1 参数校验异常处理
+
+当前项目已统一处理 Pydantic 参数校验异常。
+
+规则：
+
+- 捕获 `pydantic.ValidationError`
+- 统一返回：
+  - `code = 3001`
+  - `message = bad request`
+  - `data = error.errors()`
+- 即使 `ValidationError.errors()` 中包含原始异常对象，也必须先规范化为可 JSON 序列化的数据
+- 不允许回退为 Flask 默认 HTML 500 页面
+
+当前已确认修复的场景：
+
+- `GET /api/v1/houses?min_rent=3000&max_rent=1000`
+- `GET /api/v1/houses?min_area=100&max_area=50`
+
+以上请求现在都返回统一 JSON `3001 bad request`。
+
+------
+
 
 
 # 7. 错误码体系
@@ -749,7 +772,7 @@ app/common/dependencies.py
 # 9. 当前阶段
 
 ```text
-User + Auth + House + Favorite 最小闭环已完成，House 列表筛选已增强
+User + Auth + House + Favorite + Appointment 最小闭环已完成，House 列表筛选、参数异常处理与 common 公共能力重构已完成
 ```
 
 系统能力：
@@ -800,6 +823,8 @@ House 模块已验证：
 - 筛选参数可与分页同时使用
 - `min_rent > max_rent` 返回 `3001`
 - `min_area > max_area` 返回 `3001`
+- House 参数校验失败不再返回 Flask 默认 HTML 500
+- `ValidationError` 统一返回 JSON `3001 bad request`
 - 收藏未删除且 `listed` 房源成功
 - 收藏不存在 / 已删除 / 非 `listed` 房源返回 `2001`
 - 重复收藏返回 `4009`
@@ -855,3 +880,309 @@ Conversation → Contract/Bill/Payment
 ```text
 基于这个项目，帮我继续做 Search 房源筛选增强模块。
 ```
+
+
+------
+
+# 14. v1.4 Appointment 与 v1.4.1 common 重构补充
+
+> 本节为当前最新补充，保留前文历史内容。若前文仍出现“预约未实现”等旧描述，以本节为准。
+
+## 14.1 当前最新状态
+
+当前后端已完成：
+
+```text
+User + Auth + House + Favorite + Appointment 最小闭环
+```
+
+同时已完成 common 公共能力替换重构：
+
+- `app/common/base_model.py`
+- `app/common/base_schema.py`
+- `app/common/pagination.py`
+- `app/common/enums.py`
+
+当前下一步建议：
+
+```text
+Conversation / 消息沟通
+```
+
+也可以根据课程展示需要，优先做：
+
+```text
+Contract / 合同
+```
+
+------
+
+## 14.2 Appointment 预约看房模块
+
+### 当前状态
+
+Appointment 第一版最小闭环已完成。
+
+### 表
+
+```text
+appointments
+```
+
+字段：
+
+- id
+- house_id
+- tenant_id
+- landlord_id
+- appointment_time
+- remark
+- status
+- created_at
+- updated_at
+
+说明：
+
+- `tenant_id` 从当前 token 解析得到。
+- `landlord_id` 从 House 表读取，前端不允许传。
+- `appointment_time` 表示租客期望看房时间。
+- Appointment 不改变 House 状态。
+- 第一版不做房东可预约时间段管理、日历、通知、改期、评价、定时任务。
+
+### 状态
+
+Appointment 第一版状态：
+
+```text
+pending / confirmed / rejected / cancelled / expired
+```
+
+含义：
+
+| status    | 含义       |
+| --------- | ---------- |
+| pending   | 待房东确认 |
+| confirmed | 房东已确认 |
+| rejected  | 房东已拒绝 |
+| cancelled | 租客已取消 |
+| expired   | 已过期     |
+
+重要约束：
+
+- 数据库正常业务流转只主动写入 `pending / confirmed / rejected / cancelled`。
+- `expired` 第一版不通过定时任务自动写回数据库。
+- `expired` 只通过 `display_status` 和操作校验体现。
+- 如果数据库 `status = pending` 且 `appointment_time < 当前时间`，返回时 `display_status = expired`。
+- 其他情况 `display_status = status`。
+
+### 接口
+
+#### POST /api/v1/appointments
+
+创建预约。
+
+规则：
+
+- 必须登录。
+- 请求体包含 `house_id`、`appointment_time`、可选 `remark`。
+- 当前用户作为 `tenant_id`。
+- `landlord_id` 从 House 表读取。
+- 只能预约未删除且 `listed` 的房源。
+- 不能预约自己的房源。
+- `appointment_time` 必须是未来时间。
+- 创建后 `status = pending`。
+- 房源不存在、已删除、非 `listed`，统一返回 `2001`。
+
+#### GET /api/v1/appointments
+
+查看预约列表。
+
+规则：
+
+- 必须登录。
+- 返回与当前用户相关的预约：`tenant_id == current_user_id OR landlord_id == current_user_id`。
+- 支持分页：`page`、`page_size`。
+- 返回 `list / total / page / page_size`。
+- 列表项包含预约字段、`status`、`display_status`、`relation_role`、`house` 摘要。
+
+`relation_role`：
+
+- 当前用户是租客：`tenant`
+- 当前用户是房东：`landlord`
+
+#### PATCH /api/v1/appointments/{id}/confirm
+
+房东确认预约。
+
+规则：
+
+- 必须登录。
+- 只有房东本人可以确认。
+- 仅允许有效 `pending -> confirmed`。
+- 已过期 pending 不允许确认，返回 `2202`。
+- 非房东或预约不存在，返回 `2201`。
+
+#### PATCH /api/v1/appointments/{id}/reject
+
+房东拒绝预约。
+
+规则：
+
+- 必须登录。
+- 只有房东本人可以拒绝。
+- 仅允许有效 `pending -> rejected`。
+- 已过期 pending 不允许拒绝，返回 `2202`。
+- 非房东或预约不存在，返回 `2201`。
+
+#### PATCH /api/v1/appointments/{id}/cancel
+
+租客取消预约。
+
+规则：
+
+- 必须登录。
+- 只有租客本人可以取消。
+- 允许 `pending -> cancelled`、`confirmed -> cancelled`。
+- `rejected / cancelled / expired` 不允许取消，返回 `2202`。
+- 非租客或预约不存在，返回 `2201`。
+
+### Appointment 错误码
+
+| code | 含义                   |
+| ---- | ---------------------- |
+| 2201 | 预约不存在             |
+| 2202 | 非法预约状态           |
+| 2203 | 不能预约自己的房源     |
+| 2204 | 预约时间必须是未来时间 |
+
+### Appointment 已验证
+
+- 未登录访问 Appointment 接口返回 `1003`。
+- 租客创建预约成功，状态为 `pending`。
+- 房东可确认自己的有效 pending 预约。
+- 房东可拒绝自己的有效 pending 预约。
+- 租客可取消自己的 pending / confirmed 预约。
+- 房东不能预约自己的房源，返回 `2203`。
+- 非未来时间预约返回 `2204`。
+- 预约不存在 / 越权操作返回 `2201`。
+- 非法状态流转返回 `2202`。
+- 预约列表返回 `status`、`display_status`、`relation_role`、`house`。
+
+------
+
+## 14.3 common 公共能力重构
+
+当前已完成 common 公共能力替换重构。
+
+### 新增或完善文件
+
+```text
+app/common/base_model.py
+app/common/base_schema.py
+app/common/pagination.py
+app/common/enums.py
+```
+
+### base_model.py
+
+提供：
+
+- `BaseModel`
+- `SoftDeleteMixin`
+
+`BaseModel` 包含：
+
+- `id`
+- `created_at`
+- `updated_at`
+
+`SoftDeleteMixin` 包含：
+
+- `deleted_at`
+
+当前 model 继承关系：
+
+| Model       | 继承关系                            |
+| ----------- | ----------------------------------- |
+| User        | `User(BaseModel)`                   |
+| House       | `House(BaseModel, SoftDeleteMixin)` |
+| Favorite    | `Favorite(BaseModel)`               |
+| Appointment | `Appointment(BaseModel)`            |
+
+约束：
+
+- 所有 model 仍使用同一个 `app.core.database.Base`。
+- 不在任何 model 中重新 `declarative_base()`。
+- `deleted_at` 只给 House 使用。
+- User / Favorite / Appointment 不新增 `deleted_at`。
+- Favorite / Appointment 通过 `BaseModel` 统一拥有 `updated_at`。
+- 未修改任何 `__tablename__`。
+- 未修改已有字段名。
+- 未改变接口响应结构。
+
+### base_schema.py
+
+提供：
+
+- `BaseSchema`
+
+默认配置：
+
+```text
+from_attributes=True
+extra="forbid"
+```
+
+说明：
+
+- Read schema 可直接复用 `from_attributes=True`。
+- 对原本不强制 `extra="forbid"` 的 schema，显式覆盖配置，保持旧行为。
+- 不改变接口请求校验语义。
+
+### pagination.py
+
+提供：
+
+- `get_offset(page, page_size)`
+- `build_page_result(items, total, page, page_size)`
+
+用于统一列表返回：
+
+```json
+{
+  "list": [],
+  "total": 0,
+  "page": 1,
+  "page_size": 10
+}
+```
+
+已用于：
+
+- User 列表
+- House 列表
+- Favorite 列表
+- Appointment 列表
+
+### enums.py
+
+提供简单字符串常量类：
+
+- `HouseStatus`
+  - `DRAFT = "draft"`
+  - `LISTED = "listed"`
+  - `OFFLINE = "offline"`
+- `AppointmentStatus`
+  - `PENDING = "pending"`
+  - `CONFIRMED = "confirmed"`
+  - `REJECTED = "rejected"`
+  - `CANCELLED = "cancelled"`
+  - `EXPIRED = "expired"`
+
+说明：
+
+- 仅收口重复状态字符串。
+- 不使用复杂 Python Enum 行为。
+- 数据库存储值仍是字符串。
+- 接口返回值仍是字符串。
+- 不改变状态流转规则。

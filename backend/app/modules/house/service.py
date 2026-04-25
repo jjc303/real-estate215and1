@@ -5,6 +5,8 @@ from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
+from app.common.enums import HouseStatus
+from app.common.pagination import build_page_result, get_offset
 from app.core.exceptions import BadRequestException, HouseNotFoundException
 from app.modules.house.model import House
 from app.modules.house.repository import HouseRepository
@@ -35,7 +37,7 @@ class HouseService:
             floor=data.floor,
             orientation=data.orientation,
             description=data.description,
-            status="draft",
+            status=HouseStatus.DRAFT,
         )
 
         try:
@@ -63,7 +65,7 @@ class HouseService:
         min_area: Decimal | None = None,
         max_area: Decimal | None = None,
     ) -> dict[str, object]:
-        offset = (page - 1) * page_size
+        offset = get_offset(page, page_size)
 
         if mine:
             if landlord_id is None:
@@ -116,12 +118,12 @@ class HouseService:
                 max_area=max_area,
             )
 
-        return {
-            "list": [self._serialize(house) for house in houses],
-            "total": total,
-            "page": page,
-            "page_size": page_size,
-        }
+        return build_page_result(
+            items=[self._serialize(house) for house in houses],
+            total=total,
+            page=page,
+            page_size=page_size,
+        )
 
     def get_house_detail(
         self,
@@ -139,7 +141,7 @@ class HouseService:
                 return self._serialize(owned_house)
 
         house = self.house_repository.get_by_id(db, house_id)
-        if house is None or house.deleted_at is not None or house.status != "listed":
+        if house is None or house.deleted_at is not None or house.status != HouseStatus.LISTED:
             raise HouseNotFoundException()
         return self._serialize(house)
 
@@ -188,10 +190,10 @@ class HouseService:
         )
         if house is None:
             raise HouseNotFoundException()
-        if house.status not in {"draft", "offline"}:
+        if house.status not in {HouseStatus.DRAFT, HouseStatus.OFFLINE}:
             raise BadRequestException(message="invalid house status transition")
 
-        house.status = "listed"
+        house.status = HouseStatus.LISTED
         try:
             db.commit()
             db.refresh(house)
@@ -208,10 +210,10 @@ class HouseService:
         )
         if house is None:
             raise HouseNotFoundException()
-        if house.status not in {"listed", "draft"}:
+        if house.status not in {HouseStatus.LISTED, HouseStatus.DRAFT}:
             raise BadRequestException(message="invalid house status transition")
 
-        house.status = "offline"
+        house.status = HouseStatus.OFFLINE
         try:
             db.commit()
             db.refresh(house)
@@ -229,7 +231,7 @@ class HouseService:
         if house is None:
             raise HouseNotFoundException()
 
-        house.status = "offline"
+        house.status = HouseStatus.OFFLINE
         house.deleted_at = datetime.utcnow()
 
         try:

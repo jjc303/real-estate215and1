@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+from app.common.enums import HouseStatus
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
@@ -43,7 +44,7 @@ class HouseRepository:
         min_area: Decimal | None = None,
         max_area: Decimal | None = None,
     ) -> list[House]:
-        stmt = select(House).where(House.deleted_at.is_(None), House.status == "listed")
+        stmt = select(House).where(House.deleted_at.is_(None), House.status == HouseStatus.LISTED)
         stmt = self._apply_list_filters(
             stmt,
             region=region,
@@ -68,7 +69,10 @@ class HouseRepository:
         min_area: Decimal | None = None,
         max_area: Decimal | None = None,
     ) -> int:
-        stmt = select(func.count()).select_from(House).where(House.deleted_at.is_(None), House.status == "listed")
+        stmt = select(func.count()).select_from(House).where(
+            House.deleted_at.is_(None),
+            House.status == HouseStatus.LISTED,
+        )
         stmt = self._apply_list_filters(
             stmt,
             region=region,
