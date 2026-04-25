@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from importlib import import_module
+
 from flask import g
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -21,31 +23,35 @@ def build_engine(database_uri: str, db_echo: bool) -> Engine:
     return create_engine(database_uri, **engine_options)
 
 
-def init_database(app) -> None:
+def init_database(flask_app) -> None:
     global engine
 
     engine = build_engine(
-        database_uri=app.config["DATABASE_URI"],
-        db_echo=app.config.get("DB_ECHO", False),
+        database_uri=flask_app.config["DATABASE_URI"],
+        db_echo=flask_app.config.get("DB_ECHO", False),
     )
+
     SessionLocal.remove()
     SessionLocal.configure(bind=engine)
-    if app.config.get("ENV") == "development":
-        import app.modules.user.model
-        import app.modules.house.model
+
+    if flask_app.config.get("ENV") == "development":
+        import_module("app.modules.user.model")
+        import_module("app.modules.house.model")
+
         Base.metadata.create_all(bind=engine)
-    register_db_hooks(app)
+
+    register_db_hooks(flask_app)
 
 
-def register_db_hooks(app) -> None:
-    if app.extensions.get("db_hooks_registered"):
+def register_db_hooks(flask_app) -> None:
+    if flask_app.extensions.get("db_hooks_registered"):
         return
 
-    @app.before_request
+    @flask_app.before_request
     def open_db():
         g.db = SessionLocal()
 
-    @app.teardown_request
+    @flask_app.teardown_request
     def close_db(_exception):
         try:
             db = getattr(g, "db", None)
@@ -54,4 +60,4 @@ def register_db_hooks(app) -> None:
         finally:
             SessionLocal.remove()
 
-    app.extensions["db_hooks_registered"] = True
+    flask_app.extensions["db_hooks_registered"] = True

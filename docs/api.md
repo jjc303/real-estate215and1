@@ -67,6 +67,80 @@ Authorization: Bearer <token>
 
 ------
 
+## 4. 认证 Helper 说明
+
+需要登录的接口必须携带：
+
+```
+Authorization: Bearer <token>
+```
+
+当前服务端通过最小认证 helper 获取当前用户：
+
+```
+app/common/dependencies.py
+```
+
+提供两个函数：
+
+- `get_required_current_user_id()`
+- `get_optional_current_user_id()`
+
+#### get_required_current_user_id
+
+用于必须登录的接口。
+
+规则：
+
+- 没有 `Authorization` 请求头，返回 `1003`
+- token 格式错误，返回 `1003`
+- token 过期或签名失败，返回 `1003`
+- token 合法时，返回当前用户 id
+
+适用接口：
+
+```
+GET    /api/v1/auth/me
+POST   /api/v1/houses
+GET    /api/v1/houses?mine=true
+PUT    /api/v1/houses/{id}
+PATCH  /api/v1/houses/{id}/publish
+PATCH  /api/v1/houses/{id}/offline
+DELETE /api/v1/houses/{id}
+```
+
+#### get_optional_current_user_id
+
+用于可选登录的接口。
+
+规则：
+
+- 不携带 token 时，返回 `None`，按游客处理
+- 携带合法 token 时，返回当前用户 id
+- 携带非法 token 时，返回 `1003`
+
+当前适用接口：
+
+```
+GET /api/v1/houses/{id}
+```
+
+该接口规则：
+
+- `listed` 房源：游客和登录用户都可查看
+- `draft/offline` 房源：只有房东本人可查看
+- 已逻辑删除房源：统一返回房源不存在
+
+#### 未登录响应
+
+```
+{
+  "code": 1003,
+  "message": "未登录",
+  "data": null
+}
+```
+
 # 二、User 模块
 
 ------
@@ -338,11 +412,614 @@ Authorization: Bearer <token>
 
 ------
 
-# 四、说明
+# 四、House 模块
 
-- 所有时间字段为 ISO 格式
-- 所有接口返回均遵循统一响应结构
-- 所有用户返回数据均不包含 password
-- token 使用 JWT（Bearer 模式）
+## 0. 业务规则总览
+
+### 0.1 房源状态
+
+House 第一版只使用 3 个状态：
+
+| status  | 含义              | 是否公开展示 |
+| ------- | ----------------- | ------------ |
+| draft   | 草稿 / 未发布     | 否           |
+| listed  | 已上架            | 是           |
+| offline | 已下架 / 放弃发布 | 否           |
+
+### 0.2 状态流转
+
+| 操作     | 允许流转                                   |
+| -------- | ------------------------------------------ |
+| 创建房源 | 默认 `draft`                               |
+| 发布房源 | `draft -> listed`，`offline -> listed`     |
+| 下架房源 | `listed -> offline`，`draft -> offline`    |
+| 删除房源 | 设置 `deleted_at`，同时 `status = offline` |
+
+### 0.3 可见性规则
+
+| 场景                             | 可见数据                                              |
+| -------------------------------- | ----------------------------------------------------- |
+| 公共列表 `GET /houses`           | 未删除且 `status = listed`                            |
+| 我的房源 `GET /houses?mine=true` | 当前用户自己的未删除房源，包含 `draft/listed/offline` |
+| 公共详情 `GET /houses/{id}`      | 未删除且 `listed` 的房源                              |
+| 房东本人看详情                   | 可看自己未删除的 `draft/listed/offline` 房源          |
+| 删除后的房源                     | 不出现在任何列表；详情统一返回房源不存在              |
+
+### 0.4 权限规则
+
+- 创建、更新、发布、下架、删除房源必须登录。
+- `landlord_id` 不允许前端传，由后端从 JWT token 解析当前用户 id 自动绑定。
+- 更新、发布、下架、删除只能操作当前用户自己的房源。
+- 非本人操作房源时，统一返回 `2001 house not found`。
+- `PUT /houses/{id}` 不允许修改 `status`，状态只能通过 `publish/offline` 接口修改。
 
 ------
+
+## 1. 创建房源
+
+### 接口
+
+```http
+POST /api/v1/houses
+```
+
+### 是否需要认证
+
+需要。
+
+```http
+Authorization: Bearer <token>
+```
+
+### 请求体
+
+```json
+{
+  "title": "测试房源A",
+  "address": "地址A",
+  "region": "区域A",
+  "community": "小区A（可选）",
+  "house_type": "1室1厅",
+  "area": 50,
+  "rent": 2000,
+  "deposit": 2000,
+  "decoration": "精装修（可选）",
+  "floor": "6/18（可选）",
+  "orientation": "南（可选）",
+  "description": "test"
+}
+```
+
+### 请求字段说明
+
+| 字段        | 类型    | 必填 | 说明              |
+| ----------- | ------- | ---- | ----------------- |
+| title       | string  | 是   | 房源标题          |
+| address     | string  | 是   | 地址              |
+| region      | string  | 是   | 区域              |
+| community   | string  | 否   | 小区              |
+| house_type  | string  | 是   | 户型              |
+| area        | decimal | 是   | 面积，必须 `> 0`  |
+| rent        | decimal | 是   | 月租，必须 `>= 0` |
+| deposit     | decimal | 是   | 押金，必须 `>= 0` |
+| decoration  | string  | 否   | 装修情况          |
+| floor       | string  | 否   | 楼层              |
+| orientation | string  | 否   | 朝向              |
+| description | string  | 否   | 描述              |
+
+说明：
+
+- 请求体不允许包含 `landlord_id`。
+- 请求体不允许包含 `status`。
+- 创建成功后，后端自动设置 `status = draft`。
+
+### 成功响应（201）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "landlord_id": 1,
+    "title": "测试房源A",
+    "address": "地址A",
+    "region": "区域A",
+    "community": null,
+    "house_type": "1室1厅",
+    "area": "50.00",
+    "rent": "2000.00",
+    "deposit": "2000.00",
+    "decoration": null,
+    "floor": null,
+    "orientation": null,
+    "description": "test",
+    "status": "draft",
+    "created_at": "2026-04-23T23:45:19",
+    "updated_at": "2026-04-23T23:45:19"
+  }
+}
+```
+
+### 失败响应
+
+#### 未登录（401）
+
+```json
+{
+  "code": 1003,
+  "message": "未登录",
+  "data": null
+}
+```
+
+#### 参数错误（400）
+
+```json
+{
+  "code": 3001,
+  "message": "bad request",
+  "data": [
+    {
+      "loc": ["title"],
+      "msg": "Field required",
+      "type": "missing"
+    }
+  ]
+}
+```
+
+------
+
+## 2. 公共房源列表
+
+### 接口
+
+```http
+GET /api/v1/houses?page=1&page_size=10
+```
+
+### 是否需要认证
+
+不需要。
+
+### Query 参数
+
+| 参数      | 类型 | 默认值 | 说明               |
+| --------- | ---- | ------ | ------------------ |
+| page      | int  | 1      | 页码，必须 `>= 1`  |
+| page_size | int  | 10     | 每页数量，最大 100 |
+
+### 业务规则
+
+- 只返回未删除房源。
+- 只返回 `status = listed` 的房源。
+- 默认按 `id DESC` 排序。
+- 不返回 `draft/offline`。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "landlord_id": 1,
+        "title": "测试房源A",
+        "address": "地址A",
+        "region": "区域A",
+        "house_type": "1室1厅",
+        "area": "50.00",
+        "rent": "2000.00",
+        "deposit": "2000.00",
+        "status": "listed",
+        "created_at": "2026-04-23T23:45:19",
+        "updated_at": "2026-04-23T23:46:10"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "page_size": 10
+  }
+}
+```
+
+------
+
+## 3. 我的房源列表
+
+### 接口
+
+```http
+GET /api/v1/houses?mine=true&page=1&page_size=10
+```
+
+### 是否需要认证
+
+需要。
+
+```http
+Authorization: Bearer <token>
+```
+
+### 业务规则
+
+- 只返回当前登录用户作为 `landlord` 的房源。
+- 不混入公共房源。
+- 只返回未删除房源。
+- 返回状态包含 `draft/listed/offline`。
+- 默认按 `id DESC` 排序。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "landlord_id": 1,
+        "title": "测试房源A",
+        "status": "draft",
+        "created_at": "2026-04-23T23:45:19",
+        "updated_at": "2026-04-23T23:45:19"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "page_size": 10
+  }
+}
+```
+
+### 未登录（401）
+
+```json
+{
+  "code": 1003,
+  "message": "未登录",
+  "data": null
+}
+```
+
+------
+
+## 4. 获取房源详情
+
+### 接口
+
+```http
+GET /api/v1/houses/{id}
+```
+
+### 是否需要认证
+
+不强制。
+
+如果请求头携带合法 token，系统会尝试识别当前用户，用于判断是否为房东本人。
+
+### 业务规则
+
+- `listed` 房源：所有人可查看。
+- `draft/offline` 房源：只有房东本人可查看。
+- 已删除房源：统一返回房源不存在。
+- 非房东访问非公开房源：统一返回房源不存在。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "landlord_id": 1,
+    "title": "测试房源A",
+    "address": "地址A",
+    "region": "区域A",
+    "house_type": "1室1厅",
+    "area": "50.00",
+    "rent": "2000.00",
+    "deposit": "2000.00",
+    "description": "test",
+    "status": "listed",
+    "created_at": "2026-04-23T23:45:19",
+    "updated_at": "2026-04-23T23:46:10"
+  }
+}
+```
+
+### 房源不存在 / 无权访问（404）
+
+```json
+{
+  "code": 2001,
+  "message": "house not found",
+  "data": null
+}
+```
+
+------
+
+## 5. 更新房源资料
+
+### 接口
+
+```http
+PUT /api/v1/houses/{id}
+```
+
+### 是否需要认证
+
+需要。
+
+```http
+Authorization: Bearer <token>
+```
+
+### 请求体
+
+```json
+{
+  "title": "更新后的房源标题",
+  "address": "地址A",
+  "region": "区域A",
+  "community": "小区A",
+  "house_type": "1室1厅",
+  "area": 55,
+  "rent": 2200,
+  "deposit": 2200,
+  "decoration": "精装修",
+  "floor": "6/18",
+  "orientation": "南",
+  "description": "updated"
+}
+```
+
+### 业务规则
+
+- 只能更新当前用户自己的未删除房源。
+- 不允许更新 `landlord_id`。
+- 不允许更新 `status`。
+- 请求体如果包含 `status`，按参数错误处理。
+- 房源不存在或不属于当前用户，统一返回 `2001 house not found`。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "landlord_id": 1,
+    "title": "更新后的房源标题",
+    "status": "draft",
+    "updated_at": "2026-04-23T23:50:00"
+  }
+}
+```
+
+### 禁止通过 PUT 修改 status
+
+请求：
+
+```json
+{
+  "status": "listed"
+}
+```
+
+响应示例：
+
+```json
+{
+  "code": 3001,
+  "message": "bad request",
+  "data": [
+    {
+      "loc": ["status"],
+      "msg": "Extra inputs are not permitted",
+      "type": "extra_forbidden"
+    }
+  ]
+}
+```
+
+------
+
+## 6. 发布房源
+
+### 接口
+
+```http
+PATCH /api/v1/houses/{id}/publish
+```
+
+### 是否需要认证
+
+需要。
+
+### 业务规则
+
+- 只能操作当前用户自己的未删除房源。
+- 允许状态流转：
+  - `draft -> listed`
+  - `offline -> listed`
+- 其他状态调用按非法状态流转处理。
+- 不允许操作已删除房源。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "landlord_id": 1,
+    "title": "测试房源A",
+    "status": "listed",
+    "updated_at": "2026-04-23T23:46:10"
+  }
+}
+```
+
+### 房源不存在 / 无权操作（404）
+
+```json
+{
+  "code": 2001,
+  "message": "house not found",
+  "data": null
+}
+```
+
+------
+
+## 7. 下架房源
+
+### 接口
+
+```http
+PATCH /api/v1/houses/{id}/offline
+```
+
+### 是否需要认证
+
+需要。
+
+### 业务规则
+
+- 只能操作当前用户自己的未删除房源。
+- 允许状态流转：
+  - `listed -> offline`
+  - `draft -> offline`（等价于“放弃发布”）
+- `offline -> offline` 按非法状态流转处理。
+- 不允许操作已删除房源。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "landlord_id": 1,
+    "title": "测试房源A",
+    "status": "offline",
+    "updated_at": "2026-04-23T23:47:00"
+  }
+}
+```
+
+------
+
+## 8. 删除房源（逻辑删除）
+
+### 接口
+
+```http
+DELETE /api/v1/houses/{id}
+```
+
+### 是否需要认证
+
+需要。
+
+### 业务规则
+
+- 只能删除当前用户自己的未删除房源。
+- 删除为逻辑删除，不做物理删除。
+- 删除时设置 `deleted_at`。
+- 删除时同时将 `status` 置为 `offline`。
+- 删除后房源不出现在任何列表中。
+- 删除后 `GET /api/v1/houses/{id}` 统一返回房源不存在。
+- 删除后不能再次更新、发布、下架或删除。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": null
+}
+```
+
+### 房源不存在 / 无权操作（404）
+
+```json
+{
+  "code": 2001,
+  "message": "house not found",
+  "data": null
+}
+```
+
+------
+
+# 五、Windows CMD 测试命令示例
+
+## 1. 注册用户
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/users -H "Content-Type: application/json" -d "{\"username\":\"userA\",\"password\":\"123456\",\"email\":\"userA@example.com\"}"
+```
+
+## 2. 登录
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/auth/login -H "Content-Type: application/json" -d "{\"username\":\"userA\",\"password\":\"123456\"}"
+```
+
+设置 token：
+
+```bash
+set TOKEN_A=这里粘贴登录返回的token
+```
+
+## 3. 创建房源
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/v1/houses -H "Content-Type: application/json" -H "Authorization: Bearer %TOKEN_A%" -d "{\"title\":\"测试房源A\",\"address\":\"地址A\",\"region\":\"区域A\",\"house_type\":\"1室1厅\",\"area\":50,\"rent\":2000,\"deposit\":2000,\"description\":\"test\"}"
+```
+
+## 4. 我的房源
+
+```bash
+curl "http://127.0.0.1:8000/api/v1/houses?mine=true" -H "Authorization: Bearer %TOKEN_A%"
+```
+
+## 5. 发布房源
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/v1/houses/1/publish -H "Authorization: Bearer %TOKEN_A%"
+```
+
+## 6. 下架房源
+
+```bash
+curl -X PATCH http://127.0.0.1:8000/api/v1/houses/1/offline -H "Authorization: Bearer %TOKEN_A%"
+```
+
+## 7. 删除房源
+
+```bash
+curl -X DELETE http://127.0.0.1:8000/api/v1/houses/1 -H "Authorization: Bearer %TOKEN_A%"
+```
+
+------
+
+# 六、说明
+
+- User/Auth/House 三个模块当前均使用统一响应结构。
+- House 模块第一版不实现图片/视频、审核流、收藏、预约、合同、支付等功能。
+- House 模块第一版仅做最小所有权校验，不做完整 RBAC 权限系统。
+- 当前开发阶段可使用 `Base.metadata.create_all()` 自动创建缺失表，后续如进入正式迁移阶段再引入 Alembic。

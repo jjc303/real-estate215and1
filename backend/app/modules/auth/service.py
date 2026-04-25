@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from app.core.exceptions import InvalidCredentialsException, UnauthorizedException, UserNotFoundException
-from app.core.security import create_access_token, decode_access_token, verify_password
+from app.core.exceptions import InvalidCredentialsException, UnauthorizedException
+from app.core.security import create_access_token, verify_password
 from app.modules.user.repository import UserRepository
 from app.modules.user.schema import UserReadSchema
 
@@ -22,10 +22,8 @@ class AuthService:
             "token_type": "Bearer",
         }
 
-    def get_current_user(self, db: Session, token: str) -> dict[str, object]:
-        payload = decode_access_token(token)
-        user_id = payload["sub"]
-        user = self.user_repository.get_by_id(db, user_id)
+    def get_current_user(self, db: Session, current_user_id: int) -> dict[str, object]:
+        user = self.user_repository.get_by_id(db, current_user_id)
         if user is None:
             raise UnauthorizedException(message="未登录")
 

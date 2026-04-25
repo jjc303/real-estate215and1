@@ -41,7 +41,8 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ../backend/logs:/app/backend/logs
+      - ../backend:/app/backend
+    command: gunicorn -w 1 --reload -b 0.0.0.0:8000 app.main:app
 
 volumes:
   mysql_data:

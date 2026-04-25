@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from flask import Blueprint, g, request
 
+from app.common.dependencies import get_required_current_user_id
 from app.container.services import get_auth_service
 from app.core.response import success
-from app.core.security import extract_bearer_token
 from app.modules.auth.schema import LoginSchema
 
 
@@ -21,7 +21,7 @@ def login():
 
 @bp.get("/me")
 def get_current_user():
-    token = extract_bearer_token(request.headers.get("Authorization"))
+    current_user_id = get_required_current_user_id()
     service = get_auth_service()
-    result = service.get_current_user(g.db, token)
+    result = service.get_current_user(g.db, current_user_id)
     return success(data=result)
