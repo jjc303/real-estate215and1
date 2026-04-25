@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from sqlalchemy.orm import Session
 
@@ -54,6 +55,13 @@ class HouseService:
         page_size: int,
         mine: bool = False,
         landlord_id: int | None = None,
+        region: str | None = None,
+        house_type: str | None = None,
+        min_rent: Decimal | None = None,
+        max_rent: Decimal | None = None,
+        keyword: str | None = None,
+        min_area: Decimal | None = None,
+        max_area: Decimal | None = None,
     ) -> dict[str, object]:
         offset = (page - 1) * page_size
 
@@ -65,11 +73,48 @@ class HouseService:
                 landlord_id=landlord_id,
                 offset=offset,
                 limit=page_size,
+                region=region,
+                house_type=house_type,
+                min_rent=min_rent,
+                max_rent=max_rent,
+                keyword=keyword,
+                min_area=min_area,
+                max_area=max_area,
             )
-            total = self.house_repository.count_by_landlord(db, landlord_id=landlord_id)
+            total = self.house_repository.count_by_landlord(
+                db,
+                landlord_id=landlord_id,
+                region=region,
+                house_type=house_type,
+                min_rent=min_rent,
+                max_rent=max_rent,
+                keyword=keyword,
+                min_area=min_area,
+                max_area=max_area,
+            )
         else:
-            houses = self.house_repository.list_public(db, offset=offset, limit=page_size)
-            total = self.house_repository.count_public(db)
+            houses = self.house_repository.list_public(
+                db,
+                offset=offset,
+                limit=page_size,
+                region=region,
+                house_type=house_type,
+                min_rent=min_rent,
+                max_rent=max_rent,
+                keyword=keyword,
+                min_area=min_area,
+                max_area=max_area,
+            )
+            total = self.house_repository.count_public(
+                db,
+                region=region,
+                house_type=house_type,
+                min_rent=min_rent,
+                max_rent=max_rent,
+                keyword=keyword,
+                min_area=min_area,
+                max_area=max_area,
+            )
 
         return {
             "list": [self._serialize(house) for house in houses],

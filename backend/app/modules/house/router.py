@@ -33,6 +33,13 @@ def list_houses():
         page_size=query.page_size,
         mine=query.mine,
         landlord_id=current_user_id,
+        region=query.region,
+        house_type=query.house_type,
+        min_rent=query.min_rent,
+        max_rent=query.max_rent,
+        keyword=query.keyword,
+        min_area=query.min_area,
+        max_area=query.max_area,
     )
     return success(data=result)
 

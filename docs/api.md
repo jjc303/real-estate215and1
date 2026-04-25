@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.0
+Version: v1.2
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -585,10 +585,17 @@ GET /api/v1/houses?page=1&page_size=10
 
 ### Query 参数
 
-| 参数      | 类型 | 默认值 | 说明               |
-| --------- | ---- | ------ | ------------------ |
-| page      | int  | 1      | 页码，必须 `>= 1`  |
-| page_size | int  | 10     | 每页数量，最大 100 |
+| 参数       | 类型    | 默认值 | 说明                                                |
+| ---------- | ------- | ------ | --------------------------------------------------- |
+| page       | int     | 1      | 页码，必须 `>= 1`                                   |
+| page_size  | int     | 10     | 每页数量，最大 100                                  |
+| region     | string  | 无     | 按区域精确筛选                                      |
+| house_type | string  | 无     | 按户型精确筛选                                      |
+| min_rent   | decimal | 无     | 月租下限，必须 `>= 0`                               |
+| max_rent   | decimal | 无     | 月租上限，必须 `>= 0`                               |
+| keyword    | string  | 无     | 关键字模糊匹配 `title/address/community/description` |
+| min_area   | decimal | 无     | 面积下限，必须 `>= 0`                               |
+| max_area   | decimal | 无     | 面积上限，必须 `>= 0`                               |
 
 ### 业务规则
 
@@ -596,6 +603,14 @@ GET /api/v1/houses?page=1&page_size=10
 - 只返回 `status = listed` 的房源。
 - 默认按 `id DESC` 排序。
 - 不返回 `draft/offline`。
+- 支持筛选条件与分页同时使用。
+- 当 `min_rent > max_rent` 或 `min_area > max_area` 时，返回 `3001 bad request`。
+
+### 筛选示例
+
+```http
+GET /api/v1/houses?page=1&page_size=10&region=区域A&house_type=1室1厅&min_rent=1000&max_rent=3000&keyword=地铁&min_area=30&max_area=80
+```
 
 ### 成功响应（200）
 
@@ -652,6 +667,36 @@ Authorization: Bearer <token>
 - 只返回未删除房源。
 - 返回状态包含 `draft/listed/offline`。
 - 默认按 `id DESC` 排序。
+- 支持以下筛选参数，并可与分页同时使用：
+  - `region`
+  - `house_type`
+  - `min_rent`
+  - `max_rent`
+  - `keyword`
+  - `min_area`
+  - `max_area`
+- `keyword` 匹配 `title / address / community / description`。
+
+### Query 参数
+
+| 参数       | 类型    | 默认值 | 说明                                                |
+| ---------- | ------- | ------ | --------------------------------------------------- |
+| mine       | bool    | true   | 固定表示查询当前用户自己的房源                      |
+| page       | int     | 1      | 页码，必须 `>= 1`                                   |
+| page_size  | int     | 10     | 每页数量，最大 100                                  |
+| region     | string  | 无     | 按区域精确筛选                                      |
+| house_type | string  | 无     | 按户型精确筛选                                      |
+| min_rent   | decimal | 无     | 月租下限，必须 `>= 0`                               |
+| max_rent   | decimal | 无     | 月租上限，必须 `>= 0`                               |
+| keyword    | string  | 无     | 关键字模糊匹配 `title/address/community/description` |
+| min_area   | decimal | 无     | 面积下限，必须 `>= 0`                               |
+| max_area   | decimal | 无     | 面积上限，必须 `>= 0`                               |
+
+### 请求示例
+
+```http
+GET /api/v1/houses?mine=true&page=1&page_size=10&region=区域A&min_rent=1000&keyword=精装
+```
 
 ### 成功响应（200）
 
@@ -1022,4 +1067,5 @@ curl -X DELETE http://127.0.0.1:8000/api/v1/houses/1 -H "Authorization: Bearer %
 - User/Auth/House 三个模块当前均使用统一响应结构。
 - House 模块第一版不实现图片/视频、审核流、收藏、预约、合同、支付等功能。
 - House 模块第一版仅做最小所有权校验，不做完整 RBAC 权限系统。
+- House 列表筛选当前仅增强现有 `GET /api/v1/houses` 和 `GET /api/v1/houses?mine=true`，未新增独立 Search 模块。
 - 当前开发阶段可使用 `Base.metadata.create_all()` 自动创建缺失表，后续如进入正式迁移阶段再引入 Alembic。

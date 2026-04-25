@@ -1,8 +1,8 @@
 # AI Context（Backend Project）
 
-Version: v1.1  
-Last Updated: 2026-04-23  
-Status: User + Auth + House 最小闭环已完成
+Version: v1.2  
+Last Updated: 2026-04-25  
+Status: User + Auth + House 最小闭环已完成，House 列表筛选已增强
 
 ------
 
@@ -316,6 +316,12 @@ Authorization: Bearer <token>
 
 成功返回当前用户信息，不含 password。
 
+实现约束：
+
+- router 使用 `get_required_current_user_id()`
+- `AuthService.get_current_user(db, current_user_id)` 负责查询当前用户
+- 如果 `current_user_id` 对应用户不存在，继续返回 `1003`
+
 ------
 
 ## 5.3 House 模块
@@ -444,6 +450,16 @@ GET /api/v1/houses/{id}
 - 只返回 listed + 未删除房源
 - 分页返回 list/total/page/page_size
 - 默认按 id DESC
+- 支持筛选参数：
+  - region
+  - house_type
+  - min_rent
+  - max_rent
+  - keyword
+  - min_area
+  - max_area
+- `keyword` 匹配 `title/address/community/description`
+- 支持筛选和分页同时使用
 
 #### GET /api/v1/houses?mine=true
 
@@ -455,6 +471,16 @@ GET /api/v1/houses/{id}
 - 只返回当前用户自己的房源
 - 包含 draft/listed/offline
 - 不返回 deleted
+- 支持与公共列表一致的筛选参数：
+  - region
+  - house_type
+  - min_rent
+  - max_rent
+  - keyword
+  - min_area
+  - max_area
+- `keyword` 匹配 `title/address/community/description`
+- 支持筛选和分页同时使用
 
 #### GET /api/v1/houses/{id}
 
@@ -607,6 +633,7 @@ app/common/dependencies.py
 - `dependencies.py`：负责在 router 层获取当前用户 id
 - `router.py`：负责选择必须登录或可选登录
 - `service.py`：负责根据当前用户 id 执行业务逻辑和所有权校验
+- `AuthService.get_current_user()`：按 `current_user_id` 查询用户，而不是接收 token
 
 ------
 
@@ -652,7 +679,7 @@ app/common/dependencies.py
 # 9. 当前阶段
 
 ```text
-User + Auth + House 最小闭环已完成
+User + Auth + House 最小闭环已完成，House 列表筛选已增强
 ```
 
 系统能力：
@@ -664,6 +691,7 @@ User + Auth + House 最小闭环已完成
 - 房源创建
 - 房源公共列表
 - 我的房源列表
+- 房源列表筛选（region / house_type / rent / area / keyword）
 - 房源详情
 - 房源更新
 - 房源发布
@@ -691,6 +719,14 @@ House 模块已验证：
 - 非本人操作返回 `2001`
 - `PUT` 不能修改 `status`
 - `mine=true` 不带 token 返回 `1003`
+- House 列表支持按 `region`
+- House 列表支持按 `house_type`
+- House 列表支持按 `min_rent/max_rent`
+- House 列表支持按 `min_area/max_area`
+- House 列表支持按 `keyword(title/address/community/description)`
+- 筛选参数可与分页同时使用
+- `min_rent > max_rent` 返回 `3001`
+- `min_area > max_area` 返回 `3001`
 
 ------
 
@@ -699,28 +735,20 @@ House 模块已验证：
 建议下一步优先做：
 
 ```text
-Search / 房源筛选增强
+Favorite / 收藏
 ```
 
 原因：
 
-- 和 House 强相关
-- 只读为主，风险低
-- 不引入复杂状态
-- 可以马上提升前端可用性
-
-建议筛选项：
-
-- region
-- house_type
-- min_rent
-- max_rent
-- keyword（title/address/community）
+- 和现有 House 列表、用户侧体验强相关
+- 可以复用当前最小认证和所有权校验方式
+- 不需要改 House 状态流转
+- 能自然衔接后续 Appointment / Conversation
 
 之后再考虑：
 
 ```text
-Favorite → Appointment → Conversation → Contract/Bill/Payment
+Appointment → Conversation → Contract/Bill/Payment
 ```
 
 ------

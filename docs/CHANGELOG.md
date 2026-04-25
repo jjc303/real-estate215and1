@@ -1,30 +1,65 @@
 # Changelog
 
-## v1.1.1 - 2026-04-23
+## v1.2 - 2026-04-25
 
 ### Changed
 
-#### 认证逻辑整理
+#### House 列表筛选增强
 
-- 新增 `app/common/dependencies.py`
-- 抽取最小认证 helper：
-  - `get_required_current_user_id()`
-  - `get_optional_current_user_id()`
-- 替换 `auth/router.py` 和 `house/router.py` 中重复的 token 解析代码
-- `AuthService.get_current_user()` 改为接收 `current_user_id`，不再接收 token
-- JWT 解析仍统一复用 `app/core/security.py`
-- service 层仍显式接收用户 id，不从 `request` 或 `g.current_user_id` 隐式读取
-- 保持 JWT 结构、错误码和统一响应格式不变
-- 当前仍不引入完整 `login_required` 装饰器
-- 当前仍不引入 role 权限系统
+在不新增模块、不新增表、不改变状态流转的前提下，增强现有列表接口：
+
+- `GET /api/v1/houses`
+- `GET /api/v1/houses?mine=true`
+
+新增支持筛选参数：
+
+- `region`
+- `house_type`
+- `min_rent`
+- `max_rent`
+- `keyword`
+- `min_area`
+- `max_area`
+
+实现规则：
+
+- 公共列表仍只返回 `listed` 且未删除房源
+- `mine=true` 仍只返回当前用户自己的未删除房源
+- 筛选条件可与分页同时使用
+- `keyword` 匹配 `title / address / community / description`
+- repository 只负责查询封装，不写业务逻辑
+- service 仍保持 `list_houses(...)` 单入口
+- 不改变 `publish / offline / delete / update` 逻辑
+- 不引入新的权限系统
+
+#### House 查询参数校验增强
+
+更新 `HouseListQuerySchema`：
+
+- 新增列表筛选字段校验
+- 支持空白字符串规范化为 `None`
+- 增加范围校验：
+  - `min_rent <= max_rent`
+  - `min_area <= max_area`
+- 非法范围继续按现有 `3001 bad request` 返回
+
+#### 认证 helper 收口完成
+
+- `GET /api/v1/auth/me` 的 router 继续只负责获取 `current_user_id`
+- `AuthService.get_current_user()` 改为接收 `current_user_id`
+- `AuthService` 根据 `current_user_id` 查询用户并返回 dict
+- 若 token 对应用户不存在，继续返回 `1003`
+- 不改变 JWT 结构、错误码和统一响应格式
 
 ### Verified
 
-- `GET /api/v1/auth/me` 携带合法 token 可正常返回当前用户
-- `GET /api/v1/auth/me` 不携带 token 返回 `1003 未登录`
-- House 模块中必须登录接口已切换为 `get_required_current_user_id()`
-- House 详情接口已切换为 `get_optional_current_user_id()`
-- 原有 House 创建、发布、下架、删除、我的房源列表功能未受影响
+- `GET /api/v1/auth/me` 通过 `get_required_current_user_id()` 获取当前用户
+- `AuthService.get_current_user(db, current_user_id)` 可正常返回用户信息
+- `GET /api/v1/houses` 支持筛选 + 分页
+- `GET /api/v1/houses?mine=true` 支持筛选 + 分页
+- `keyword` 支持匹配 `title/address/community/description`
+- `min_rent > max_rent` 返回 `3001`
+- `min_area > max_area` 返回 `3001`
 
 
 
