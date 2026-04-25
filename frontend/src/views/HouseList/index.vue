@@ -1,29 +1,31 @@
 <template>
-    <div>
-        <div class="header">
-            <div class="header-wrap">
-                <div class="nav-wrap">
-                    <NavBar />
-                </div>
-                <div class="btn-wrap">
-                    <UserButton 
-                    :isLoggedIn="isLoggedIn" 
-                    :userName="userName" 
-                    @login="openLoginModal" 
-                    @register="openRegisterModal" 
-                    @logout="goLogout" />
-                </div>
+    <div class="header">
+        <div class="header-wrap">
+            <div class="nav-wrap">
+                <NavBar />
+            </div>
+            <div class="btn-wrap">
+                <UserButton />
             </div>
         </div>
     </div>
+    <div class="title">
+        
+    </div>
+    <LoginModal/>
 </template>
 <script setup>
 import NavBar from '@/components/NavBar.vue'
 import SearchBar from '@/components/SearchBar.vue';
 import { ref } from 'vue';
 import UserButton from '@/components/UserButton.vue';
+import LoginModal from '@/components/LoginModal.vue';
+
+import { useUserStore } from '@/stores/user.js';
+const userStore = useUserStore();
 
 </script>
+
 <style>
 *{
     margin: 0;
@@ -34,7 +36,7 @@ import UserButton from '@/components/UserButton.vue';
 .header {
     width: 100%;
     height: 60px;
-    background-color: #333;
+    background-color:rgb(186,194,203);
     display: flex;
     align-items: center;
 }
