@@ -10,7 +10,16 @@
         </div>
     </div>
     <div class="title">
-        
+        <div class="img-wrap">
+            <img src="@/assets/images/csu-logo.png" alt="中南大学logo" class="csu-logo" />
+            <img src="@/assets/images/csu-name.png" alt="中南大学logo" class="csu-name" />
+        </div>
+        <div class="searchBar-wrap">
+            <SearchBar/>
+        </div>
+    </div>
+    <div class="sort-wrap">
+
     </div>
     <LoginModal/>
 </template>
@@ -51,5 +60,33 @@ const userStore = useUserStore();
 .btn-wrap {
     display: flex;
     gap: 10px;
+}
+.title{
+    background-color: rgba(160,160,160,0.4);
+    display: flex;
+    height: 170px;
+    flex-direction: column;
+    padding:0 140px;
+}
+.csu-logo {
+  height: 60px;
+  object-fit: contain;
+}
+.csu-name {
+  height: 40px;
+  background: transparent;
+  object-fit: contain;
+}
+.img-wrap{
+    flex:1;
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+}
+.searchBar-wrap{
+    flex: 1;
+    display: flex;
+    align-items: center;
+    margin-bottom:20px;
 }
 </style>
