@@ -162,6 +162,9 @@ backend/
         schema.py
 
     tests/
+      api/
+        conftest.py
+        test_smoke_flow.py
 
   alembic/
   requirements.txt
@@ -279,6 +282,35 @@ repository：
 
 - 数据访问
 - 查询封装
+- 可继承 `app/common/base_repository.py` 复用最基础 CRUD
+- 复杂业务查询仍保留在各模块 repository 中
+
+------
+
+## 8.1 BaseRepository 约束
+
+`app/common/base_repository.py` 只负责最基础、无业务含义的数据访问能力：
+
+- `create(db, obj)`
+- `get_by_id(db, obj_id)`
+- `delete(db, obj)`
+- `count_all(db)`
+- `list_page(db, offset, limit)`
+
+约束：
+
+- 使用 SQLAlchemy 2.0 `select` 风格
+- 不 `commit / rollback`
+- 不读取 `g / request / current_user`
+- 不处理软删除、状态流转、权限判断
+- 不承接 `listed / mine / deleted_at / tenant / landlord` 这类业务过滤
+- 不组装分页响应结构
+
+说明：
+
+- `HouseRepository` 只复用基础 `create/get_by_id`
+- `MessageRepository` 只复用基础 `create`，消息列表、未读统计、批量已读更新仍保留在模块内
+- service 继续显式传入 `db`，事务边界不下沉到 repository
 
 ------
 
@@ -342,6 +374,7 @@ favorite：收藏
 appointment：预约
 conversation：HTTP 非实时消息
 contract：合同
+说明：当前已落地为基于 `confirmed appointment` 创建的 HTTP 合同记录模块，仍遵守 `router → service → repository → model`，表结构通过 Alembic migration 管理。
 bill：账单
 payment：支付
 
@@ -455,4 +488,34 @@ gunicorn -w 4 -b 0.0.0.0:8000 "app.main:app"
 ```
 满足本规范：
 单进程 → 多进程无需修改业务代码
+```
+
+------
+
+## 19. 自动化接口冒烟测试
+
+当前项目已补充真实 HTTP 接口 smoke test：
+
+- 测试栈：`pytest + requests`
+- 默认目标地址：`http://127.0.0.1:8000`
+- 可通过环境变量 `API_BASE_URL` 覆盖
+- 测试文件：
+  - `backend/tests/api/conftest.py`
+  - `backend/tests/api/test_smoke_flow.py`
+
+覆盖主流程：
+
+- 用户注册与登录
+- 房源创建与发布
+- 收藏
+- 预约创建与确认
+- 会话创建与消息发送
+- 已读标记
+- 合同创建、确认与详情查询
+
+运行方式：
+
+```bash
+cd backend
+pytest tests/api/test_smoke_flow.py -q
 ```

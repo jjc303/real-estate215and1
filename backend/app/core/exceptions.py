@@ -28,6 +28,11 @@ OWN_HOUSE_APPOINTMENT_FORBIDDEN_CODE = 2203
 APPOINTMENT_TIME_INVALID_CODE = 2204
 CONVERSATION_NOT_FOUND_CODE = 2301
 OWN_HOUSE_CONVERSATION_FORBIDDEN_CODE = 2302
+CONTRACT_NOT_FOUND_CODE = 2401
+INVALID_CONTRACT_STATUS_CODE = 2402
+OWN_HOUSE_CONTRACT_FORBIDDEN_CODE = 2403
+CONTRACT_DATE_INVALID_CODE = 2404
+HOUSE_ACTIVE_CONTRACT_CONFLICT_CODE = 2405
 
 
 def _map_http_status_to_app_code(status_code: int) -> int:
@@ -197,6 +202,56 @@ class OwnHouseConversationForbiddenException(AppException):
             message=message,
             code=OWN_HOUSE_CONVERSATION_FORBIDDEN_CODE,
             status_code=400,
+            data=data,
+        )
+
+
+class ContractNotFoundException(AppException):
+    def __init__(self, message: str = "合同不存在", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=CONTRACT_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class InvalidContractStatusException(AppException):
+    def __init__(self, message: str = "非法合同状态", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=INVALID_CONTRACT_STATUS_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class OwnHouseContractForbiddenException(AppException):
+    def __init__(self, message: str = "不能和自己的房源签合同", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=OWN_HOUSE_CONTRACT_FORBIDDEN_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class ContractDateInvalidException(AppException):
+    def __init__(self, message: str = "合同时间不合法", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=CONTRACT_DATE_INVALID_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class HouseActiveContractConflictException(AppException):
+    def __init__(self, message: str = "房源已有生效合同", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=HOUSE_ACTIVE_CONTRACT_CONFLICT_CODE,
+            status_code=409,
             data=data,
         )
 

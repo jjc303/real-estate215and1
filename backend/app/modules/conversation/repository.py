@@ -5,18 +5,14 @@ from datetime import datetime
 from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import Session
 
+from app.common.base_repository import BaseRepository
 from app.modules.conversation.model import Conversation, Message
 from app.modules.house.model import House
 
 
-class ConversationRepository:
-    def create(self, db: Session, conversation: Conversation) -> Conversation:
-        db.add(conversation)
-        return conversation
-
-    def get_by_id(self, db: Session, conversation_id: int) -> Conversation | None:
-        stmt = select(Conversation).where(Conversation.id == conversation_id)
-        return db.execute(stmt).scalar_one_or_none()
+class ConversationRepository(BaseRepository[Conversation]):
+    def __init__(self) -> None:
+        super().__init__(Conversation)
 
     def get_by_participants_and_house(
         self,
@@ -79,10 +75,9 @@ class ConversationRepository:
         return int(db.execute(stmt).scalar_one())
 
 
-class MessageRepository:
-    def create(self, db: Session, message: Message) -> Message:
-        db.add(message)
-        return message
+class MessageRepository(BaseRepository[Message]):
+    def __init__(self) -> None:
+        super().__init__(Message)
 
     def list_by_conversation_id(
         self,

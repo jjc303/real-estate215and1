@@ -1,8 +1,8 @@
 # AI Context（Backend Project）
 
-Version: v1.5.0  
+Version: v1.6.2  
 Last Updated: 2026-04-26  
-Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP 最小闭环已完成；House 列表筛选、参数异常处理、common 公共能力重构与 Alembic 迁移接管已完成
+Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract 最小闭环已完成；House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 
 ------
 
@@ -745,6 +745,11 @@ app/common/dependencies.py
 | 2204 | 预约时间必须是未来时间 |
 | 2301 | 会话不存在            |
 | 2302 | 不能联系自己的房源    |
+| 2401 | 合同不存在            |
+| 2402 | 非法合同状态          |
+| 2403 | 不能和自己的房源签合同 |
+| 2404 | 合同时间不合法        |
+| 2405 | 房源已有生效合同      |
 | 3001 | 参数错误              |
 | 4004 | 路由不存在            |
 | 4009 | 资源冲突              |
@@ -762,7 +767,6 @@ app/common/dependencies.py
 - token 黑名单
 - 房源图片 / 视频
 - 房源审核流
-- 合同
 - 账单 / 支付
 - 报修 / 投诉
 - 管理后台
@@ -772,7 +776,7 @@ app/common/dependencies.py
 # 9. 当前阶段
 
 ```text
-User + Auth + House + Favorite + Appointment + Conversation/Message HTTP 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构与 Alembic 迁移接管已完成
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 ```
 
 系统能力：
@@ -798,8 +802,16 @@ User + Auth + House + Favorite + Appointment + Conversation/Message HTTP 最小�
 - 消息列表
 - 发送消息
 - 标记消息已读
+- 创建合同
+- 合同列表
+- 合同详情
+- 确认合同
+- 拒绝合同
+- 取消合同
+- 终止合同
 - 最小所有权校验
 - 统一响应 + 异常体系
+- pytest + requests 真实 HTTP smoke test
 
 ------
 
@@ -836,6 +848,47 @@ House 模块已验证：
 - 我的收藏列表只返回当前仍 `listed` 且未删除的房源
 - 取消未收藏房源返回 `2101`
 
+HTTP 自动化 smoke test 已验证：
+
+- 测试文件：`backend/tests/api/test_smoke_flow.py`
+- 测试方式：`pytest + requests`
+- 默认目标：`http://127.0.0.1:8000`
+- 可通过环境变量 `API_BASE_URL` 覆盖目标地址
+- 覆盖完整业务主流程：
+  - 注册房东
+  - 注册租客
+  - 双方登录
+  - 房东创建并发布房源
+  - 租客收藏房源
+  - 租客创建预约
+  - 房东确认预约
+  - 租客创建会话
+  - 租客发送消息
+  - 房东查看会话列表并校验目标会话 `unread_count`
+  - 房东标记会话已读
+  - 房东基于 confirmed appointment 创建合同
+  - 租客确认合同
+  - 查询合同详情并确认 `status = active`
+- 关键断言已覆盖：
+  - `house.status == listed`
+  - `appointment.status == confirmed`
+  - `message.content` 保存前已 `strip`
+  - `read.updated >= 1`
+  - `contract.status == active`
+- 运行命令：
+
+```bash
+cd backend
+pytest tests/api/test_smoke_flow.py -q
+```
+
+或：
+
+```bash
+set API_BASE_URL=http://127.0.0.1:8000
+pytest tests/api/test_smoke_flow.py -q
+```
+
 ------
 
 # 11. 下一步开发方向
@@ -843,12 +896,12 @@ House 模块已验证：
 建议下一步优先做：
 
 ```text
-Contract / Bill / Payment
+Bill / Payment
 ```
 
 原因：
 
-- Appointment 与 Conversation 已经完成最小闭环
+- Appointment、Conversation 与 Contract 已经完成最小闭环
 - 可以直接承接租赁业务主流程
 - 仍然不需要引入复杂权限系统
 
@@ -891,26 +944,32 @@ Contract / Bill / Payment
 当前后端已完成：
 
 ```text
-User + Auth + House + Favorite + Appointment + Conversation/Message HTTP 最小闭环
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract 最小闭环
 ```
 
 同时已完成 common 公共能力替换重构：
 
 - `app/common/base_model.py`
+- `app/common/base_repository.py`
 - `app/common/base_schema.py`
 - `app/common/pagination.py`
 - `app/common/enums.py`
 
+同时已补充自动化接口冒烟测试：
+
+- `backend/tests/api/test_smoke_flow.py`
+- `backend/tests/api/conftest.py`
+
 当前下一步建议：
 
 ```text
-Contract / 合同
+Bill / Payment
 ```
 
 也可以根据课程展示需要，优先做：
 
 ```text
-Bill / Payment
+Repair / Complaint
 ```
 
 ------
@@ -1076,6 +1135,7 @@ pending / confirmed / rejected / cancelled / expired
 
 ```text
 app/common/base_model.py
+app/common/base_repository.py
 app/common/base_schema.py
 app/common/pagination.py
 app/common/enums.py
@@ -1117,6 +1177,47 @@ app/common/enums.py
 - 未修改任何 `__tablename__`。
 - 未修改已有字段名。
 - 未改变接口响应结构。
+
+### base_repository.py
+
+提供：
+
+- `BaseRepository[T]`
+
+当前只承接最基础的数据访问能力：
+
+- `create(db, obj)`
+- `get_by_id(db, obj_id)`
+- `delete(db, obj)`
+- `count_all(db)`
+- `list_page(db, offset, limit)`
+
+约束：
+
+- 使用 SQLAlchemy 2.0 `select` 风格
+- 不 `commit`
+- 不 `rollback`
+- 不读取 `g / request / current_user`
+- 不处理业务状态
+- 不处理软删除
+- 不处理权限
+- 不组装分页响应结构
+- 不把复杂业务查询下沉到 BaseRepository
+
+当前已逐步接入继承的 repository：
+
+- `UserRepository`
+- `FavoriteRepository`
+- `AppointmentRepository`
+- `ConversationRepository`
+- `MessageRepository`
+- `ContractRepository`
+- `HouseRepository`（仅复用基础 `create/get_by_id`，保留原有 `listed / deleted_at / mine / filter` 查询）
+
+说明：
+
+- 本轮是等价重构，不改变接口返回、错误码、事务边界和业务查询条件
+- `MessageRepository` 仅删除了与基类完全等价的 `create`，其余消息查询和已读更新逻辑保持不变
 
 ### base_schema.py
 
@@ -1271,3 +1372,126 @@ PATCH /api/v1/conversations/{id}/read
 - 数据库存储值仍是字符串。
 - 接口返回值仍是字符串。
 - 不改变状态流转规则。
+
+------
+
+## 14.5 Contract 合同模块
+
+### 当前状态
+
+Contract 第一版最小闭环已完成。
+
+第一版明确不做：
+
+- PDF
+- 电子签章
+- 真实支付
+- 真实法律合同
+
+### 表
+
+```text
+contracts
+```
+
+字段：
+
+- id
+- house_id
+- tenant_id
+- landlord_id
+- appointment_id
+- start_date
+- end_date
+- monthly_rent
+- deposit
+- status
+- remark
+- created_at
+- updated_at
+
+说明：
+
+- Contract 第一版必须基于 `confirmed appointment` 创建。
+- 前端不允许传 `house_id / tenant_id / landlord_id`。
+- 后端通过 `appointment_id` 自动确定 `house_id / tenant_id / landlord_id`。
+- `appointment_id` 第一版必填，不可为空。
+- `appointment_id` 第一版不加唯一约束。
+
+### 状态
+
+Contract 第一版状态：
+
+```text
+pending / active / rejected / cancelled / terminated
+```
+
+含义：
+
+| status     | 含义                    |
+| ---------- | ----------------------- |
+| pending    | 房东已创建，等待租客确认 |
+| active     | 租客已确认，合同生效    |
+| rejected   | 租客拒绝该合同          |
+| cancelled  | 房东在生效前取消        |
+| terminated | 生效后被房东终止        |
+
+允许流转：
+
+- `create -> pending`
+- `pending -> active`
+- `pending -> rejected`
+- `pending -> cancelled`
+- `active -> terminated`
+
+终态：
+
+- `rejected`
+- `cancelled`
+- `terminated`
+
+### 接口
+
+```text
+POST  /api/v1/contracts
+GET   /api/v1/contracts
+GET   /api/v1/contracts/{id}
+PATCH /api/v1/contracts/{id}/confirm
+PATCH /api/v1/contracts/{id}/reject
+PATCH /api/v1/contracts/{id}/cancel
+PATCH /api/v1/contracts/{id}/terminate
+```
+
+### 规则
+
+- 所有接口必须登录
+- 创建合同仅房东可调用
+- 创建合同必须基于当前房东自己的 `confirmed appointment`
+- appointment 不存在或不属于当前房东，返回 `2201`
+- appointment 状态不是 `confirmed`，返回 `2402`
+- appointment 对应 house 不存在或已删除，返回 `2001`
+- `tenant_id == landlord_id`，返回 `2403`
+- 同一 `appointment_id` 同时只能有一个 `pending` 合同
+- 如果同一 `appointment_id` 已有 `pending` 合同，再创建返回 `4009`
+- 同一 `house_id` 同时只能有一个 `active` 合同
+- `active` 后第一版不修改 `House.status`
+- 非参与者访问详情、确认、拒绝、取消、终止统一返回 `2401`
+
+### 错误码
+
+| code | 含义                    |
+| ---- | ----------------------- |
+| 2401 | 合同不存在              |
+| 2402 | 非法合同状态            |
+| 2403 | 不能和自己的房源签合同  |
+| 2404 | 合同时间不合法          |
+| 2405 | 房源已有生效合同        |
+
+继续复用：
+
+- `1003` 未登录
+- `2001` 房源不存在
+- `2201` 预约不存在
+- `3001` 参数错误
+- `4009` 资源冲突
+- `5000` 系统错误

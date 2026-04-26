@@ -1647,7 +1647,219 @@ PATCH /api/v1/conversations/{id}/read
 
 ------
 
-# 十一、common 公共能力补充
+# 十一、Contract 模块补充
+
+> 本节为 v1.6 新增内容。保留前文所有 User / Auth / House / Favorite / Appointment / Conversation 文档。
+
+## 1. 业务规则总览
+
+所有 Contract 接口都必须登录。
+
+第一版明确不做：
+
+- PDF
+- 电子签章
+- 真实支付
+- 真实法律合同
+
+Contract 第一版必须基于 `confirmed appointment` 创建。
+
+创建规则：
+
+- 创建接口仅房东可调用。
+- 前端不允许传 `house_id / tenant_id / landlord_id`。
+- 后端根据 `appointment_id` 自动确定 `house_id / tenant_id / landlord_id`。
+- appointment 不存在或不属于当前房东，返回 `2201`。
+- appointment 状态不是 `confirmed`，返回 `2402`。
+- appointment 对应 house 不存在或已删除，返回 `2001`。
+- 同一 `appointment_id` 同时只能有一个 `pending` 合同。
+- 同一 `house_id` 同时只能有一个 `active` 合同。
+- `active` 后第一版不修改 `House.status`。
+
+Contract 第一版状态：
+
+| status     | 含义                    |
+| ---------- | ----------------------- |
+| pending    | 房东已创建，等待租客确认 |
+| active     | 租客已确认，合同生效    |
+| rejected   | 租客拒绝该合同          |
+| cancelled  | 房东在生效前取消        |
+| terminated | 生效后被房东终止        |
+
+允许流转：
+
+- `create -> pending`
+- `pending -> active`
+- `pending -> rejected`
+- `pending -> cancelled`
+- `active -> terminated`
+
+## 2. 创建合同
+
+### 接口
+
+```http
+POST /api/v1/contracts
+```
+
+### 请求体
+
+```json
+{
+  "appointment_id": 1,
+  "start_date": "2026-05-01",
+  "end_date": "2027-05-01",
+  "monthly_rent": 2000,
+  "deposit": 2000,
+  "remark": "一年期合同"
+}
+```
+
+### 规则
+
+- 必须登录。
+- 仅房东可调用。
+- appointment 必须存在且属于当前房东。
+- appointment 状态必须是 `confirmed`。
+- 创建成功后 `status = pending`。
+- 同一 `appointment_id` 若已有 `pending` 合同，返回 `4009`。
+- 同一 `house_id` 若已有 `active` 合同，返回 `2405`。
+
+### 成功响应（201）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "house_id": 1,
+    "tenant_id": 2,
+    "landlord_id": 1,
+    "appointment_id": 3,
+    "start_date": "2026-05-01",
+    "end_date": "2027-05-01",
+    "monthly_rent": "2000.00",
+    "deposit": "2000.00",
+    "status": "pending",
+    "remark": "一年期合同",
+    "created_at": "2026-04-26T21:00:00",
+    "updated_at": "2026-04-26T21:00:00",
+    "house": {
+      "id": 1,
+      "title": "测试房源",
+      "region": "区域A",
+      "address": "地址A",
+      "house_type": "1室1厅",
+      "area": "50.00",
+      "rent": "2000.00",
+      "deposit": "2000.00",
+      "status": "listed"
+    }
+  }
+}
+```
+
+## 3. 查看合同列表
+
+### 接口
+
+```http
+GET /api/v1/contracts?page=1&page_size=10
+```
+
+### 规则
+
+- 必须登录。
+- 返回当前用户参与的合同：`tenant_id == current_user_id OR landlord_id == current_user_id`。
+- 支持分页。
+- 默认按 `created_at DESC, id DESC`。
+
+## 4. 查看合同详情
+
+### 接口
+
+```http
+GET /api/v1/contracts/{id}
+```
+
+### 规则
+
+- 必须登录。
+- 只有合同参与者可以查看。
+- 非参与者统一返回 `2401`。
+
+## 5. 租客确认合同
+
+### 接口
+
+```http
+PATCH /api/v1/contracts/{id}/confirm
+```
+
+### 规则
+
+- 必须登录。
+- 仅合同 tenant 可调用。
+- 仅允许 `pending -> active`。
+- 执行前再次检查同一 `house_id` 没有其他 `active` 合同。
+- 成功后第一版不修改 `House.status`。
+
+## 6. 租客拒绝合同
+
+### 接口
+
+```http
+PATCH /api/v1/contracts/{id}/reject
+```
+
+### 规则
+
+- 必须登录。
+- 仅合同 tenant 可调用。
+- 仅允许 `pending -> rejected`。
+
+## 7. 房东取消合同
+
+### 接口
+
+```http
+PATCH /api/v1/contracts/{id}/cancel
+```
+
+### 规则
+
+- 必须登录。
+- 仅合同 landlord 可调用。
+- 仅允许 `pending -> cancelled`。
+
+## 8. 房东终止合同
+
+### 接口
+
+```http
+PATCH /api/v1/contracts/{id}/terminate
+```
+
+### 规则
+
+- 必须登录。
+- 仅合同 landlord 可调用。
+- 仅允许 `active -> terminated`。
+
+## 9. Contract 错误码
+
+| code | 含义                   |
+| ---- | ---------------------- |
+| 2401 | 合同不存在             |
+| 2402 | 非法合同状态           |
+| 2403 | 不能和自己的房源签合同 |
+| 2404 | 合同时间不合法         |
+| 2405 | 房源已有生效合同       |
+
+------
+
+# 十二、common 公共能力补充
 
 当前项目已完成 common 公共能力替换重构。
 
@@ -1674,14 +1886,15 @@ app/common/base_model.py
 | Appointment | `Appointment(BaseModel)`            |
 | Conversation| `Conversation(BaseModel)`           |
 | Message     | `Message(BaseModel)`                |
+| Contract    | `Contract(BaseModel)`               |
 
 说明：
 
 - `BaseModel` 提供 `id / created_at / updated_at`。
 - `SoftDeleteMixin` 提供 `deleted_at`。
 - `deleted_at` 只用于 House。
-- Favorite / Appointment / Conversation / Message 有 `updated_at`。
-- Favorite / Appointment / Conversation / Message 没有 `deleted_at`。
+- Favorite / Appointment / Conversation / Message / Contract 有 `updated_at`。
+- Favorite / Appointment / Conversation / Message / Contract 没有 `deleted_at`。
 
 ## 2. pagination.py
 
