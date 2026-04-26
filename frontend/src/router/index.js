@@ -4,10 +4,12 @@ import Message from '../views/Message/index.vue'
 import Admin from '../views/Admin/index.vue'
 import HouseDetail from '../views/HouseDetail/index.vue'
 import HouseList from '../views/HouseList/index.vue'
+import Reservation from'../views/Reservation/index.vue'
 const routes = [
   {
     path: '/',
     name:'home',
+    meta:{title:'中南找房'},
     component: Home
   },
   {
@@ -28,7 +30,13 @@ const routes = [
   {
     path:'/houseList',
     name:'houseList',
+    meta:{title:'长沙租房'},
     component: HouseList
+  },
+  {
+    path:'/reservation',
+    name:'reservation',
+    component:Reservation,
   }
 ]
 const router = createRouter({

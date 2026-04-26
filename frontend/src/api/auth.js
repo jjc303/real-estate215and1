@@ -1,0 +1,1 @@
+import servie from '@/utils/request'

@@ -8,7 +8,10 @@
   </button>
 </template>
 <template v-else>
-  <span class="username">{{ userStore.userName }}</span>
+  <div class="username">
+    <span>{{ userStore.userName }}</span>
+  </div>
+  
   <button class="btn-logout" @click="userStore.logout">
     <i class="fa-solid fa-right-from-bracket"></i> 退出
   </button>
@@ -78,9 +81,12 @@ button {
 .btn-logout:hover {
   color: #d9363e;
 }
-
+.username{
+  display: flex;
+  align-items: center;
+}
 /* 用户名 */
-.username {
+.username span{
   font-size: 20px;
   color: #fff;
   font-weight: 500;

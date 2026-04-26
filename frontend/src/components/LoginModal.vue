@@ -29,7 +29,7 @@
             邮箱验证
           </span>
         </div>
-        <div class="modal-login-content">
+        <div class="modal-content">
           <div v-if="userStore.activeTab === 'sms'">
              <input v-model="userStore.loginForm.phone" type="text" placeholder="请输入手机号" />
              <div class="code-row"> 
@@ -52,7 +52,7 @@
                 </button>
              </div>
           </div>
-          <button class="modal-btn" @click="userStore.submitLogin">登录</button>
+          <button type="button" class="modal-btn" @click="userStore.submitLogin">登录</button>
         </div>
         <div class="to-register">
           <span>没有账号？</span>
@@ -104,16 +104,10 @@
             注册账号
           </span>
         </div>
-        <div class="modal-register-content">
+        <div class="modal-content">
           <input v-model="userStore.registerForm.phone" type="text" placeholder="请输入手机号" />
-          <div class="code-row"> 
-                <input v-model="userStore.registerForm.code" placeholder="请输入验证码" />
-                <button class="get-code-btn" @click="userStore.getSmsCode" :disabled="userStore.countdown>0">
-                  {{ userStore.countdown>0?`${userStore.countdown}s后重试`:'获取验证码' }}
-                </button>
-              </div>
           <input v-model="userStore.registerForm.password" type="password" placeholder="请输入密码" />
-          <button class="modal-btn" @click="userStore.submitRegister">注册</button>
+          <button type="button" class="modal-btn" @click="userStore.submitRegister">注册</button>
         </div>
         <div class="to-register">
           <span>已有账号？</span>
@@ -211,12 +205,12 @@ const userStore = useUserStore();
   color: #999;
 }
 /* 登录表单样式 */
-.modal-login-content {
+.modal-content {
   display:flex;
   flex-direction:column;
   margin-top:25px;
 }
-.modal-login-content input {
+.modal-content input {
   width:100%;
   height:50px;
   padding:12px 15px;
@@ -321,19 +315,5 @@ const userStore = useUserStore();
   border-color: rgb(28, 173, 226);
   color: rgb(28, 173, 226);
 }
-/* 注册表单样式 */
-.modal-register-content {
-  display:flex;
-  flex-direction:column;
-}
-.modal-register-content input {
-  width:100%;
-  height:40px;
-  padding:12px 15px;
-  border:1px solid #ddd;
-  margin-bottom:20px;
-  border-radius:6px;
-  font-size:16px;
-  font-weight:300;
-}
+
 </style>
