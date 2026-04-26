@@ -1,8 +1,8 @@
 # AI Context（Backend Project）
 
-Version: v1.3.1  
+Version: v1.4.4  
 Last Updated: 2026-04-26  
-Status: User + Auth + House + Favorite + Appointment 最小闭环已完成；House 列表筛选、参数异常处理与 common 公共能力重构已完成
+Status: User + Auth + House + Favorite + Appointment 最小闭环已完成；House 列表筛选、参数异常处理、common 公共能力重构与 Alembic 迁移接管已完成
 
 ------
 
@@ -113,33 +113,30 @@ router → service → repository → model
 - 所有模型继承同一个 `Base`
 - `Base` 定义在 `app.core.database`
 
-## 开发阶段自动建表
+## Alembic 迁移管理
 
-当前开发阶段使用：
+当前项目不再使用：
 
 ```python
 Base.metadata.create_all(bind=engine)
 ```
 
-执行位置：
+当前规则：
 
-- `app.core.database.init_database(app)`
-- 仅在 `ENV == "development"` 时执行
+- Flask app 启动阶段不自动建表
+- `app.core.database.init_database(app)` 只负责初始化 `engine` 与 `SessionLocal`
+- 数据库结构统一由 Alembic migration 管理
+- `database.py` 不再 import 任何业务模块 model
 
-注意：
+常用命令：
 
-- `create_all()` 只能创建不存在的表，不能安全修改已有表结构。
-- 自动建表前必须显式 import model，例如：
-
-```python
-from importlib import import_module
-
-import_module("app.modules.user.model")
-import_module("app.modules.house.model")
+```bash
+alembic revision --autogenerate -m "xxx"
+alembic upgrade head
+alembic current
+alembic history
+alembic downgrade -1
 ```
-
-- 不能在 `init_database(app)` 内直接写 `import app.modules.house.model` 并继续使用参数名 `app`，否则可能覆盖 Flask app 变量。
-- 后续正式迁移阶段再考虑 Alembic。
 
 ------
 
@@ -164,7 +161,7 @@ command: gunicorn -w 1 --reload -b 0.0.0.0:8000 app.main:app
 
 - 挂载代码后，本地改代码容器可以立即看到。
 - `--reload` 可自动重新加载 Python 代码。
-- `-w 1` 避免开发阶段多个 worker 同时执行自动建表逻辑。
+- `-w 1` 便于开发阶段定位问题并减少 reload 复杂度。
 
 ## 部署阶段注意
 
@@ -757,10 +754,8 @@ app/common/dependencies.py
 - 完整 RBAC 权限控制
 - refresh token
 - token 黑名单
-- Alembic 迁移
 - 房源图片 / 视频
 - 房源审核流
-- 预约
 - 聊天
 - 合同
 - 账单 / 支付
@@ -772,7 +767,7 @@ app/common/dependencies.py
 # 9. 当前阶段
 
 ```text
-User + Auth + House + Favorite + Appointment 最小闭环已完成，House 列表筛选、参数异常处理与 common 公共能力重构已完成
+User + Auth + House + Favorite + Appointment 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构与 Alembic 迁移接管已完成
 ```
 
 系统能力：

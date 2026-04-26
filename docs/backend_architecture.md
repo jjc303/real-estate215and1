@@ -202,6 +202,22 @@ def close_db(_):
         SessionLocal.remove()
 ```
 
+数据库结构管理：
+
+- 不使用 `Base.metadata.create_all()`
+- 统一使用 Alembic migration 管理表结构
+- 启动 Flask app 不负责自动建表
+
+常用命令：
+
+```bash
+alembic revision --autogenerate -m "xxx"
+alembic upgrade head
+alembic current
+alembic history
+alembic downgrade -1
+```
+
 ------
 
 ## 5. DB 使用（强制）

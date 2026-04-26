@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from importlib import import_module
-
 from flask import g
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
@@ -33,14 +31,6 @@ def init_database(flask_app) -> None:
 
     SessionLocal.remove()
     SessionLocal.configure(bind=engine)
-
-    if flask_app.config.get("ENV") == "development":
-        import_module("app.modules.user.model")
-        import_module("app.modules.house.model")
-        import_module("app.modules.favorite.model")
-        import_module("app.modules.appointment.model")
-
-        Base.metadata.create_all(bind=engine)
 
     register_db_hooks(flask_app)
 

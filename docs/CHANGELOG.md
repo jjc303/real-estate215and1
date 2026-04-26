@@ -1,5 +1,67 @@
 # Changelog
 
+## v1.4.2 - 2026-04-26
+
+### Changed
+
+#### Alembic 接管数据库结构管理
+
+本轮只切换数据库建表机制，不新增业务模块，不改变接口路径、响应字段、错误码、业务规则和状态流转。
+
+- `backend/requirements.txt` 新增 `alembic>=1.13,<2.0`
+- 新增 `backend/alembic.ini`
+- 新增 `backend/alembic/env.py`
+- 新增 `backend/alembic/versions/`
+- 新增首版 migration `create_initial_tables`
+
+#### Flask 启动阶段取消自动建表
+
+修改 `app/core/database.py`：
+
+- 删除开发环境中的 `Base.metadata.create_all(bind=engine)`
+- 删除为 `create_all()` 服务的业务 model import 逻辑
+- 保留 `engine` 初始化
+- 保留 `SessionLocal / scoped_session`
+- 保留 `before_request` 打开 `g.db`
+- 保留 `teardown_request` 关闭 `g.db`
+
+说明：
+
+- `database.py` 不再 import 任何业务模块 model
+- 数据库结构统一由 Alembic migration 管理
+
+### Added
+
+#### 首版数据库迁移
+
+新增首版 migration `create_initial_tables`，用于创建当前已有表：
+
+- `users`
+- `houses`
+- `favorites`
+- `appointments`
+
+约束：
+
+- 不修改表名
+- 不修改字段名
+- 不新增业务字段
+- 不删除已有字段
+- 不修改状态值
+- 只保留现有 model 中已定义的外键、唯一约束和索引
+
+### Notes
+
+常用命令：
+
+```bash
+alembic revision --autogenerate -m "xxx"
+alembic upgrade head
+alembic current
+alembic history
+alembic downgrade -1
+```
+
 ## v1.4.1 - 2026-04-26
 
 ### Changed
