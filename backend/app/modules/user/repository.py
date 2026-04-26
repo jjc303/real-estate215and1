@@ -3,12 +3,13 @@ from __future__ import annotations
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.common.base_repository import BaseRepository
 from app.modules.user.model import User
 
 
-class UserRepository:
-    def get_by_id(self, db: Session, user_id: int) -> User | None:
-        return db.get(User, user_id)
+class UserRepository(BaseRepository[User]):
+    def __init__(self) -> None:
+        super().__init__(User)
 
     def get_by_username(self, db: Session, username: str) -> User | None:
         stmt = select(User).where(User.username == username)
@@ -21,7 +22,3 @@ class UserRepository:
     def count_users(self, db: Session) -> int:
         stmt = select(func.count()).select_from(User)
         return int(db.execute(stmt).scalar_one())
-
-    def create(self, db: Session, user: User) -> User:
-        db.add(user)
-        return user

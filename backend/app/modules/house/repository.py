@@ -6,17 +6,13 @@ from app.common.enums import HouseStatus
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.common.base_repository import BaseRepository
 from app.modules.house.model import House
 
 
-class HouseRepository:
-    def create(self, db: Session, house: House) -> House:
-        db.add(house)
-        return house
-
-    def get_by_id(self, db: Session, house_id: int) -> House | None:
-        stmt = select(House).where(House.id == house_id)
-        return db.execute(stmt).scalar_one_or_none()
+class HouseRepository(BaseRepository[House]):
+    def __init__(self) -> None:
+        super().__init__(House)
 
     def get_by_id_and_landlord_id(
         self,

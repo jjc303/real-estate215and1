@@ -1,5 +1,179 @@
 # Changelog
 
+## v1.6.2 - 2026-04-26
+
+### Added
+
+#### HTTP 接口自动化 smoke test
+
+新增真实 HTTP 冒烟测试文件：
+
+- `backend/tests/api/conftest.py`
+- `backend/tests/api/test_smoke_flow.py`
+
+新增测试依赖：
+
+- `pytest>=8.0,<9.0`
+- `requests>=2.31,<3.0`
+
+测试约定：
+
+- 默认 `API_BASE_URL = http://127.0.0.1:8000`
+- 可通过环境变量 `API_BASE_URL` 覆盖
+- 不清空数据库
+- 不依赖固定数据库 id
+- 仅验证真实 HTTP 接口，不直接调用 service
+
+覆盖业务主流程：
+
+- 注册房东用户
+- 注册租客用户
+- 双方登录
+- 房东创建并发布房源
+- 租客收藏房源
+- 租客创建预约
+- 房东确认预约
+- 租客创建会话并发送消息
+- 房东查看会话列表并校验目标会话 `unread_count`
+- 房东标记会话已读
+- 房东基于 confirmed appointment 创建合同
+- 租客确认合同
+- 查询合同详情并确认 `status = active`
+
+### Verified
+
+- `pytest backend/tests/api/test_smoke_flow.py -q` 通过
+- 结果：`1 passed`
+- 关键断言已覆盖：
+  - `house.status == listed`
+  - `appointment.status == confirmed`
+  - `message.content` 已 `strip`
+  - `read.updated >= 1`
+  - `contract.status == active`
+- 运行时存在 `PytestCacheWarning`：
+  - 当前工作目录 `.pytest_cache` 无写权限
+  - 不影响测试执行结果
+
+## v1.6.1 - 2026-04-26
+
+### Changed
+
+#### common BaseRepository 等价重构
+
+本轮只做 repository 基础能力抽取，不新增业务模块，不修改接口、响应字段、错误码、数据库表结构、Alembic migration 和 service 业务规则。
+
+新增 common 文件：
+
+- `app/common/base_repository.py`
+
+提供基础能力：
+
+- `create(db, obj)`
+- `get_by_id(db, obj_id)`
+- `delete(db, obj)`
+- `count_all(db)`
+- `list_page(db, offset, limit)`
+
+已接入继承的 repository：
+
+- `UserRepository`
+- `FavoriteRepository`
+- `AppointmentRepository`
+- `ConversationRepository`
+- `MessageRepository`
+- `ContractRepository`
+- `HouseRepository`
+
+约束：
+
+- repository 仍不 `commit / rollback`
+- service 仍显式传入 `db`
+- 不读取 `g / request / current_user`
+- 不把软删除、状态、权限和复杂业务查询下沉到 BaseRepository
+- `HouseRepository` 原有 `listed / deleted_at / mine / filter` 查询保持不变
+- `MessageRepository` 保留：
+  - `list_by_conversation_id`
+  - `count_by_conversation_id`
+  - `get_last_by_conversation_id`
+  - `count_unread_for_user_in_conversation`
+  - `mark_read_for_user_in_conversation`
+
+### Verified
+
+- `BaseRepository` 和改造后的各 repository 可正常通过 AST 语法解析
+- `MessageRepository` 已改为继承 `BaseRepository[Message]`，并仅删除完全等价的 `create`
+- 业务查询条件未改动，尤其是 House 的 `deleted_at / listed / mine / filter`、Favorite 的可见性过滤、Conversation/Contract 的参与人过滤
+- `python -m compileall` 因现有 `__pycache__` 文件权限问题未能完成字节码写入，不影响本轮代码等价重构本身
+
+## v1.6.0 - 2026-04-26
+
+### Added
+
+#### Contract 合同模块
+
+新增 Contract 第一版完整模块：
+
+- `app/modules/contract/model.py`
+- `app/modules/contract/schema.py`
+- `app/modules/contract/repository.py`
+- `app/modules/contract/service.py`
+- `app/modules/contract/router.py`
+
+新增接口：
+
+- `POST /api/v1/contracts`
+- `GET /api/v1/contracts`
+- `GET /api/v1/contracts/{id}`
+- `PATCH /api/v1/contracts/{id}/confirm`
+- `PATCH /api/v1/contracts/{id}/reject`
+- `PATCH /api/v1/contracts/{id}/cancel`
+- `PATCH /api/v1/contracts/{id}/terminate`
+
+#### Contract 数据模型
+
+新增表：
+
+- `contracts`
+
+关键规则：
+
+- Contract 第一版必须基于 `confirmed appointment` 创建
+- 前端不传 `house_id / tenant_id / landlord_id`
+- 后端从 `appointment_id` 自动确定 `house_id / tenant_id / landlord_id`
+- 同一 `appointment_id` 同时只能有一个 `pending` 合同
+- 如果同一 `appointment_id` 已有 `pending` 合同，再创建返回 `4009`
+- 同一 `house_id` 同时只能有一个 `active` 合同
+- `active` 后第一版不修改 `House.status`
+
+### Changed
+
+#### 新增 Contract 错误码
+
+- `2401 合同不存在`
+- `2402 非法合同状态`
+- `2403 不能和自己的房源签合同`
+- `2404 合同时间不合法`
+- `2405 房源已有生效合同`
+
+#### 接入 Alembic migration
+
+新增 migration：
+
+- `21d28ff28027_add_contracts_table.py`
+
+该 migration 只新增：
+
+- `contracts`
+
+未修改旧表结构。
+
+### Verified
+
+- Contract 模块文件可正常导入
+- `/api/v1/contracts` 相关 7 个路由已成功挂载
+- `alembic history` 链路正常
+- 临时 SQLite 环境下 `alembic upgrade head` 成功执行到 `21d28ff28027_add_contracts_table`
+
 ## v1.5.0 - 2026-04-26
 
 ### Added

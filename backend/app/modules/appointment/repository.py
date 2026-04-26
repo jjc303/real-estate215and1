@@ -3,18 +3,14 @@ from __future__ import annotations
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
+from app.common.base_repository import BaseRepository
 from app.modules.appointment.model import Appointment
 from app.modules.house.model import House
 
 
-class AppointmentRepository:
-    def create(self, db: Session, appointment: Appointment) -> Appointment:
-        db.add(appointment)
-        return appointment
-
-    def get_by_id(self, db: Session, appointment_id: int) -> Appointment | None:
-        stmt = select(Appointment).where(Appointment.id == appointment_id)
-        return db.execute(stmt).scalar_one_or_none()
+class AppointmentRepository(BaseRepository[Appointment]):
+    def __init__(self) -> None:
+        super().__init__(Appointment)
 
     def get_by_id_and_landlord_id(
         self,

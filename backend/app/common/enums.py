@@ -13,3 +13,11 @@ class AppointmentStatus:
     REJECTED = "rejected"
     CANCELLED = "cancelled"
     EXPIRED = "expired"
+
+
+class ContractStatus:
+    PENDING = "pending"
+    ACTIVE = "active"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+    TERMINATED = "terminated"

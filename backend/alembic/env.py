@@ -15,6 +15,7 @@ if str(BASE_DIR) not in sys.path:
 
 from app.core.database import Base
 from app.modules.appointment.model import Appointment
+from app.modules.contract.model import Contract
 from app.modules.conversation.model import Conversation, Message
 from app.modules.favorite.model import Favorite
 from app.modules.house.model import House
