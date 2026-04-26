@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from app.container.repositories import (
     get_appointment_repository,
+    get_conversation_repository,
     get_favorite_repository,
     get_house_repository,
+    get_message_repository,
     get_user_repository,
 )
 from app.modules.appointment.service import AppointmentService
 from app.modules.auth.service import AuthService
+from app.modules.conversation.service import ConversationService
 from app.modules.favorite.service import FavoriteService
 from app.modules.house.service import HouseService
 from app.modules.user.service import UserService
@@ -18,6 +21,11 @@ _auth_service = AuthService(get_user_repository())
 _house_service = HouseService(get_house_repository())
 _favorite_service = FavoriteService(get_favorite_repository(), get_house_repository())
 _appointment_service = AppointmentService(get_appointment_repository(), get_house_repository())
+_conversation_service = ConversationService(
+    get_conversation_repository(),
+    get_message_repository(),
+    get_house_repository(),
+)
 
 
 def get_user_service() -> UserService:
@@ -38,3 +46,7 @@ def get_favorite_service() -> FavoriteService:
 
 def get_appointment_service() -> AppointmentService:
     return _appointment_service
+
+
+def get_conversation_service() -> ConversationService:
+    return _conversation_service

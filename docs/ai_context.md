@@ -1,8 +1,8 @@
 # AI Context（Backend Project）
 
-Version: v1.4.4  
+Version: v1.5.0  
 Last Updated: 2026-04-26  
-Status: User + Auth + House + Favorite + Appointment 最小闭环已完成；House 列表筛选、参数异常处理、common 公共能力重构与 Alembic 迁移接管已完成
+Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP 最小闭环已完成；House 列表筛选、参数异常处理、common 公共能力重构与 Alembic 迁移接管已完成
 
 ------
 
@@ -739,6 +739,12 @@ app/common/dependencies.py
 | 1003 | 未登录 / token 无效   |
 | 2001 | 房源不存在 / 无权访问 |
 | 2101 | 收藏不存在            |
+| 2201 | 预约不存在            |
+| 2202 | 非法预约状态          |
+| 2203 | 不能预约自己的房源    |
+| 2204 | 预约时间必须是未来时间 |
+| 2301 | 会话不存在            |
+| 2302 | 不能联系自己的房源    |
 | 3001 | 参数错误              |
 | 4004 | 路由不存在            |
 | 4009 | 资源冲突              |
@@ -756,7 +762,6 @@ app/common/dependencies.py
 - token 黑名单
 - 房源图片 / 视频
 - 房源审核流
-- 聊天
 - 合同
 - 账单 / 支付
 - 报修 / 投诉
@@ -767,7 +772,7 @@ app/common/dependencies.py
 # 9. 当前阶段
 
 ```text
-User + Auth + House + Favorite + Appointment 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构与 Alembic 迁移接管已完成
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构与 Alembic 迁移接管已完成
 ```
 
 系统能力：
@@ -788,6 +793,11 @@ User + Auth + House + Favorite + Appointment 最小闭环已完成，House 列�
 - 收藏房源
 - 我的收藏列表
 - 取消收藏
+- 创建会话
+- 会话列表
+- 消息列表
+- 发送消息
+- 标记消息已读
 - 最小所有权校验
 - 统一响应 + 异常体系
 
@@ -833,21 +843,14 @@ House 模块已验证：
 建议下一步优先做：
 
 ```text
-Appointment / 预约
+Contract / Bill / Payment
 ```
 
 原因：
 
-- 和 House、Favorite 已有能力衔接自然
-- 能复用当前最小认证与所有权校验方式
-- 可以作为后续 Conversation / Contract 的上游流程
-- 不需要引入复杂权限系统
-
-之后再考虑：
-
-```text
-Conversation → Contract/Bill/Payment
-```
+- Appointment 与 Conversation 已经完成最小闭环
+- 可以直接承接租赁业务主流程
+- 仍然不需要引入复杂权限系统
 
 ------
 
@@ -888,7 +891,7 @@ Conversation → Contract/Bill/Payment
 当前后端已完成：
 
 ```text
-User + Auth + House + Favorite + Appointment 最小闭环
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP 最小闭环
 ```
 
 同时已完成 common 公共能力替换重构：
@@ -901,13 +904,13 @@ User + Auth + House + Favorite + Appointment 最小闭环
 当前下一步建议：
 
 ```text
-Conversation / 消息沟通
+Contract / 合同
 ```
 
 也可以根据课程展示需要，优先做：
 
 ```text
-Contract / 合同
+Bill / Payment
 ```
 
 ------
@@ -1160,6 +1163,93 @@ extra="forbid"
 - Appointment 列表
 
 ### enums.py
+
+------
+
+## 14.4 Conversation / Message HTTP 消息模块
+
+### 当前状态
+
+Conversation / Message 第一版 HTTP 非实时消息模块已完成。
+
+第一版明确不做：
+
+- WebSocket
+- Redis
+- 实时推送
+- 在线状态
+
+### 表
+
+```text
+conversations
+messages
+```
+
+`conversations` 字段：
+
+- id
+- house_id
+- tenant_id
+- landlord_id
+- created_at
+- updated_at
+
+`messages` 字段：
+
+- id
+- conversation_id
+- sender_id
+- content
+- created_at
+- updated_at
+- read_at
+
+约束：
+
+- `tenant_id + landlord_id + house_id` 唯一
+- 同一租客围绕同一房源联系同一房东，只能有一个会话
+- 已存在会话时，`POST /api/v1/conversations` 直接返回已有会话
+- 消息内容保存前会做 `content.strip()`
+- 成功发送消息后，会同步刷新 `Conversation.updated_at`
+
+### 接口
+
+```text
+POST  /api/v1/conversations
+GET   /api/v1/conversations
+GET   /api/v1/conversations/{id}/messages
+POST  /api/v1/conversations/{id}/messages
+PATCH /api/v1/conversations/{id}/read
+```
+
+### 规则
+
+- 所有接口必须登录
+- 创建会话只允许针对未删除且 `listed` 的房源
+- 当前用户不能联系自己的房源
+- 房源不存在、已删除、非 `listed` 时创建会话返回 `2001`
+- 房源下架或删除后不能再新建会话
+- 已存在的会话和消息记录不会因房源下架或删除自动删除
+- 会话列表只返回当前用户参与的会话
+- 会话列表返回 `house` 摘要、`last_message`、`last_message_at`、`unread_count`
+- 会话列表默认按 `Conversation.updated_at DESC, id DESC`
+- 消息列表仅参与者可查看，默认按 `created_at ASC, id ASC`
+- `PATCH /read` 只标记 `sender_id != current_user_id AND read_at IS NULL` 的消息
+
+### 错误码
+
+| code | 含义               |
+| ---- | ------------------ |
+| 2301 | 会话不存在         |
+| 2302 | 不能联系自己的房源 |
+
+继续复用：
+
+- `1003` 未登录
+- `2001` 房源不存在
+- `3001` 参数错误
+- `5000` 系统错误
 
 提供简单字符串常量类：
 

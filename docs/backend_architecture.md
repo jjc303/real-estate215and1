@@ -340,7 +340,7 @@ search：筛选（只读）
 favorite：收藏
 
 appointment：预约
-conversation：聊天
+conversation：HTTP 非实时消息
 contract：合同
 bill：账单
 payment：支付

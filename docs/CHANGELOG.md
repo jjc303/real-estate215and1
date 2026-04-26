@@ -1,5 +1,69 @@
 # Changelog
 
+## v1.5.0 - 2026-04-26
+
+### Added
+
+#### Conversation / Message HTTP 非实时消息模块
+
+新增 Conversation 第一版完整模块：
+
+- `app/modules/conversation/model.py`
+- `app/modules/conversation/schema.py`
+- `app/modules/conversation/repository.py`
+- `app/modules/conversation/service.py`
+- `app/modules/conversation/router.py`
+
+新增能力：
+
+- 围绕指定房源创建会话
+- 返回当前用户参与的会话列表
+- 查看会话消息列表
+- 发送非实时消息
+- 标记会话消息为已读
+
+第一版明确不做：
+
+- WebSocket
+- Redis
+- 实时推送
+- 在线状态
+
+#### Conversation / Message 数据模型
+
+新增表：
+
+- `conversations`
+- `messages`
+
+关键规则：
+
+- `tenant_id + landlord_id + house_id` 唯一
+- 同一租客围绕同一房源联系同一房东，只能有一个会话
+- 已存在会话时，`POST /api/v1/conversations` 直接返回已有会话
+- 发送消息成功后同步刷新 `Conversation.updated_at`
+- `Message.content` 保存 `strip()` 后的结果
+
+### Changed
+
+#### 新增 Conversation 错误码
+
+- `2301 会话不存在`
+- `2302 不能联系自己的房源`
+
+#### 接入 Alembic migration
+
+新增 migration：
+
+- `8599342798d7_add_conversations_and_messages.py`
+
+该 migration 只新增：
+
+- `conversations`
+- `messages`
+
+未修改旧表结构。
+
 ## v1.4.2 - 2026-04-26
 
 ### Changed

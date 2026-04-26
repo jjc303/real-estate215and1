@@ -26,6 +26,8 @@ APPOINTMENT_NOT_FOUND_CODE = 2201
 INVALID_APPOINTMENT_STATUS_CODE = 2202
 OWN_HOUSE_APPOINTMENT_FORBIDDEN_CODE = 2203
 APPOINTMENT_TIME_INVALID_CODE = 2204
+CONVERSATION_NOT_FOUND_CODE = 2301
+OWN_HOUSE_CONVERSATION_FORBIDDEN_CODE = 2302
 
 
 def _map_http_status_to_app_code(status_code: int) -> int:
@@ -174,6 +176,26 @@ class AppointmentTimeInvalidException(AppException):
         super().__init__(
             message=message,
             code=APPOINTMENT_TIME_INVALID_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class ConversationNotFoundException(AppException):
+    def __init__(self, message: str = "会话不存在", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=CONVERSATION_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class OwnHouseConversationForbiddenException(AppException):
+    def __init__(self, message: str = "不能联系自己的房源", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=OWN_HOUSE_CONVERSATION_FORBIDDEN_CODE,
             status_code=400,
             data=data,
         )

@@ -8,6 +8,7 @@ from app.core.exceptions import register_error_handlers
 from app.core.logging import setup_logging
 from app.modules.appointment.router import bp as appointment_bp
 from app.modules.auth.router import bp as auth_bp
+from app.modules.conversation.router import bp as conversation_bp
 from app.modules.favorite.router import bp as favorite_bp
 from app.modules.house.router import bp as house_bp
 from app.modules.user.router import bp as user_bp
@@ -19,6 +20,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(house_bp, url_prefix="/api/v1/houses")
     app.register_blueprint(favorite_bp, url_prefix="/api/v1/favorites")
     app.register_blueprint(appointment_bp, url_prefix="/api/v1/appointments")
+    app.register_blueprint(conversation_bp, url_prefix="/api/v1/conversations")
 
 
 def create_app(config_name: str | None = None) -> Flask:

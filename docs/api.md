@@ -1278,7 +1278,8 @@ curl -X DELETE http://127.0.0.1:8000/api/v1/houses/1 -H "Authorization: Bearer %
 - House 列表筛选当前仅增强现有 `GET /api/v1/houses` 和 `GET /api/v1/houses?mine=true`，未新增独立 Search 模块。
 - Pydantic 参数校验异常当前统一转换为 JSON `3001 bad request`，不再返回 Flask 默认 HTML 500。
 - Favorite 第一版不做“是否已收藏”字段回填到 House 接口。
-- 当前开发阶段可使用 `Base.metadata.create_all()` 自动创建缺失表，后续如进入正式迁移阶段再引入 Alembic。
+- 当前项目不再使用 `Base.metadata.create_all()` 自动建表。
+- 数据库结构统一通过 Alembic migration 管理。
 
 
 ------
@@ -1451,7 +1452,202 @@ PATCH /api/v1/appointments/{id}/cancel
 
 ------
 
-# 十、common 公共能力补充
+# 十、Conversation / Message 模块补充
+
+> 本节为 v1.5 新增内容。保留前文所有 User / Auth / House / Favorite / Appointment 文档。
+
+## 1. 业务规则总览
+
+所有 Conversation / Message 接口都必须登录。
+
+第一版明确不做：
+
+- WebSocket
+- Redis
+- 实时推送
+- 在线状态
+
+会话创建规则：
+
+- 只能针对未删除且 `listed` 的房源创建会话。
+- 当前用户不能联系自己的房源。
+- `tenant_id` 从 token 获取。
+- `landlord_id` 从 House 表读取。
+- 同一租客围绕同一房源联系同一房东，只能有一个会话。
+- 如果会话已存在，直接返回已有会话。
+
+消息规则：
+
+- `content` 去掉首尾空白后不能为空。
+- 保存到数据库的是 `content.strip()` 的结果。
+- 发送消息成功后，会同步刷新 `Conversation.updated_at`。
+- `PATCH /read` 只标记 `sender_id != current_user_id AND read_at IS NULL` 的消息。
+
+## 2. 创建会话
+
+### 接口
+
+```http
+POST /api/v1/conversations
+```
+
+### 请求体
+
+```json
+{
+  "house_id": 1
+}
+```
+
+### 规则
+
+- 必须登录。
+- 只能针对未删除且 `listed` 的房源创建会话。
+- 当前用户不能联系自己的房源。
+- 若会话不存在，则创建新会话并返回 `201`。
+- 若会话已存在，则直接返回已有会话并返回 `200`。
+
+### 成功响应（201 / 200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "house_id": 1,
+    "tenant_id": 2,
+    "landlord_id": 1,
+    "created_at": "2026-04-26T18:00:00",
+    "updated_at": "2026-04-26T18:00:00",
+    "house": {
+      "id": 1,
+      "title": "测试房源",
+      "region": "区域A",
+      "address": "地址A",
+      "house_type": "1室1厅",
+      "area": "50.00",
+      "rent": "2000.00",
+      "deposit": "2000.00",
+      "status": "listed"
+    },
+    "last_message": null,
+    "last_message_at": null,
+    "unread_count": 0
+  }
+}
+```
+
+## 3. 查看会话列表
+
+### 接口
+
+```http
+GET /api/v1/conversations?page=1&page_size=10
+```
+
+### 规则
+
+- 必须登录。
+- 只返回当前用户参与的会话。
+- 条件：`tenant_id = current_user_id OR landlord_id = current_user_id`。
+- 支持分页。
+- 默认按 `updated_at DESC, id DESC`。
+- 列表项包含 `house` 摘要、`last_message`、`last_message_at`、`unread_count`。
+
+## 4. 查看消息列表
+
+### 接口
+
+```http
+GET /api/v1/conversations/{id}/messages?page=1&page_size=10
+```
+
+### 规则
+
+- 必须登录。
+- 只有会话参与者可以查看。
+- 支持分页。
+- 默认按 `created_at ASC, id ASC`。
+
+## 5. 发送消息
+
+### 接口
+
+```http
+POST /api/v1/conversations/{id}/messages
+```
+
+### 请求体
+
+```json
+{
+  "content": "你好，这个房子还在吗？"
+}
+```
+
+### 规则
+
+- 必须登录。
+- 只有会话参与者可以发送。
+- `sender_id` 从 token 获取。
+- `content.strip()` 后不能为空。
+- 保存到数据库的是去首尾空白后的内容。
+- 成功后刷新所属会话的 `updated_at`。
+
+### 成功响应（201）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "conversation_id": 1,
+    "sender_id": 2,
+    "content": "你好，这个房子还在吗？",
+    "created_at": "2026-04-26T18:05:00",
+    "read_at": null
+  }
+}
+```
+
+## 6. 标记已读
+
+### 接口
+
+```http
+PATCH /api/v1/conversations/{id}/read
+```
+
+### 规则
+
+- 必须登录。
+- 只有会话参与者可以操作。
+- 将当前会话中 `sender_id != current_user_id AND read_at IS NULL` 的消息设置 `read_at = now`。
+
+### 成功响应（200）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "updated": 3
+  }
+}
+```
+
+## 7. Conversation 错误码
+
+| code | 含义               |
+| ---- | ------------------ |
+| 2301 | 会话不存在         |
+| 2302 | 不能联系自己的房源 |
+
+------
+
+# 十一、common 公共能力补充
 
 当前项目已完成 common 公共能力替换重构。
 
@@ -1476,14 +1672,16 @@ app/common/base_model.py
 | House       | `House(BaseModel, SoftDeleteMixin)` |
 | Favorite    | `Favorite(BaseModel)`               |
 | Appointment | `Appointment(BaseModel)`            |
+| Conversation| `Conversation(BaseModel)`           |
+| Message     | `Message(BaseModel)`                |
 
 说明：
 
 - `BaseModel` 提供 `id / created_at / updated_at`。
 - `SoftDeleteMixin` 提供 `deleted_at`。
 - `deleted_at` 只用于 House。
-- Favorite / Appointment 有 `updated_at`。
-- Favorite / Appointment 没有 `deleted_at`。
+- Favorite / Appointment / Conversation / Message 有 `updated_at`。
+- Favorite / Appointment / Conversation / Message 没有 `deleted_at`。
 
 ## 2. pagination.py
 
