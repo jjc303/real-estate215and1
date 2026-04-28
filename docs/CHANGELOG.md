@@ -1,5 +1,69 @@
 # Changelog
 
+## v1.7.0 - 2026-04-28
+
+### Added
+
+#### Bill 账单模块
+
+新增 Bill 第一版完整模块：
+
+- `app/modules/bill/model.py`
+- `app/modules/bill/schema.py`
+- `app/modules/bill/repository.py`
+- `app/modules/bill/service.py`
+- `app/modules/bill/router.py`
+
+新增表：
+
+- `bills`
+
+新增接口：
+
+- `POST /api/v1/bills`
+- `GET /api/v1/bills`
+- `GET /api/v1/bills/{id}`
+- `PATCH /api/v1/bills/{id}/cancel`
+- `PATCH /api/v1/bills/{id}/mark-overdue`
+
+新增错误码：
+
+- `2501 账单不存在`
+- `2502 非法账单状态`
+- `2503 合同未生效，不能创建账单`
+- `2504 账单金额不合法`
+
+新增 migration：
+
+- `e196c0dcb397_add_bills_table.py`
+
+### Changed
+
+#### Bill 业务规则
+
+- Bill 必须基于 `active contract` 创建
+- `POST /bills` 请求体只允许 `contract_id / bill_type / amount / due_date / remark`
+- 前端不允许传 `house_id / tenant_id / landlord_id`
+- `house_id / tenant_id / landlord_id` 由后端从 contract 自动写入
+- `bill_type` 第一版只允许 `rent / deposit / other`
+- `amount` 必须大于 `0`
+- 第一版不做 Payment，不新增 `payment` 表，不新增 `mark-paid` 接口
+- `paid` 只在状态常量中预留，不提供公开状态修改接口
+
+#### mark-overdue 规则增强
+
+- `PATCH /api/v1/bills/{id}/mark-overdue` 只允许 `unpaid -> overdue`
+- 必须满足当前日期已经大于 `bill.due_date`
+- 状态不合法或 `due_date` 未过期时统一返回 `2502`
+
+### Verified
+
+- `pytest backend/tests/api/test_bill_flow.py -q` 通过
+- 结果：`2 passed`
+- 已覆盖 Bill 主流程与参数/权限错误场景
+- 已覆盖 `mark-overdue` 的 `due_date` 校验
+
+
 ## v1.6.2 - 2026-04-26
 
 ### Added

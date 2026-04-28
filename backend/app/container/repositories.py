@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.modules.appointment.repository import AppointmentRepository
+from app.modules.bill.repository import BillRepository
 from app.modules.contract.repository import ContractRepository
 from app.modules.conversation.repository import ConversationRepository, MessageRepository
 from app.modules.favorite.repository import FavoriteRepository
@@ -15,6 +16,7 @@ _appointment_repository = AppointmentRepository()
 _conversation_repository = ConversationRepository()
 _message_repository = MessageRepository()
 _contract_repository = ContractRepository()
+_bill_repository = BillRepository()
 
 
 def get_user_repository() -> UserRepository:
@@ -43,3 +45,7 @@ def get_message_repository() -> MessageRepository:
 
 def get_contract_repository() -> ContractRepository:
     return _contract_repository
+
+
+def get_bill_repository() -> BillRepository:
+    return _bill_repository

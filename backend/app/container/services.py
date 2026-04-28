@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.container.repositories import (
     get_appointment_repository,
+    get_bill_repository,
     get_contract_repository,
     get_conversation_repository,
     get_favorite_repository,
@@ -11,6 +12,7 @@ from app.container.repositories import (
 )
 from app.modules.appointment.service import AppointmentService
 from app.modules.auth.service import AuthService
+from app.modules.bill.service import BillService
 from app.modules.contract.service import ContractService
 from app.modules.conversation.service import ConversationService
 from app.modules.favorite.service import FavoriteService
@@ -32,6 +34,10 @@ _contract_service = ContractService(
     get_contract_repository(),
     get_appointment_repository(),
     get_house_repository(),
+)
+_bill_service = BillService(
+    get_bill_repository(),
+    get_contract_repository(),
 )
 
 
@@ -61,3 +67,7 @@ def get_conversation_service() -> ConversationService:
 
 def get_contract_service() -> ContractService:
     return _contract_service
+
+
+def get_bill_service() -> BillService:
+    return _bill_service

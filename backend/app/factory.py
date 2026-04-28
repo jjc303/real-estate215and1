@@ -8,6 +8,7 @@ from app.core.exceptions import register_error_handlers
 from app.core.logging import setup_logging
 from app.modules.appointment.router import bp as appointment_bp
 from app.modules.auth.router import bp as auth_bp
+from app.modules.bill.router import bp as bill_bp
 from app.modules.contract.router import bp as contract_bp
 from app.modules.conversation.router import bp as conversation_bp
 from app.modules.favorite.router import bp as favorite_bp
@@ -23,6 +24,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(appointment_bp, url_prefix="/api/v1/appointments")
     app.register_blueprint(conversation_bp, url_prefix="/api/v1/conversations")
     app.register_blueprint(contract_bp, url_prefix="/api/v1/contracts")
+    app.register_blueprint(bill_bp, url_prefix="/api/v1/bills")
 
 
 def create_app(config_name: str | None = None) -> Flask:

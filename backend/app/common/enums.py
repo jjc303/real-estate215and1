@@ -21,3 +21,16 @@ class ContractStatus:
     REJECTED = "rejected"
     CANCELLED = "cancelled"
     TERMINATED = "terminated"
+
+
+class BillType:
+    RENT = "rent"
+    DEPOSIT = "deposit"
+    OTHER = "other"
+
+
+class BillStatus:
+    UNPAID = "unpaid"
+    PAID = "paid"
+    CANCELLED = "cancelled"
+    OVERDUE = "overdue"
