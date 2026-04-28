@@ -6,6 +6,7 @@ from app.modules.contract.repository import ContractRepository
 from app.modules.conversation.repository import ConversationRepository, MessageRepository
 from app.modules.favorite.repository import FavoriteRepository
 from app.modules.house.repository import HouseRepository
+from app.modules.payment.repository import PaymentRepository
 from app.modules.user.repository import UserRepository
 
 
@@ -17,6 +18,7 @@ _conversation_repository = ConversationRepository()
 _message_repository = MessageRepository()
 _contract_repository = ContractRepository()
 _bill_repository = BillRepository()
+_payment_repository = PaymentRepository()
 
 
 def get_user_repository() -> UserRepository:
@@ -49,3 +51,7 @@ def get_contract_repository() -> ContractRepository:
 
 def get_bill_repository() -> BillRepository:
     return _bill_repository
+
+
+def get_payment_repository() -> PaymentRepository:
+    return _payment_repository

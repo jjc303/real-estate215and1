@@ -34,3 +34,12 @@ class BillStatus:
     PAID = "paid"
     CANCELLED = "cancelled"
     OVERDUE = "overdue"
+
+
+class PaymentMethod:
+    MOCK = "mock"
+    OFFLINE = "offline"
+
+
+class PaymentStatus:
+    SUCCESS = "success"

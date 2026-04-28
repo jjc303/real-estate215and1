@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.7.0
+Version: v1.8.0
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -2142,6 +2142,207 @@ PATCH /api/v1/bills/{id}/mark-overdue
 
 - `1003` 未登录
 - `2401` 合同不存在
+- `3001` 参数错误
+- `4009` 资源冲突
+- `5000` 系统错误
+# 十四、Payment 模块补充
+
+> 本节为 v1.8 新增内容。Payment 第一版只做模拟支付和支付记录，不接第三方支付，不做回调，不做退款，不做部分支付。
+
+## 1. 业务规则总览
+
+所有 Payment 接口都必须登录。
+
+Payment 第一版只提供：
+
+- `POST /api/v1/payments`
+- `GET /api/v1/payments`
+- `GET /api/v1/payments/{id}`
+
+核心规则：
+
+- 只有租客可以支付自己的 bill
+- 房东不能支付
+- 只有 `unpaid / overdue` bill 允许支付
+- `cancelled / paid` bill 不允许支付
+- 成功支付时，后端在同一事务中：
+  1. 先插入 Payment
+  2. 再更新 `Bill.status = paid`
+- 重复支付同一 bill 返回 `2604`
+- 非参与者访问 payment 返回 `2601`
+
+## 2. Payment 表结构
+
+```text
+payments
+```
+
+字段：
+
+- `id`
+- `bill_id`
+- `contract_id`
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+- `amount`
+- `payment_method`
+- `status`
+- `paid_at`
+- `remark`
+- `created_at`
+- `updated_at`
+
+说明：
+
+- `bill_id` 必填
+- `contract_id / house_id / tenant_id / landlord_id` 不允许前端传，由后端从 bill 自动写入
+- `amount` 必须等于 `bill.amount`
+- `payment_method` 只允许：
+  - `mock`
+  - `offline`
+- `status` 第一版只写入 `success`
+- `paid_at` 返回统一 ISO 8601 格式
+
+## 3. 创建支付记录
+
+### 接口
+
+```http
+POST /api/v1/payments
+```
+
+### 请求体
+
+只允许：
+
+- `bill_id`
+- `amount`
+- `payment_method`
+- `remark`
+
+示例：
+
+```json
+{
+  "bill_id": 1,
+  "amount": 2600,
+  "payment_method": "mock",
+  "remark": "tenant mock payment"
+}
+```
+
+### 成功响应（201）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "bill_id": 1,
+    "contract_id": 1,
+    "house_id": 1,
+    "tenant_id": 2,
+    "landlord_id": 1,
+    "amount": "2600.00",
+    "payment_method": "mock",
+    "status": "success",
+    "paid_at": "2026-04-28T19:00:00",
+    "remark": "tenant mock payment",
+    "created_at": "2026-04-28T19:00:00",
+    "updated_at": "2026-04-28T19:00:00"
+  }
+}
+```
+
+### 规则
+
+- 仅租客本人可调用
+- bill 不存在或当前用户无权支付该 bill，返回 `2501`
+- `amount` 必须严格等于 `bill.amount`，否则返回 `2603`
+- 允许支付：
+  - `unpaid`
+  - `overdue`
+- 以下状态不允许支付，返回 `2602`
+  - `cancelled`
+- bill 已支付或重复支付返回 `2604`
+
+## 4. 支付记录列表
+
+### 接口
+
+```http
+GET /api/v1/payments?page=1&page_size=10
+```
+
+### 规则
+
+- 只有 bill 参与者可查看
+- 支持分页
+- 默认：
+  - `page = 1`
+  - `page_size = 10`
+- 返回：
+  - `list / total / page / page_size`
+
+### 成功响应示例
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "bill_id": 1,
+        "contract_id": 1,
+        "house_id": 1,
+        "tenant_id": 2,
+        "landlord_id": 1,
+        "amount": "2600.00",
+        "payment_method": "mock",
+        "status": "success",
+        "paid_at": "2026-04-28T19:00:00",
+        "remark": "tenant mock payment",
+        "created_at": "2026-04-28T19:00:00",
+        "updated_at": "2026-04-28T19:00:00"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "page_size": 10
+  }
+}
+```
+
+## 5. 支付记录详情
+
+### 接口
+
+```http
+GET /api/v1/payments/{id}
+```
+
+### 规则
+
+- 只有 bill 参与者可以查看
+- 非参与者统一返回 `2601`
+
+## 6. Payment 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2601 | 支付记录不存在 |
+| 2602 | 账单状态不允许支付 |
+| 2603 | 支付金额不匹配 |
+| 2604 | 账单已支付 |
+
+继续复用：
+
+- `1003` 未登录
+- `2501` 账单不存在
 - `3001` 参数错误
 - `4009` 资源冲突
 - `5000` 系统错误

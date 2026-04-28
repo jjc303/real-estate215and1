@@ -1,5 +1,69 @@
 # Changelog
 
+## v1.8.0 - 2026-04-28
+
+### Added
+
+#### Payment 支付记录模块
+
+新增 Payment 第一版完整模块：
+
+- `app/modules/payment/model.py`
+- `app/modules/payment/schema.py`
+- `app/modules/payment/repository.py`
+- `app/modules/payment/service.py`
+- `app/modules/payment/router.py`
+
+新增表：
+
+- `payments`
+
+新增接口：
+- `POST /api/v1/payments`
+- `GET /api/v1/payments`
+- `GET /api/v1/payments/{id}`
+
+新增错误码：
+
+- `2601 支付记录不存在`
+- `2602 账单状态不允许支付`
+- `2603 支付金额不匹配`
+- `2604 账单已支付`
+
+新增 migration：
+- `4d4e0ca9ef73_add_payments_table.py`
+
+### Changed
+
+#### Payment 业务规则
+
+- Payment 第一版只做模拟支付和支付记录
+- 不接第三方支付
+- 不做支付回调
+- 不做退款
+- 不做部分支付
+- `POST /payments` 请求体只允许 `bill_id / amount / payment_method / remark`
+- 前端不允许传 `contract_id / house_id / tenant_id / landlord_id / status / paid_at`
+- `contract_id / house_id / tenant_id / landlord_id` 由后端从 bill 自动写入
+- `payment_method` 第一版只允许 `mock / offline`
+- `amount` 必须严格等于 `bill.amount`
+- 只有租客可以支付自己的 bill
+- 允许支付 `unpaid / overdue`
+- 禁止支付 `cancelled / paid`
+- 成功支付在同一事务内先插入 Payment，再更新 `Bill.status = paid`
+- 非参与者访问 payment 统一返回 `2601`
+- 重复支付同一 bill 返回 `2604`
+
+### Verified
+
+- `alembic upgrade head` 已执行到 `4d4e0ca9ef73`
+- `pytest backend/tests/api/test_payment_flow.py -q` 通过
+- 结果：`2 passed`
+- `pytest backend/tests/api/test_bill_flow.py -q` 回归通过
+- 结果：`2 passed`
+- 已覆盖 `unpaid bill` 支付、`overdue bill` 支付、重复支付、越权访问、金额不匹配、`cancelled bill` 禁止支付
+
+
 ## v1.7.0 - 2026-04-28
 
 ### Added

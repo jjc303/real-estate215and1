@@ -13,6 +13,7 @@ from app.modules.contract.router import bp as contract_bp
 from app.modules.conversation.router import bp as conversation_bp
 from app.modules.favorite.router import bp as favorite_bp
 from app.modules.house.router import bp as house_bp
+from app.modules.payment.router import bp as payment_bp
 from app.modules.user.router import bp as user_bp
 
 
@@ -25,6 +26,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(conversation_bp, url_prefix="/api/v1/conversations")
     app.register_blueprint(contract_bp, url_prefix="/api/v1/contracts")
     app.register_blueprint(bill_bp, url_prefix="/api/v1/bills")
+    app.register_blueprint(payment_bp, url_prefix="/api/v1/payments")
 
 
 def create_app(config_name: str | None = None) -> Flask:

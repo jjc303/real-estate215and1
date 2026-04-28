@@ -8,6 +8,7 @@ from app.container.repositories import (
     get_favorite_repository,
     get_house_repository,
     get_message_repository,
+    get_payment_repository,
     get_user_repository,
 )
 from app.modules.appointment.service import AppointmentService
@@ -17,6 +18,7 @@ from app.modules.contract.service import ContractService
 from app.modules.conversation.service import ConversationService
 from app.modules.favorite.service import FavoriteService
 from app.modules.house.service import HouseService
+from app.modules.payment.service import PaymentService
 from app.modules.user.service import UserService
 
 
@@ -38,6 +40,10 @@ _contract_service = ContractService(
 _bill_service = BillService(
     get_bill_repository(),
     get_contract_repository(),
+)
+_payment_service = PaymentService(
+    get_payment_repository(),
+    get_bill_repository(),
 )
 
 
@@ -71,3 +77,7 @@ def get_contract_service() -> ContractService:
 
 def get_bill_service() -> BillService:
     return _bill_service
+
+
+def get_payment_service() -> PaymentService:
+    return _payment_service
