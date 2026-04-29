@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.3.1
+Version: v1.8.0
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -68,6 +68,10 @@ Authorization: Bearer <token>
 | 2202 | 非法预约状态           |
 | 2203 | 不能预约自己的房源     |
 | 2204 | 预约时间必须是未来时间 |
+| 2501 | 账单不存在             |
+| 2502 | 非法账单状态           |
+| 2503 | 合同未生效，不能创建账单 |
+| 2504 | 账单金额不合法         |
 | 4009 | 资源冲突               |
 | 5000 | 系统错误               |
 
@@ -1962,3 +1966,383 @@ extra="forbid"
 
 - 不改变现有接口请求校验语义。
 - 对原本不强制 forbid 的 schema 保留旧行为。
+# 十三、Bill 模块补充
+
+> 本节为 v1.7 新增内容。保留前文所有 User / Auth / House / Favorite / Appointment / Conversation / Contract 文档。
+
+## 1. 业务规则总览
+
+所有 Bill 接口都必须登录。
+
+第一版明确不做：
+
+- Payment
+- `payment` 表
+- `mark-paid` 接口
+- 真实支付
+
+Bill 必须基于 `active contract` 创建。
+
+创建规则：
+
+- `POST /api/v1/bills` 仅房东可调用
+- 请求体只允许：
+  - `contract_id`
+  - `bill_type`
+  - `amount`
+  - `due_date`
+  - `remark`
+- 不允许前端传：
+  - `house_id`
+  - `tenant_id`
+  - `landlord_id`
+- 后端从 contract 自动写入：
+  - `house_id`
+  - `tenant_id`
+  - `landlord_id`
+- `bill_type` 第一版只允许：
+  - `rent`
+  - `deposit`
+  - `other`
+- `amount` 必须大于 `0`
+- `due_date` 必须是合法 `Date`，格式错误返回 `3001`
+- 合同不存在或不属于当前房东，返回 `2401`
+- 合同不是 `active`，返回 `2503`
+
+Bill 第一版状态：
+
+| status    | 含义 |
+| --------- | ---- |
+| unpaid    | 待支付 |
+| paid      | 预留，第一版无公开接口 |
+| cancelled | 已取消 |
+| overdue   | 已逾期 |
+
+允许的公开状态流转：
+
+- `create -> unpaid`
+- `unpaid -> cancelled`
+- `unpaid -> overdue`
+- `overdue -> cancelled`
+
+## 2. 创建账单
+
+### 接口
+
+```http
+POST /api/v1/bills
+```
+
+### 请求体
+
+```json
+{
+  "contract_id": 1,
+  "bill_type": "rent",
+  "amount": 2500,
+  "due_date": "2026-05-10",
+  "remark": "May rent"
+}
+```
+
+### 成功响应（201）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "contract_id": 1,
+    "house_id": 1,
+    "tenant_id": 2,
+    "landlord_id": 1,
+    "bill_type": "rent",
+    "amount": "2500.00",
+    "due_date": "2026-05-10",
+    "status": "unpaid",
+    "remark": "May rent",
+    "created_at": "2026-04-28T10:00:00",
+    "updated_at": "2026-04-28T10:00:00"
+  }
+}
+```
+
+## 3. 查看账单列表
+
+### 接口
+
+```http
+GET /api/v1/bills?page=1&page_size=10
+```
+
+### 规则
+
+- 仅返回当前用户参与的账单
+- 条件：`tenant_id == current_user_id OR landlord_id == current_user_id`
+- 支持分页
+- 默认按 `created_at DESC, id DESC`
+
+## 4. 查看账单详情
+
+### 接口
+
+```http
+GET /api/v1/bills/{id}
+```
+
+### 规则
+
+- 房东和租客都可查看自己参与的账单
+- 非参与者统一返回 `2501`
+
+## 5. 取消账单
+
+### 接口
+
+```http
+PATCH /api/v1/bills/{id}/cancel
+```
+
+### 规则
+
+- 仅账单所属房东可调用
+- 仅允许：
+  - `unpaid -> cancelled`
+  - `overdue -> cancelled`
+- 非参与者统一返回 `2501`
+- 非法账单状态流转返回 `2502`
+
+## 6. 标记账单逾期
+
+### 接口
+
+```http
+PATCH /api/v1/bills/{id}/mark-overdue
+```
+
+### 规则
+
+- 仅账单所属房东可调用
+- 只允许 `unpaid -> overdue`
+- 必须当前日期已经超过 `due_date`
+- 非参与者统一返回 `2501`
+- 状态不合法或 `due_date` 未过期时统一返回 `2502`
+
+## 7. Bill 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2501 | 账单不存在 |
+| 2502 | 非法账单状态 |
+| 2503 | 合同未生效，不能创建账单 |
+| 2504 | 账单金额不合法 |
+
+继续复用：
+
+- `1003` 未登录
+- `2401` 合同不存在
+- `3001` 参数错误
+- `4009` 资源冲突
+- `5000` 系统错误
+# 十四、Payment 模块补充
+
+> 本节为 v1.8 新增内容。Payment 第一版只做模拟支付和支付记录，不接第三方支付，不做回调，不做退款，不做部分支付。
+
+## 1. 业务规则总览
+
+所有 Payment 接口都必须登录。
+
+Payment 第一版只提供：
+
+- `POST /api/v1/payments`
+- `GET /api/v1/payments`
+- `GET /api/v1/payments/{id}`
+
+核心规则：
+
+- 只有租客可以支付自己的 bill
+- 房东不能支付
+- 只有 `unpaid / overdue` bill 允许支付
+- `cancelled / paid` bill 不允许支付
+- 成功支付时，后端在同一事务中：
+  1. 先插入 Payment
+  2. 再更新 `Bill.status = paid`
+- 重复支付同一 bill 返回 `2604`
+- 非参与者访问 payment 返回 `2601`
+
+## 2. Payment 表结构
+
+```text
+payments
+```
+
+字段：
+
+- `id`
+- `bill_id`
+- `contract_id`
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+- `amount`
+- `payment_method`
+- `status`
+- `paid_at`
+- `remark`
+- `created_at`
+- `updated_at`
+
+说明：
+
+- `bill_id` 必填
+- `contract_id / house_id / tenant_id / landlord_id` 不允许前端传，由后端从 bill 自动写入
+- `amount` 必须等于 `bill.amount`
+- `payment_method` 只允许：
+  - `mock`
+  - `offline`
+- `status` 第一版只写入 `success`
+- `paid_at` 返回统一 ISO 8601 格式
+
+## 3. 创建支付记录
+
+### 接口
+
+```http
+POST /api/v1/payments
+```
+
+### 请求体
+
+只允许：
+
+- `bill_id`
+- `amount`
+- `payment_method`
+- `remark`
+
+示例：
+
+```json
+{
+  "bill_id": 1,
+  "amount": 2600,
+  "payment_method": "mock",
+  "remark": "tenant mock payment"
+}
+```
+
+### 成功响应（201）
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "bill_id": 1,
+    "contract_id": 1,
+    "house_id": 1,
+    "tenant_id": 2,
+    "landlord_id": 1,
+    "amount": "2600.00",
+    "payment_method": "mock",
+    "status": "success",
+    "paid_at": "2026-04-28T19:00:00",
+    "remark": "tenant mock payment",
+    "created_at": "2026-04-28T19:00:00",
+    "updated_at": "2026-04-28T19:00:00"
+  }
+}
+```
+
+### 规则
+
+- 仅租客本人可调用
+- bill 不存在或当前用户无权支付该 bill，返回 `2501`
+- `amount` 必须严格等于 `bill.amount`，否则返回 `2603`
+- 允许支付：
+  - `unpaid`
+  - `overdue`
+- 以下状态不允许支付，返回 `2602`
+  - `cancelled`
+- bill 已支付或重复支付返回 `2604`
+
+## 4. 支付记录列表
+
+### 接口
+
+```http
+GET /api/v1/payments?page=1&page_size=10
+```
+
+### 规则
+
+- 只有 bill 参与者可查看
+- 支持分页
+- 默认：
+  - `page = 1`
+  - `page_size = 10`
+- 返回：
+  - `list / total / page / page_size`
+
+### 成功响应示例
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "bill_id": 1,
+        "contract_id": 1,
+        "house_id": 1,
+        "tenant_id": 2,
+        "landlord_id": 1,
+        "amount": "2600.00",
+        "payment_method": "mock",
+        "status": "success",
+        "paid_at": "2026-04-28T19:00:00",
+        "remark": "tenant mock payment",
+        "created_at": "2026-04-28T19:00:00",
+        "updated_at": "2026-04-28T19:00:00"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "page_size": 10
+  }
+}
+```
+
+## 5. 支付记录详情
+
+### 接口
+
+```http
+GET /api/v1/payments/{id}
+```
+
+### 规则
+
+- 只有 bill 参与者可以查看
+- 非参与者统一返回 `2601`
+
+## 6. Payment 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2601 | 支付记录不存在 |
+| 2602 | 账单状态不允许支付 |
+| 2603 | 支付金额不匹配 |
+| 2604 | 账单已支付 |
+
+继续复用：
+
+- `1003` 未登录
+- `2501` 账单不存在
+- `3001` 参数错误
+- `4009` 资源冲突
+- `5000` 系统错误

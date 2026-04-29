@@ -33,6 +33,14 @@ INVALID_CONTRACT_STATUS_CODE = 2402
 OWN_HOUSE_CONTRACT_FORBIDDEN_CODE = 2403
 CONTRACT_DATE_INVALID_CODE = 2404
 HOUSE_ACTIVE_CONTRACT_CONFLICT_CODE = 2405
+BILL_NOT_FOUND_CODE = 2501
+INVALID_BILL_STATUS_CODE = 2502
+CONTRACT_NOT_ACTIVE_FOR_BILL_CODE = 2503
+BILL_AMOUNT_INVALID_CODE = 2504
+PAYMENT_NOT_FOUND_CODE = 2601
+PAYMENT_BILL_STATUS_INVALID_CODE = 2602
+PAYMENT_AMOUNT_MISMATCH_CODE = 2603
+BILL_ALREADY_PAID_CODE = 2604
 
 
 def _map_http_status_to_app_code(status_code: int) -> int:
@@ -251,6 +259,90 @@ class HouseActiveContractConflictException(AppException):
         super().__init__(
             message=message,
             code=HOUSE_ACTIVE_CONTRACT_CONFLICT_CODE,
+            status_code=409,
+            data=data,
+        )
+
+
+class BillNotFoundException(AppException):
+    def __init__(self, message: str = "bill not found", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=BILL_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class InvalidBillStatusException(AppException):
+    def __init__(self, message: str = "invalid bill status", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=INVALID_BILL_STATUS_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class ContractNotActiveForBillException(AppException):
+    def __init__(
+        self,
+        message: str = "contract is not active for bill creation",
+        data: Any | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            code=CONTRACT_NOT_ACTIVE_FOR_BILL_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class BillAmountInvalidException(AppException):
+    def __init__(self, message: str = "bill amount is invalid", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=BILL_AMOUNT_INVALID_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class PaymentNotFoundException(AppException):
+    def __init__(self, message: str = "payment not found", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=PAYMENT_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class BillNotPayableException(AppException):
+    def __init__(self, message: str = "bill status is not payable", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=PAYMENT_BILL_STATUS_INVALID_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class PaymentAmountMismatchException(AppException):
+    def __init__(self, message: str = "payment amount mismatch", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=PAYMENT_AMOUNT_MISMATCH_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class BillAlreadyPaidException(AppException):
+    def __init__(self, message: str = "bill already paid", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=BILL_ALREADY_PAID_CODE,
             status_code=409,
             data=data,
         )

@@ -519,3 +519,37 @@ gunicorn -w 4 -b 0.0.0.0:8000 "app.main:app"
 cd backend
 pytest tests/api/test_smoke_flow.py -q
 ```
+## 20. Bill 模块补充
+
+`app/modules/bill` 已纳入当前后端模块列表，仍严格遵守：
+
+```text
+router -> service -> repository -> model
+```
+
+约束保持不变：
+
+- repository 不 `commit / rollback`
+- service 显式接收 `db` 并控制事务
+- 数据库结构统一通过 Alembic migration 管理
+
+当前 Bill 第一版定位：
+
+- 基于 `active contract` 创建账单
+- 只做 HTTP 账单记录与状态流转
+- 不做 `payment` 表
+- 不做 `mark-paid` 接口
+
+## 21. Bill API 测试补充
+
+当前自动化接口冒烟测试除主链路外，已补充：
+
+- `backend/tests/api/test_bill_flow.py`
+
+运行方式：
+
+```bash
+cd backend
+pytest tests/api/test_smoke_flow.py -q
+pytest tests/api/test_bill_flow.py -q
+```

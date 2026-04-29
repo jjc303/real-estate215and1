@@ -1,8 +1,8 @@
 # AI Context（Backend Project）
 
-Version: v1.6.2  
-Last Updated: 2026-04-26  
-Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract 最小闭环已完成；House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
+Version: v1.8.0  
+Last Updated: 2026-04-28  
+Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill 最小闭环已完成；House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 
 ------
 
@@ -1495,3 +1495,276 @@ PATCH /api/v1/contracts/{id}/terminate
 - `3001` 参数错误
 - `4009` 资源冲突
 - `5000` 系统错误
+# 15. v1.7 Bill 模块补充
+
+> 本节为当前最新补充，若前文仍出现旧的 Bill / Payment 描述，以本节为准。
+
+## 15.1 当前最新状态
+
+当前后端已完成：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill 最小闭环
+```
+
+Bill 第一版明确不做：
+
+- Payment
+- `payment` 表
+- `mark-paid` 接口
+- 真实支付
+
+## 15.2 Bill 表
+
+新增表：
+
+```text
+bills
+```
+
+字段包括：
+
+- id
+- contract_id
+- house_id
+- tenant_id
+- landlord_id
+- bill_type
+- amount
+- due_date
+- status
+- remark
+- created_at
+- updated_at
+
+关键规则：
+
+- Bill 必须基于 `active contract` 创建
+- `POST /bills` 不允许前端传 `house_id / tenant_id / landlord_id`
+- `house_id / tenant_id / landlord_id` 由后端从 contract 自动写入
+- `bill_type` 第一版只允许 `rent / deposit / other`
+- `amount` 必须大于 `0`
+
+## 15.3 Bill 状态
+
+```text
+unpaid / paid / cancelled / overdue
+```
+
+- `unpaid`：待支付
+- `paid`：预留状态，第一版无公开接口写入
+- `cancelled`：已取消
+- `overdue`：已逾期
+
+## 15.4 Bill 接口
+
+```text
+POST  /api/v1/bills
+GET   /api/v1/bills
+GET   /api/v1/bills/{id}
+PATCH /api/v1/bills/{id}/cancel
+PATCH /api/v1/bills/{id}/mark-overdue
+```
+
+## 15.5 mark-overdue 规则
+
+- 只允许 `unpaid -> overdue`
+- 必须当前日期已经超过 `due_date`
+- 如果 `bill.status` 不是 `unpaid`，返回 `2502`
+- 如果当前日期尚未超过 `due_date`，也返回 `2502`
+
+## 15.6 Bill 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2501 | 账单不存在 |
+| 2502 | 非法账单状态 |
+| 2503 | 合同未生效，不能创建账单 |
+| 2504 | 账单金额不合法 |
+
+继续复用：
+
+- `1003` 未登录
+- `2401` 合同不存在
+- `3001` 参数错误
+- `4009` 资源冲突
+- `5000` 系统错误
+
+## 15.7 Alembic 与测试
+
+Bill 第一版 migration：
+
+- `e196c0dcb397_add_bills_table.py`
+
+说明：
+
+- 只新增 `bills` 表
+- 不修改旧 migration
+- 不修改已有 `users / houses / favorites / appointments / conversations / messages / contracts`
+
+Bill HTTP smoke test：
+
+- `backend/tests/api/test_bill_flow.py`
+
+已通过：
+
+```bash
+pytest tests/api/test_bill_flow.py -q
+```
+
+结果：
+
+```text
+2 passed
+```
+
+# 16. v1.8 Payment 模块补充
+
+> 本节为当前最新补充，若前文仍出现旧的 Bill / Payment 描述，以本节为准。
+
+## 16.1 当前最新状态
+
+当前后端已完成：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment 最小闭环
+```
+
+Payment 第一版明确不做：
+
+- 第三方支付
+- 支付回调
+- 退款
+- 部分支付
+- mark-paid 公开接口
+
+## 16.2 Payment 表
+
+新增表：
+
+```text
+payments
+```
+
+字段包括：
+
+- id
+- bill_id
+- contract_id
+- house_id
+- tenant_id
+- landlord_id
+- amount
+- payment_method
+- status
+- paid_at
+- remark
+- created_at
+- updated_at
+
+关键规则：
+
+- Payment 必须基于现有 bill 创建
+- `POST /payments` 只允许前端传：
+  - `bill_id`
+  - `amount`
+  - `payment_method`
+  - `remark`
+- 前端不允许传：
+  - `contract_id`
+  - `house_id`
+  - `tenant_id`
+  - `landlord_id`
+  - `status`
+  - `paid_at`
+- `contract_id / house_id / tenant_id / landlord_id` 由后端从 bill 自动写入
+- `amount` 必须严格等于 `bill.amount`
+- `payment_method` 第一版只允许：
+  - `mock`
+  - `offline`
+- `bill_id` 保留唯一约束
+- `paid_at` 返回统一 ISO 8601 格式
+
+## 16.3 Payment 状态与 Bill 联动
+
+Payment 第一版只使用：
+
+```text
+success
+```
+
+Bill 支付规则：
+
+- 允许支付：
+  - `unpaid`
+  - `overdue`
+- 禁止支付：
+  - `cancelled`
+  - `paid`
+
+事务顺序固定为：
+
+1. 先插入 Payment
+2. 再更新 `Bill.status = paid`
+3. 两步必须在同一事务内完成
+
+## 16.4 Payment 接口
+
+```text
+POST /api/v1/payments
+GET  /api/v1/payments
+GET  /api/v1/payments/{id}
+```
+
+权限规则：
+
+- 只有租客可以支付自己的 bill
+- 房东不能支付
+- 只有 bill 参与者可以查看 payment
+- 非参与者访问 payment 统一返回 `2601`
+- 重复支付同一 bill 返回 `2604`
+
+## 16.5 Payment 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2601 | 支付记录不存在 |
+| 2602 | 账单状态不允许支付 |
+| 2603 | 支付金额不匹配 |
+| 2604 | 账单已支付 |
+
+继续复用：
+
+- `1003` 未登录
+- `2501` 账单不存在
+- `3001` 参数错误
+- `4009` 资源冲突
+- `5000` 系统错误
+
+## 16.6 Alembic 与测试
+
+Payment 第一版 migration：
+
+- `4d4e0ca9ef73_add_payments_table.py`
+
+说明：
+
+- 只新增 `payments` 表
+- 不修改旧 migration
+- 不修改已有 `users / houses / favorites / appointments / conversations / messages / contracts / bills`
+
+Payment HTTP smoke test：
+
+- `backend/tests/api/test_payment_flow.py`
+
+已通过：
+
+```bash
+pytest tests/api/test_payment_flow.py -q
+```
+
+结果：
+
+```text
+2 passed
+```
