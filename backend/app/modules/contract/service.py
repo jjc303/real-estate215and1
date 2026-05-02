@@ -24,6 +24,7 @@ from app.modules.contract.repository import ContractRepository
 from app.modules.contract.schema import ContractHouseSummarySchema, ContractReadSchema
 from app.modules.house.model import House
 from app.modules.house.repository import HouseRepository
+from app.modules.notification.service import NotificationService
 
 
 class ContractService:
@@ -32,10 +33,12 @@ class ContractService:
         contract_repository: ContractRepository,
         appointment_repository: AppointmentRepository,
         house_repository: HouseRepository,
+        notification_service: NotificationService,
     ) -> None:
         self.contract_repository = contract_repository
         self.appointment_repository = appointment_repository
         self.house_repository = house_repository
+        self.notification_service = notification_service
 
     def create_contract(
         self,
@@ -85,6 +88,13 @@ class ContractService:
 
         try:
             self.contract_repository.create(db, contract)
+            db.flush()
+            self._notify_tenant(
+                db,
+                contract,
+                title="New contract created",
+                message=f"Contract #{contract.id} is waiting for your confirmation.",
+            )
             db.commit()
             db.refresh(contract)
         except IntegrityError as exc:
@@ -150,6 +160,12 @@ class ContractService:
 
         contract.status = ContractStatus.ACTIVE
         try:
+            self._notify_landlord(
+                db,
+                contract,
+                title="Contract confirmed",
+                message=f"Contract #{contract.id} has been confirmed by the tenant.",
+            )
             db.commit()
             db.refresh(contract)
         except Exception:
@@ -173,6 +189,12 @@ class ContractService:
 
         contract.status = ContractStatus.REJECTED
         try:
+            self._notify_landlord(
+                db,
+                contract,
+                title="Contract rejected",
+                message=f"Contract #{contract.id} has been rejected by the tenant.",
+            )
             db.commit()
             db.refresh(contract)
         except Exception:
@@ -196,6 +218,12 @@ class ContractService:
 
         contract.status = ContractStatus.CANCELLED
         try:
+            self._notify_tenant(
+                db,
+                contract,
+                title="Contract cancelled",
+                message=f"Contract #{contract.id} has been cancelled by the landlord.",
+            )
             db.commit()
             db.refresh(contract)
         except Exception:
@@ -219,6 +247,12 @@ class ContractService:
 
         contract.status = ContractStatus.TERMINATED
         try:
+            self._notify_tenant(
+                db,
+                contract,
+                title="Contract terminated",
+                message=f"Contract #{contract.id} has been terminated by the landlord.",
+            )
             db.commit()
             db.refresh(contract)
         except Exception:
@@ -252,3 +286,25 @@ class ContractService:
             updated_at=contract.updated_at,
             house=house_data,
         ).model_dump(mode="json")
+
+    def _notify_tenant(self, db: Session, contract: Contract, *, title: str, message: str) -> None:
+        self.notification_service.create_notification(
+            db,
+            user_id=contract.tenant_id,
+            source_type="contract",
+            source_id=contract.id,
+            title=title,
+            message=message,
+            auto_commit=False,
+        )
+
+    def _notify_landlord(self, db: Session, contract: Contract, *, title: str, message: str) -> None:
+        self.notification_service.create_notification(
+            db,
+            user_id=contract.landlord_id,
+            source_type="contract",
+            source_id=contract.id,
+            title=title,
+            message=message,
+            auto_commit=False,
+        )

@@ -43,3 +43,31 @@ class PaymentMethod:
 
 class PaymentStatus:
     SUCCESS = "success"
+
+
+class RepairStatus:
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    CLOSED = "closed"
+    REJECTED = "rejected"
+    CANCELLED = "cancelled"
+    REOPENED = "reopened"
+
+
+class ComplaintStatus:
+    PENDING = "pending"
+    PROCESSING = "processing"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+    REJECTED = "rejected"
+
+
+class NotificationStatus:
+    UNREAD = "unread"
+    READ = "read"
+
+
+class NewsStatus:
+    DRAFT = "draft"
+    PUBLISHED = "published"

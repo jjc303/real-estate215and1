@@ -93,8 +93,8 @@
 主要操作：
 
 - 管理用户
-- 审核/管理房源
-- 处理投诉
+- 查看全部房源与业务记录
+- 处理投诉与报修
 - 查看系统日志
 - 查看统计报表
 - 维护公告/基础数据
@@ -275,8 +275,8 @@
 
 1. 租客提交维修申请
 2. 选择房源/合同
-3. 填写问题描述并上传图片
-4. 房东接单/指派处理
+3. 填写问题描述
+4. 房东接单/处理
 5. 更新处理状态
 6. 租客确认是否解决
 
@@ -287,14 +287,24 @@
 - 已完成
 - 已关闭
 
+当前第一版补充约束：
+
+- 报修必须基于当前租客自己的 `active contract` 创建
+- 第一版不做附件上传，`image_url` 不进入当前公开模型
+- 主流程为 `pending -> processing -> completed -> closed`
+- 可选分支保留 `rejected / cancelled / reopened`
+- tenant 负责 `create / close / reopen`
+- landlord 负责 `process / complete / reject`
+- admin 复用同一套接口，可执行所有合法状态流
+
 ### B. 投诉管理
 
 建议流程：
 
 1. 租客提交投诉
-2. 选择投诉对象（房源/房东/服务）
-3. 管理员介入
-4. 处理反馈
+2. 选择合同/房源上下文
+3. 房东处理反馈
+4. 管理员可按需介入
 5. 关闭投诉单
 
 状态建议：
@@ -304,6 +314,16 @@
 - 已处理
 - 已驳回
 - 已关闭
+
+当前第一版补充约束：
+
+- 投诉必须基于当前租客自己的 `active contract` 创建
+- 第一版不做附件上传，不做 `target_type / target_id` 这类泛化投诉对象建模
+- 主流程为 `pending -> processing -> resolved -> closed`
+- 可选分支保留 `pending -> rejected`
+- tenant 负责 `create / close`
+- landlord 负责 `process / resolve / reject`
+- admin 复用同一套接口，可执行所有合法状态流
 
 ------
 
@@ -324,6 +344,18 @@
 注意：
  第一版统计图不需要太复杂，有折线图、柱状图、饼图就够。
 
+当前第一版补充约束：
+
+- Statistics 已落地为只读后台统计模块
+- 当前接口：
+  - `house-utilization`
+  - `rent-income`
+  - `active-users`
+  - `complaint-repair-count`
+- 仅 admin 可访问
+- `rent-income` 的时间口径以 `Payment.paid_at` 为准
+- 第一版不做时间范围筛选、导出和多维分析
+
 ------
 
 ## 8. 系统监控与后台管理模块
@@ -341,6 +373,14 @@
 - 数据概览面板
 
 真正的服务器监控、告警系统可以先不做重。
+
+当前第一版补充约束：
+
+- Admin 已落地为独立后台模块，统一前缀 `/api/v1/admin`
+- 用户管理已支持创建、修改、启用 / 禁用
+- House 在第一版后台只读，不做 admin 审核和状态修改
+- Complaint / Repair / Contract 支持 admin 统一查看和状态流转
+- Statistics 继续保持独立前缀 `/api/v1/statistics`，不复制一套 admin 镜像接口
 
 ------
 
@@ -574,30 +614,54 @@
 
 ------
 
-## 11. 维修申请 RepairRequest
+## 11. 维修申请 Repair
 
 - id
 - contract_id
 - house_id
 - tenant_id
+- landlord_id
 - description
-- image_url
 - status
+- processed_at
+- completed_at
+- closed_at
+- rejected_at
+- cancelled_at
+- reopened_at
 - created_at
-- handled_at
+- updated_at
+
+第一版说明：
+
+- 状态集合：`pending / processing / completed / closed / rejected / cancelled / reopened`
+- 第一版不做附件上传
+- 不提供物理删除，关闭通过状态流转完成
 
 ------
 
 ## 12. 投诉 Complaint
 
 - id
+- contract_id
+- house_id
 - tenant_id
-- target_type
-- target_id
-- content
+- landlord_id
+- description
 - status
+- processed_at
+- resolved_at
+- closed_at
+- rejected_at
+- cancelled_at
 - created_at
-- result
+- updated_at
+
+第一版说明：
+
+- 状态集合：`pending / processing / resolved / closed / rejected`
+- `cancelled_at` 字段仅作未来扩展预留，第一版不开放 `cancelled` 状态
+- 不提供物理删除，`closed` 表示公开流程终态
 
 ------
 
@@ -646,8 +710,8 @@
 
 ## 1. 房源审核
 
-管理员审核房源后才能上架。
- 这样系统更合理，也方便管理员权限体现。
+当前代码不采用“管理员审核后才能上架”的规则。
+ 第一版保持房东可直接上架，管理员后台只做只读房源管理。
 
 ## 2. 收藏与浏览历史
 
@@ -670,6 +734,18 @@
 - 签约通知
 - 支付提醒
 - 报修处理通知
+
+当前第一版补充约束：
+
+- Notification 已落地为单用户站内通知模块
+- 推荐 `source_type`：`repair / complaint / contract / bill`
+- 当前自动触发来源：
+  - Repair
+  - Complaint
+  - Contract
+  - Bill / Payment
+- 用户只能查看和标记自己的通知
+- 第一版不做广播通知和批量已读
 
 ## 5. 房源下架规则
 
@@ -753,6 +829,8 @@
 - 合同管理
 - 租金账单
 - 支付记录
+- 报修处理
+- 投诉处理
 - 房源状态联动
 
 做到这里，就是完整业务系统。
@@ -761,8 +839,6 @@
 
 最后做：
 
-- 维修申请
-- 投诉处理
 - 新闻公告
 - 报表统计
 - 智能问答/推荐

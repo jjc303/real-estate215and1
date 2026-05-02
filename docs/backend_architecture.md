@@ -158,6 +158,7 @@ backend/
 
       admin/
         router.py
+        repository.py
         service.py
         schema.py
 
@@ -379,11 +380,15 @@ bill：账单
 payment：支付
 
 repair：报修
+说明：当前已落地为基于 `active contract` 创建的 HTTP 报修模块，状态包含 `pending / processing / completed / closed / rejected / cancelled / reopened`，仍遵守 `router → service → repository → model`，表结构通过 Alembic migration 管理。
 complaint：投诉
+说明：当前已落地为基于 `active contract` 创建的 HTTP 投诉模块，状态包含 `pending / processing / resolved / closed / rejected`，仍遵守 `router → service → repository → model`，表结构通过 Alembic migration 管理。
 news：公告
 notification：通知
+说明：当前已落地为单用户 HTTP 站内通知模块，状态包含 `unread / read`，支持 admin 手动创建与业务状态变更自动触发，仍遵守 `router → service → repository → model`，表结构通过 Alembic migration 管理。
 
 statistics：统计（只读）
+说明：当前已落地为只读 HTTP 统计模块，不新增表，直接聚合 `House / Contract / Payment / User / Repair / Complaint` 数据，仍遵守 `router → service → repository`，由 service 负责 admin 权限校验。
 log：日志
 storage：文件
 admin：后台
@@ -545,6 +550,11 @@ router -> service -> repository -> model
 当前自动化接口冒烟测试除主链路外，已补充：
 
 - `backend/tests/api/test_bill_flow.py`
+- `backend/tests/api/test_repair_flow.py`
+- `backend/tests/api/test_complaint_flow.py`
+- `backend/tests/api/test_notification_flow.py`
+- `backend/tests/api/test_statistics_flow.py`
+- `backend/tests/api/test_admin_flow.py`
 
 运行方式：
 
@@ -552,4 +562,34 @@ router -> service -> repository -> model
 cd backend
 pytest tests/api/test_smoke_flow.py -q
 pytest tests/api/test_bill_flow.py -q
+pytest tests/api/test_repair_flow.py -q
+pytest tests/api/test_complaint_flow.py -q
+pytest tests/api/test_notification_flow.py -q
+pytest tests/api/test_statistics_flow.py -q
+pytest tests/api/test_admin_flow.py -q
 ```
+
+## 22. Admin 模块补充
+
+`app/modules/admin` 已纳入当前后端模块列表，当前仍遵守：
+
+```text
+router -> service -> repository -> schema
+```
+
+约束保持不变：
+
+- repository 不 `commit / rollback`
+- service 统一负责 admin 权限校验、事务和业务逻辑
+- service 返回序列化 dict，不返回 ORM 对象
+
+当前 Admin 第一版定位：
+
+- 路由前缀固定为 `/api/v1/admin`
+- 所有接口 `admin-only`
+- `User` 支持列表、详情、创建、更新、启用 / 禁用
+- `House` 仅提供后台只读列表和详情
+- `Repair / Complaint` 复用现有 service 的 admin 兼容状态流
+- `Contract` 提供后台全量查询和有限状态流
+- 可复用 `NotificationService`
+- 不镜像 `/api/v1/admin/statistics`

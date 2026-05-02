@@ -19,6 +19,7 @@ from app.modules.bill.model import Bill
 from app.modules.bill.repository import BillRepository
 from app.modules.bill.schema import BillReadSchema
 from app.modules.contract.repository import ContractRepository
+from app.modules.notification.service import NotificationService
 
 
 class BillService:
@@ -26,9 +27,11 @@ class BillService:
         self,
         bill_repository: BillRepository,
         contract_repository: ContractRepository,
+        notification_service: NotificationService,
     ) -> None:
         self.bill_repository = bill_repository
         self.contract_repository = contract_repository
+        self.notification_service = notification_service
 
     def create_bill(
         self,
@@ -60,6 +63,13 @@ class BillService:
 
         try:
             self.bill_repository.create(db, bill)
+            db.flush()
+            self._notify_tenant(
+                db,
+                bill,
+                title="New bill created",
+                message=f"Bill #{bill.id} has been created for your contract.",
+            )
             db.commit()
             db.refresh(bill)
         except IntegrityError as exc:
@@ -118,6 +128,12 @@ class BillService:
 
         bill.status = BillStatus.CANCELLED
         try:
+            self._notify_tenant(
+                db,
+                bill,
+                title="Bill cancelled",
+                message=f"Bill #{bill.id} has been cancelled by the landlord.",
+            )
             db.commit()
             db.refresh(bill)
         except Exception:
@@ -142,6 +158,12 @@ class BillService:
 
         bill.status = BillStatus.OVERDUE
         try:
+            self._notify_tenant(
+                db,
+                bill,
+                title="Bill overdue",
+                message=f"Bill #{bill.id} is now overdue.",
+            )
             db.commit()
             db.refresh(bill)
         except Exception:
@@ -152,3 +174,14 @@ class BillService:
 
     def _serialize(self, bill: Bill) -> dict[str, object]:
         return BillReadSchema.model_validate(bill).model_dump(mode="json")
+
+    def _notify_tenant(self, db: Session, bill: Bill, *, title: str, message: str) -> None:
+        self.notification_service.create_notification(
+            db,
+            user_id=bill.tenant_id,
+            source_type="bill",
+            source_id=bill.id,
+            title=title,
+            message=message,
+            auto_commit=False,
+        )

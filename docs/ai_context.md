@@ -1,8 +1,8 @@
-# AI Context（Backend Project）
+﻿# AI Context（Backend Project）
 
-Version: v1.8.0  
-Last Updated: 2026-04-28  
-Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill 最小闭环已完成；House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
+Version: v1.14.0  
+Last Updated: 2026-05-02  
+Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + News + Notification + Statistics + Admin 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 
 ------
 
@@ -767,16 +767,15 @@ app/common/dependencies.py
 - token 黑名单
 - 房源图片 / 视频
 - 房源审核流
-- 账单 / 支付
-- 报修 / 投诉
-- 管理后台
+- 广播通知 / 批量已读
+- 报表导出 / 多维统计分析
 
 ------
 
 # 9. 当前阶段
 
 ```text
-User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构、Alembic 迁移接管与 HTTP smoke test 自动化已完成
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics + Admin 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 ```
 
 系统能力：
@@ -809,6 +808,9 @@ User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contr
 - 拒绝合同
 - 取消合同
 - 终止合同
+- 站内通知
+- 后台统计
+- 管理后台
 - 最小所有权校验
 - 统一响应 + 异常体系
 - pytest + requests 真实 HTTP smoke test
@@ -1768,3 +1770,771 @@ pytest tests/api/test_payment_flow.py -q
 ```text
 2 passed
 ```
+
+
+# 17. v1.9 Repair 模块补充
+
+> 本节为当前最新补充，若前文出现旧的 Repair 描述，以本节为准。
+
+## 17.1 当前最新状态
+
+当前后端已完成：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair 最小闭环
+```
+
+Repair 第一版明确不做：
+
+- 附件上传
+- 物理删除
+- admin 专用路径
+
+## 17.2 Repair 表
+
+新增表：
+
+```text
+repairs
+```
+
+字段包括：
+
+- id
+- contract_id
+- house_id
+- tenant_id
+- landlord_id
+- description
+- status
+- processed_at
+- completed_at
+- closed_at
+- rejected_at
+- cancelled_at
+- reopened_at
+- created_at
+- updated_at
+
+关键规则：
+
+- Repair 必须基于当前 tenant 自己的 `active contract` 创建
+- `POST /repairs` 不允许前端传 `house_id / tenant_id / landlord_id / status`
+- `house_id / tenant_id / landlord_id` 由后端从 contract 自动写入
+
+## 17.3 Repair 状态
+
+```text
+pending / processing / completed / closed / rejected / cancelled / reopened
+```
+
+主流程：
+
+- `create -> pending`
+- `pending -> processing`
+- `processing -> completed`
+- `completed -> closed`
+
+可选分支：
+
+- `pending -> rejected`
+- `completed -> reopened`
+- `closed -> reopened`
+- `reopened -> processing`
+- `reopened -> rejected`
+
+说明：
+
+- 第一版保留 `cancelled` 状态常量与表字段，但不提供公开 `cancel` 接口
+- `rejected / cancelled` 视为结束状态
+
+## 17.4 Repair 接口与权限
+
+```text
+POST  /api/v1/repairs
+GET   /api/v1/repairs
+GET   /api/v1/repairs/{id}
+PATCH /api/v1/repairs/{id}/process
+PATCH /api/v1/repairs/{id}/complete
+PATCH /api/v1/repairs/{id}/reject
+PATCH /api/v1/repairs/{id}/close
+PATCH /api/v1/repairs/{id}/reopen
+```
+
+角色规则：
+
+- tenant：
+  - `create`
+  - `close`
+  - `reopen`
+- landlord：
+  - `process`
+  - `complete`
+  - `reject`
+- admin：
+  - 可查看全部 repair
+  - 可执行所有合法状态流
+
+访问规则：
+
+- tenant 只能看自己的 repair
+- landlord 只能看自己房源/contract 相关的 repair
+- admin 可看全部
+- 第一版不提供 `DELETE /api/v1/repairs/{id}`
+
+## 17.5 Repair 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2701 | 报修不存在或无权访问 |
+| 2702 | 非法报修状态操作 |
+| 2703 | contract 不是 active，不允许创建报修 |
+
+继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `2401` 合同不存在或不属于当前用户
+- `3001` 参数错误
+- `5000` 系统错误
+
+## 17.6 Alembic 与测试
+
+Repair 第一版 migration：
+
+- `7b4d6c2a9f31_add_repairs_table.py`
+
+Repair HTTP 测试：
+
+- `backend/tests/api/test_repair_flow.py`
+
+当前已覆盖：
+
+- 主流程：`pending -> processing -> completed -> closed`
+- 可选分支：`reject / reopen`
+- tenant / landlord / admin 角色权限
+- `contract != active` 返回 `2703`
+- 列表分页与状态筛选
+
+# 18. v1.10 Complaint 模块补充
+
+> 本节为当前最新补充，若前文出现旧的 Complaint 描述，以本节为准。
+
+## 18.1 当前定位
+
+Complaint 第一版已经落地为当前后端模块：
+
+```text
+app/modules/complaint
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint
+```
+
+Complaint 第一版明确不做：
+
+- 附件上传
+- 泛化投诉对象建模（如 `target_type / target_id`）
+- 物理删除
+- admin 专用路由
+
+## 18.2 Complaint 表
+
+当前模型表：
+
+```text
+complaints
+```
+
+字段：
+
+- `id`
+- `contract_id`
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+- `description`
+- `status`
+- `processed_at`
+- `resolved_at`
+- `closed_at`
+- `rejected_at`
+- `cancelled_at`
+- `created_at`
+- `updated_at`
+
+约束：
+
+- Complaint 必须基于当前 tenant 自己的 `active contract` 创建
+- `POST /complaints` 不允许前端传 `house_id / tenant_id / landlord_id / status`
+- 上述冗余字段统一由后端从 contract 自动写入
+- 第一版保留 `cancelled_at` 字段，但不开放 `cancelled` 状态与接口
+
+## 18.3 Complaint 状态
+
+状态集合：
+
+- `pending`
+- `processing`
+- `resolved`
+- `closed`
+- `rejected`
+
+主流程：
+
+- `create -> pending`
+- `pending -> processing`
+- `processing -> resolved`
+- `resolved -> closed`
+
+可选分支：
+
+- `pending -> rejected`
+
+说明：
+
+- `closed / rejected` 视为公开流程终态
+
+## 18.4 Complaint 接口与权限
+
+```text
+POST  /api/v1/complaints
+GET   /api/v1/complaints
+GET   /api/v1/complaints/{id}
+PATCH /api/v1/complaints/{id}/process
+PATCH /api/v1/complaints/{id}/resolve
+PATCH /api/v1/complaints/{id}/reject
+PATCH /api/v1/complaints/{id}/close
+```
+
+角色规则：
+
+- tenant：
+  - `create`
+  - `close`
+- landlord：
+  - `process`
+  - `resolve`
+  - `reject`
+- admin：
+  - 可查看全部 complaint
+  - 可执行所有合法状态流
+
+访问规则：
+
+- tenant 只能看自己的 complaint
+- landlord 只能看自己房源/contract 相关的 complaint
+- admin 可看全部
+- 第一版不提供 `DELETE /api/v1/complaints/{id}`
+
+## 18.5 Complaint 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2801 | 投诉不存在或无权访问 |
+| 2802 | 非法投诉状态操作 |
+| 2803 | contract 不是 active，不允许创建投诉 |
+
+继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `2401` 合同不存在或不属于当前用户
+- `3001` 参数错误
+- `5000` 系统错误
+
+## 18.6 Alembic 与测试
+
+Complaint 第一版 migration：
+
+- `c8f91d4b2a10_add_complaints_table.py`
+
+Complaint HTTP 测试：
+
+- `backend/tests/api/test_complaint_flow.py`
+
+当前已覆盖：
+
+- 主流程：`pending -> processing -> resolved -> closed`
+- 可选分支：`reject`
+- tenant / landlord / admin 角色权限
+- `contract != active` 返回 `2803`
+- 列表分页与状态筛选
+
+# 19. v1.11 Notification 模块补充
+
+> 本节为当前最新补充，若前文出现旧的 Notification 描述，以本节为准。
+
+## 19.1 当前定位
+
+Notification 第一版已经落地为当前后端模块：
+
+```text
+app/modules/notification
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification
+```
+
+Notification 第一版明确不做：
+
+- 广播通知
+- 多接收人通知
+- 物理删除
+- 批量已读
+
+## 19.2 Notification 表
+
+当前模型表：
+
+```text
+notifications
+```
+
+字段：
+
+- `id`
+- `user_id`
+- `source_type`
+- `source_id`
+- `title`
+- `message`
+- `status`
+- `created_at`
+- `updated_at`
+
+约束：
+
+- Notification 仅允许单用户收件箱模型
+- `POST /notifications` 仅 admin 手动或系统测试使用
+- 推荐 `source_type`：`repair / complaint / contract / bill`
+- `created_at / updated_at` 统一按 UTC 处理
+
+## 19.3 Notification 状态
+
+状态集合：
+
+- `unread`
+- `read`
+
+主流程：
+
+- `create -> unread`
+- `unread -> read`
+
+说明：
+
+- `read` 视为终态
+- 标记已读时显式刷新 `updated_at`
+
+## 19.4 Notification 接口与权限
+
+```text
+POST  /api/v1/notifications
+GET   /api/v1/notifications
+GET   /api/v1/notifications/{id}
+PATCH /api/v1/notifications/{id}/read
+```
+
+角色规则：
+
+- tenant：
+  - 查看自己的通知
+  - 标记自己的通知已读
+- landlord：
+  - 查看自己的通知
+  - 标记自己的通知已读
+- admin：
+  - 查看自己的通知
+  - 标记自己的通知已读
+  - 手动创建通知
+
+访问规则：
+
+- 所有角色都只能看自己的 notification
+- 第一版不提供 `DELETE /api/v1/notifications/{id}`
+
+## 19.5 Notification 自动触发
+
+当前已接入自动通知的模块：
+
+- `Repair`
+- `Complaint`
+- `Contract`
+- `Bill`
+- `Payment` 中的 bill-paid 场景
+
+规则：
+
+- tenant 只接收自己的相关通知
+- landlord 只接收自己的相关通知
+- admin 只接收自己的相关通知
+- 不给无关用户创建通知
+
+## 19.6 Notification 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2901 | 通知不存在或无权访问 |
+| 2902 | 非法通知状态操作 |
+
+继续复用：
+
+- `1001` 用户不存在
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `3001` 参数错误
+- `5000` 系统错误
+
+## 19.7 Alembic 与测试
+
+Notification 第一版 migration：
+
+- `f1a7b92d4c33_add_notifications_table.py`
+
+Notification HTTP 测试：
+
+- `backend/tests/api/test_notification_flow.py`
+
+当前已覆盖：
+
+- admin 手动创建通知
+- 列表分页与 `unread/read` 状态筛选
+- 详情查询与标记已读
+- 非拥有者返回 `2901`
+- `Repair / Complaint / Contract / Bill / Payment` 自动通知联动
+
+# 20. v1.12 Statistics 模块补充
+
+> 本节为当前最新补充，若前文出现旧的 Statistics 描述，以本节为准。
+
+## 20.1 当前定位
+
+Statistics 第一版已经落地为当前后端模块：
+
+```text
+app/modules/statistics
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics
+```
+
+Statistics 第一版明确不做：
+
+- 独立统计表
+- 时间范围筛选
+- 导出报表
+- 多维下钻分析
+
+## 20.2 数据来源
+
+当前统计直接聚合现有业务表：
+
+- `houses`
+- `contracts`
+- `payments`
+- `users`
+- `repairs`
+- `complaints`
+
+约束：
+
+- 不新增 Alembic migration
+- 不新增独立 ORM 持久化实体
+- repository 只做聚合查询，不做事务处理
+
+## 20.3 接口与权限
+
+```text
+GET /api/v1/statistics/house-utilization
+GET /api/v1/statistics/rent-income
+GET /api/v1/statistics/active-users
+GET /api/v1/statistics/complaint-repair-count
+```
+
+权限规则：
+
+- 仅 admin 可访问
+- tenant / landlord 统一返回 `1004`
+
+## 20.4 统计口径
+
+`house-utilization`
+
+- `total_houses`：未逻辑删除房源总数
+- `occupied_houses`：存在 `active contract` 的去重房源数
+- `utilization_rate`：`occupied_houses / total_houses`
+
+`rent-income`
+
+- `total_income`：累计已支付租金金额
+- `monthly_income`：按 `Payment.paid_at` 聚合的月度收入
+- 第一版仅统计 rent bill
+
+`active-users`
+
+- `users.status = active` 的用户数量
+
+`complaint-repair-count`
+
+- `repair_count`：报修总数
+- `complaint_count`：投诉总数
+
+## 20.5 测试
+
+Statistics HTTP 测试：
+
+- `backend/tests/api/test_statistics_flow.py`
+
+当前已覆盖：
+
+- admin 调用全部统计接口成功
+- tenant / landlord 返回 `1004`
+- 无数据边界返回 0 或空列表
+- 聚合结果随 house / contract / payment / repair / complaint 数据变化而变化
+
+# 21. v1.13 Admin 模块补充
+
+> 本节为当前最新补充，若前文出现旧的“Admin 未实现 / House 需要管理员审核上架”描述，以本节为准。
+
+## 21.1 当前定位
+
+Admin 第一版已经落地为当前后端模块：
+
+```text
+app/modules/admin
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics + Admin
+```
+
+Admin 第一版明确不做：
+
+- 用户物理删除
+- House 后台审核流
+- House 后台状态修改
+- `/api/v1/admin/statistics` 镜像接口
+
+## 21.2 路由与权限
+
+统一前缀：
+
+```text
+/api/v1/admin
+```
+
+所有 Admin 接口仅允许 admin 调用：
+
+- tenant 调用返回 `1004`
+- landlord 调用返回 `1004`
+
+当前已落地接口：
+
+- `GET /api/v1/admin/users`
+- `GET /api/v1/admin/users/{id}`
+- `POST /api/v1/admin/users`
+- `PUT /api/v1/admin/users/{id}`
+- `PATCH /api/v1/admin/users/{id}/status`
+- `GET /api/v1/admin/houses`
+- `GET /api/v1/admin/houses/{id}`
+- `GET /api/v1/admin/complaints`
+- `GET /api/v1/admin/complaints/{id}`
+- `PATCH /api/v1/admin/complaints/{id}/process`
+- `PATCH /api/v1/admin/complaints/{id}/resolve`
+- `PATCH /api/v1/admin/complaints/{id}/reject`
+- `PATCH /api/v1/admin/complaints/{id}/close`
+- `GET /api/v1/admin/repairs`
+- `GET /api/v1/admin/repairs/{id}`
+- `PATCH /api/v1/admin/repairs/{id}/process`
+- `PATCH /api/v1/admin/repairs/{id}/complete`
+- `PATCH /api/v1/admin/repairs/{id}/reject`
+- `PATCH /api/v1/admin/repairs/{id}/close`
+- `GET /api/v1/admin/contracts`
+- `GET /api/v1/admin/contracts/{id}`
+- `PATCH /api/v1/admin/contracts/{id}/status`
+
+## 21.3 Admin 第一版范围
+
+User 管理：
+
+- 支持列表、详情、创建、更新、启用 / 禁用
+- `status` 第一版允许：
+  - `active`
+  - `disabled`
+- “删除”在第一版仅表现为禁用，不做物理删除
+
+House 管理：
+
+- 仅提供后台全量列表和详情
+- 房东仍可直接上架
+- 第一版不提供 admin 审核或状态修改接口
+
+Complaint / Repair 管理：
+
+- admin 可查看全部 complaint / repair
+- admin 直接复用现有业务 service 中的 admin 兼容状态流
+
+Contract 管理：
+
+- admin 可查看全部 contract
+- 第一版允许：
+  - `pending -> active`
+  - `pending -> cancelled`
+  - `active -> terminated`
+
+## 21.4 Notification / Statistics 复用
+
+- Admin 模块可复用 `NotificationService` 给相关 tenant / landlord 发通知
+- Admin 模块不复制 Statistics 路由
+- 统计仍通过：
+  - `/api/v1/statistics/house-utilization`
+  - `/api/v1/statistics/rent-income`
+  - `/api/v1/statistics/active-users`
+  - `/api/v1/statistics/complaint-repair-count`
+
+## 21.5 测试
+
+Admin HTTP 测试：
+
+- `backend/tests/api/test_admin_flow.py`
+
+当前已覆盖：
+
+- admin 用户管理增改与启用 / 禁用
+- admin 房源列表与详情只读访问
+- admin repair / complaint 状态流
+- admin contract 状态流
+- tenant / landlord 调用后台接口返回 `1004`
+
+# 22. v1.14 News 模块补充
+
+> 本节为 v1.14 新增内容。News 第一版实现为平台公告模块，遵守 `router -> service -> repository -> model/schema`，并复用现有 NotificationService 做站内通知触发。
+
+## 22.1 当前定位
+
+News 第一版已经落地为当前后端模块：
+
+```text
+app/modules/news
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + News + Notification + Statistics + Admin
+```
+
+News 第一版明确范围：
+
+- 公告 CRUD
+- 公告列表与详情
+- 按 `status` 分页筛选
+- `published` 公告对外可见
+- 发布或更新已发布公告触发 Notification
+
+News 第一版明确不做：
+
+- 公告软删除
+- 公告定向受众配置
+- `/api/v1/admin/news` 独立后台前缀
+
+## 22.2 表结构
+
+表名：
+
+```text
+news
+```
+
+字段：
+
+```text
+id
+title
+content
+author_id
+status
+created_at
+updated_at
+```
+
+说明：
+
+- `author_id -> users.id`
+- `status` 仅允许：
+  - `draft`
+  - `published`
+- `created_at` 建索引：
+  - `ix_news_created_at`
+- 删除策略为物理删除，不保留 `deleted_at`
+
+## 22.3 路由与权限
+
+统一前缀：
+
+```text
+/api/v1/news
+```
+
+当前已落地接口：
+
+- `POST /api/v1/news`
+- `GET /api/v1/news`
+- `GET /api/v1/news/{id}`
+- `PATCH /api/v1/news/{id}`
+- `DELETE /api/v1/news/{id}`
+
+权限规则：
+
+- admin 可创建、更新、删除、查看全部公告
+- tenant / landlord / 游客仅可查看 `published`
+- 非 admin 调用写接口统一返回 `1004`
+- 非 admin 或游客访问 `draft` 详情统一返回 `3002`
+
+## 22.4 Notification 联动
+
+触发规则：
+
+- 创建 `draft` 公告不发通知
+- 创建 `published` 公告时发通知
+- 更新后若公告状态为 `published`，再次发通知
+- `published -> draft` 不发通知
+
+通知范围：
+
+- 所有 `active tenant`
+- 所有 `active landlord`
+- 不给 admin 发公告通知
+
+通知约定：
+
+- `source_type = news`
+- `source_id = news.id`
+- 已发通知保留，不随 news 删除
+
+## 22.5 测试
+
+News HTTP 测试：
+
+- `backend/tests/api/test_news_flow.py`
+
+当前已覆盖：
+
+- admin 创建 `draft / published` 公告
+- admin 更新、发布、删除公告
+- tenant / landlord / 游客的可见性差异
+- 非 admin 写接口返回 `1004`
+- 分页、`status` 筛选、空 body / 空字符串 / 超长 content 校验
+- Notification 触发与删除后保留验证

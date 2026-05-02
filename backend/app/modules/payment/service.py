@@ -16,6 +16,7 @@ from app.core.exceptions import (
     PaymentNotFoundException,
 )
 from app.modules.bill.repository import BillRepository
+from app.modules.notification.service import NotificationService
 from app.modules.payment.model import Payment
 from app.modules.payment.repository import PaymentRepository
 from app.modules.payment.schema import PaymentReadSchema
@@ -26,9 +27,11 @@ class PaymentService:
         self,
         payment_repository: PaymentRepository,
         bill_repository: BillRepository,
+        notification_service: NotificationService,
     ) -> None:
         self.payment_repository = payment_repository
         self.bill_repository = bill_repository
+        self.notification_service = notification_service
 
     def create_payment(
         self,
@@ -66,6 +69,15 @@ class PaymentService:
             self.payment_repository.create(db, payment)
             db.flush()
             bill.status = BillStatus.PAID
+            self.notification_service.create_notification(
+                db,
+                user_id=bill.landlord_id,
+                source_type="bill",
+                source_id=bill.id,
+                title="Bill paid",
+                message=f"Bill #{bill.id} has been paid by the tenant.",
+                auto_commit=False,
+            )
             db.commit()
             db.refresh(payment)
         except IntegrityError as exc:

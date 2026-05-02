@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Iterable
+
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
@@ -22,3 +24,12 @@ class UserRepository(BaseRepository[User]):
     def count_users(self, db: Session) -> int:
         stmt = select(func.count()).select_from(User)
         return int(db.execute(stmt).scalar_one())
+
+    def list_active_by_roles(self, db: Session, roles: Iterable[str]) -> list[User]:
+        role_values = tuple(roles)
+        stmt = (
+            select(User)
+            .where(User.status == "active", User.role.in_(role_values))
+            .order_by(User.id.asc())
+        )
+        return list(db.execute(stmt).scalars().all())

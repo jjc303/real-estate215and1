@@ -1,5 +1,382 @@
 # Changelog
 
+## v1.14.0 - 2026-05-02
+
+### Added
+
+#### News / 公告模块
+
+新增 News 第一版完整模块：
+
+- `app/modules/news/model.py`
+- `app/modules/news/schema.py`
+- `app/modules/news/repository.py`
+- `app/modules/news/service.py`
+- `app/modules/news/router.py`
+
+新增表：
+
+- `news`
+
+新增接口：
+
+- `POST /api/v1/news`
+- `GET /api/v1/news`
+- `GET /api/v1/news/{id}`
+- `PATCH /api/v1/news/{id}`
+- `DELETE /api/v1/news/{id}`
+
+### Changed
+
+#### News 业务规则
+
+- 公告状态第一版固定为：
+  - `draft`
+  - `published`
+- admin 默认可查看全部公告
+- tenant / landlord / 游客仅可查看 `published`
+- 删除策略采用物理删除
+- 公告发布或更新已发布公告时，复用 `NotificationService` 给全部 `active tenant + active landlord` 发通知
+- 已发通知记录保留，不随公告删除
+
+#### 公共层补充
+
+- `app/common/enums.py` 新增 `NewsStatus`
+- `app/core/exceptions.py` 新增：
+  - `3002 news not found`
+  - `3003 invalid news status`
+- `app/modules/user/repository.py` 新增按角色查询 active 用户方法，供公告通知批量分发复用
+- Alembic 新增：
+  - `a4b3c2d1e0f9_add_news_table.py`
+
+### Verified
+
+- News blueprint 已注册到 `/api/v1/news`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_news_flow.py`
+- `docker compose exec backend pytest tests/api/test_news_flow.py -q` 通过
+- 结果：`2 passed`
+
+## v1.13.0 - 2026-05-02
+
+### Added
+
+#### Admin 后台管理模块
+
+新增 Admin 第一版完整模块：
+
+- `app/modules/admin/schema.py`
+- `app/modules/admin/repository.py`
+- `app/modules/admin/service.py`
+- `app/modules/admin/router.py`
+
+新增接口：
+- `GET /api/v1/admin/users`
+- `GET /api/v1/admin/users/{id}`
+- `POST /api/v1/admin/users`
+- `PUT /api/v1/admin/users/{id}`
+- `PATCH /api/v1/admin/users/{id}/status`
+- `GET /api/v1/admin/houses`
+- `GET /api/v1/admin/houses/{id}`
+- `GET /api/v1/admin/complaints`
+- `GET /api/v1/admin/complaints/{id}`
+- `PATCH /api/v1/admin/complaints/{id}/process`
+- `PATCH /api/v1/admin/complaints/{id}/resolve`
+- `PATCH /api/v1/admin/complaints/{id}/reject`
+- `PATCH /api/v1/admin/complaints/{id}/close`
+- `GET /api/v1/admin/repairs`
+- `GET /api/v1/admin/repairs/{id}`
+- `PATCH /api/v1/admin/repairs/{id}/process`
+- `PATCH /api/v1/admin/repairs/{id}/complete`
+- `PATCH /api/v1/admin/repairs/{id}/reject`
+- `PATCH /api/v1/admin/repairs/{id}/close`
+- `GET /api/v1/admin/contracts`
+- `GET /api/v1/admin/contracts/{id}`
+- `PATCH /api/v1/admin/contracts/{id}/status`
+
+### Changed
+
+#### Admin 第一版业务边界
+
+- Admin 统一使用 `/api/v1/admin` 前缀
+- 所有后台接口仅允许 admin 调用
+- User 的“删除”在第一版仅表现为启用 / 禁用
+- House 第一版后台只做只读列表和详情，不做审核和状态修改
+- Complaint / Repair 后台状态流直接复用现有 admin 兼容逻辑
+- Contract 后台状态流固定为：
+  - `pending -> active`
+  - `pending -> cancelled`
+  - `active -> terminated`
+- Admin 模块可复用 Notification 发通知
+- Statistics 保持独立前缀 `/api/v1/statistics`
+
+### Verified
+
+- Admin blueprint 已注册到 `/api/v1/admin`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_admin_flow.py`
+- `docker compose exec backend pytest tests/api/test_admin_flow.py -q` 通过
+- 结果：`2 passed`
+
+## v1.12.0 - 2026-05-02
+
+### Added
+
+#### Statistics 统计模块
+
+新增 Statistics 第一版只读模块：
+
+- `app/modules/statistics/schema.py`
+- `app/modules/statistics/repository.py`
+- `app/modules/statistics/service.py`
+- `app/modules/statistics/router.py`
+
+新增接口：
+
+- `GET /api/v1/statistics/house-utilization`
+- `GET /api/v1/statistics/rent-income`
+- `GET /api/v1/statistics/active-users`
+- `GET /api/v1/statistics/complaint-repair-count`
+
+### Changed
+
+#### Statistics 业务规则
+
+- Statistics 第一版不新增表，直接聚合现有业务数据
+- 仅 admin 可访问统计接口
+- `house-utilization` 统计未删除房源与 active contract 占用率
+- `rent-income` 按 `Payment.paid_at` 聚合累计收入和月度收入
+- `active-users` 统计 `users.status = active`
+- `complaint-repair-count` 统计报修和投诉总数
+
+### Verified
+
+- Statistics blueprint 已注册到 `/api/v1/statistics`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_statistics_flow.py`
+
+## v1.11.0 - 2026-05-02
+
+### Added
+
+#### Notification 通知模块
+
+新增 Notification 第一版完整模块：
+
+- `app/modules/notification/model.py`
+- `app/modules/notification/schema.py`
+- `app/modules/notification/repository.py`
+- `app/modules/notification/service.py`
+- `app/modules/notification/router.py`
+
+新增表：
+
+- `notifications`
+
+新增接口：
+
+- `POST /api/v1/notifications`
+- `GET /api/v1/notifications`
+- `GET /api/v1/notifications/{id}`
+- `PATCH /api/v1/notifications/{id}/read`
+
+新增错误码：
+
+- `2901 notification not found`
+- `2902 invalid notification status`
+
+新增 migration：
+
+- `f1a7b92d4c33_add_notifications_table.py`
+
+### Changed
+
+#### Notification 业务规则
+
+- Notification 采用单用户站内通知模型
+- 状态集合：
+  - `unread`
+  - `read`
+- 主流程保持：
+  - `unread -> read`
+- 所有用户只允许读取和操作自己的通知
+- `POST /api/v1/notifications` 仅 admin 手动或系统测试使用
+- 推荐 `source_type`：
+  - `repair`
+  - `complaint`
+  - `contract`
+  - `bill`
+- `created_at / updated_at` 按 UTC 处理
+- 标记已读时显式更新 `updated_at`
+- 第一版不提供 `DELETE /notifications/{id}`，不做物理删除
+
+#### 自动通知联动
+
+- `Repair / Complaint / Contract / Bill` 状态变更时自动创建通知
+- `Payment` 中 bill paid 场景自动创建通知
+- tenant / landlord / admin 只接收自己相关通知
+
+### Verified
+
+- Notification blueprint 已注册到 `/api/v1/notifications`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_notification_flow.py`
+
+## v1.10.0 - 2026-05-02
+
+### Added
+
+#### Complaint 投诉模块
+
+新增 Complaint 第一版完整模块：
+
+- `app/modules/complaint/model.py`
+- `app/modules/complaint/schema.py`
+- `app/modules/complaint/repository.py`
+- `app/modules/complaint/service.py`
+- `app/modules/complaint/router.py`
+
+新增表：
+
+- `complaints`
+
+新增接口：
+
+- `POST /api/v1/complaints`
+- `GET /api/v1/complaints`
+- `GET /api/v1/complaints/{id}`
+- `PATCH /api/v1/complaints/{id}/process`
+- `PATCH /api/v1/complaints/{id}/resolve`
+- `PATCH /api/v1/complaints/{id}/reject`
+- `PATCH /api/v1/complaints/{id}/close`
+
+新增错误码：
+
+- `2801 complaint not found`
+- `2802 invalid complaint status`
+- `2803 contract status is not allowed for complaint`
+
+新增 migration：
+
+- `c8f91d4b2a10_add_complaints_table.py`
+
+### Changed
+
+#### Complaint 业务规则
+
+- Complaint 必须基于当前租客自己的 `active contract` 创建
+- 前端只允许传 `contract_id / description`
+- `house_id / tenant_id / landlord_id` 由后端从 contract 自动写入
+- 状态集合：
+  - `pending`
+  - `processing`
+  - `resolved`
+  - `closed`
+  - `rejected`
+- 主流程保持：
+  - `pending -> processing -> resolved -> closed`
+- 可选分支支持：
+  - `pending -> rejected`
+- tenant 允许：
+  - `create`
+  - `close`
+- landlord 允许：
+  - `process`
+  - `resolve`
+  - `reject`
+- admin 复用同一套 `/api/v1/complaints` 接口，可执行所有合法状态流
+- 第一版保留 `cancelled_at` 作为预留字段，但不开放 `cancelled` 状态与接口
+- 第一版不提供 `DELETE /complaints/{id}`，不做物理删除
+
+### Verified
+
+- Complaint blueprint 已注册到 `/api/v1/complaints`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_complaint_flow.py`
+
+## v1.9.0 - 2026-05-02
+
+### Added
+
+#### Repair 报修模块
+
+新增 Repair 第一版完整模块：
+
+- `app/modules/repair/model.py`
+- `app/modules/repair/schema.py`
+- `app/modules/repair/repository.py`
+- `app/modules/repair/service.py`
+- `app/modules/repair/router.py`
+
+新增表：
+
+- `repairs`
+
+新增接口：
+
+- `POST /api/v1/repairs`
+- `GET /api/v1/repairs`
+- `GET /api/v1/repairs/{id}`
+- `PATCH /api/v1/repairs/{id}/process`
+- `PATCH /api/v1/repairs/{id}/complete`
+- `PATCH /api/v1/repairs/{id}/reject`
+- `PATCH /api/v1/repairs/{id}/close`
+- `PATCH /api/v1/repairs/{id}/reopen`
+
+新增错误码：
+
+- `2701 repair not found`
+- `2702 invalid repair status`
+- `2703 contract status is not allowed for repair`
+
+新增 migration：
+
+- `7b4d6c2a9f31_add_repairs_table.py`
+
+### Changed
+
+#### Repair 业务规则
+
+- Repair 必须基于当前租客自己的 `active contract` 创建
+- 前端只允许传 `contract_id / description`
+- `house_id / tenant_id / landlord_id` 由后端从 contract 自动写入
+- 状态集合：
+  - `pending`
+  - `processing`
+  - `completed`
+  - `closed`
+  - `rejected`
+  - `cancelled`
+  - `reopened`
+- 主流程保持：
+  - `pending -> processing -> completed -> closed`
+- 可选分支支持：
+  - `pending -> rejected`
+  - `completed -> reopened`
+  - `closed -> reopened`
+  - `reopened -> processing`
+  - `reopened -> rejected`
+- tenant 允许：
+  - `create`
+  - `close`
+  - `reopen`
+- landlord 允许：
+  - `process`
+  - `complete`
+  - `reject`
+- admin 复用同一套 `/api/v1/repairs` 接口，可执行所有合法状态流
+- 第一版不提供 `DELETE /repairs/{id}`，不做物理删除
+
+### Verified
+
+- Repair blueprint 已注册到 `/api/v1/repairs`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_repair_flow.py`
+- 已覆盖主流程、reopen/reject 分支、角色权限、合同状态校验、分页与状态异常场景
+- 当前环境已完成源码级编译校验与 Flask 路由注册校验
+- 尚未在当前线程内执行真实 `pytest tests/api/test_repair_flow.py -q`
+  - 依赖运行中的 API 服务与已升级到最新 migration 的数据库
+
 ## v1.8.0 - 2026-04-28
 
 ### Added

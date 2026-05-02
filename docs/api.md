@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.8.0
+Version: v1.14.0
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -2345,4 +2345,1188 @@ GET /api/v1/payments/{id}
 - `2501` 账单不存在
 - `3001` 参数错误
 - `4009` 资源冲突
+- `5000` 系统错误
+
+------
+
+# 十五、Repair 模块补充
+
+> 本节为 v1.9 新增内容。Repair 第一版实现为 HTTP 报修模块，不做附件上传，不做物理删除，不新增 admin 专用路径。
+
+## 1. 业务规则总览
+
+所有 Repair 接口都必须登录。
+
+Repair 必须基于当前租客自己的 `active contract` 创建。
+
+请求体第一版只允许传：
+
+- `contract_id`
+- `description`
+
+前端不允许传：
+
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+- `status`
+- 所有时间字段
+
+后端从 contract 自动写入：
+
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+
+## 2. Repair 表结构
+
+```text
+repairs
+```
+
+字段包括：
+
+- `id`
+- `contract_id`
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+- `description`
+- `status`
+- `processed_at`
+- `completed_at`
+- `closed_at`
+- `rejected_at`
+- `cancelled_at`
+- `reopened_at`
+- `created_at`
+- `updated_at`
+
+## 3. Repair 状态与流转
+
+状态集合：
+
+```text
+pending / processing / completed / closed / rejected / cancelled / reopened
+```
+
+主流程：
+
+- `create -> pending`
+- `pending -> processing`
+- `processing -> completed`
+- `completed -> closed`
+
+可选分支：
+
+- `pending -> rejected`
+- `completed -> reopened`
+- `closed -> reopened`
+- `reopened -> processing`
+- `reopened -> rejected`
+
+说明：
+
+- `rejected / cancelled` 作为结束状态保留
+- 第一版保留 `cancelled` 状态常量与表字段，但不提供公开 `cancel` 接口
+- 第一版不提供 `DELETE /repairs/{id}`
+
+## 4. 角色与权限规则
+
+tenant：
+
+- `create`
+- `close`
+- `reopen`
+
+landlord：
+
+- `process`
+- `complete`
+- `reject`
+
+admin：
+
+- 可查看全部 repair
+- 可执行所有合法状态流
+
+访问规则：
+
+- tenant 只看自己的 repair
+- landlord 只看自己房源/合同相关的 repair
+- admin 可看全部
+- 非参与者访问或操作统一返回 `2701`
+
+## 5. Repair 接口
+
+```text
+POST  /api/v1/repairs
+GET   /api/v1/repairs
+GET   /api/v1/repairs/{id}
+PATCH /api/v1/repairs/{id}/process
+PATCH /api/v1/repairs/{id}/complete
+PATCH /api/v1/repairs/{id}/reject
+PATCH /api/v1/repairs/{id}/close
+PATCH /api/v1/repairs/{id}/reopen
+```
+
+### 5.1 创建报修
+
+```http
+POST /api/v1/repairs
+```
+
+请求体示例：
+
+```json
+{
+  "contract_id": 1,
+  "description": "kitchen sink is leaking"
+}
+```
+
+规则：
+
+- 必须登录
+- 仅 tenant 可创建
+- `contract_id` 必须属于当前 tenant
+- `contract.status` 必须是 `active`
+- 创建成功后 `status = pending`
+
+### 5.2 报修列表
+
+```http
+GET /api/v1/repairs?page=1&page_size=10
+GET /api/v1/repairs?page=1&page_size=10&status=pending
+```
+
+规则：
+
+- 必须登录
+- 支持分页
+- 支持按 `status` 筛选
+- tenant 只看自己的
+- landlord 只看关联房源的
+- admin 可看全部
+
+### 5.3 报修详情
+
+```http
+GET /api/v1/repairs/{id}
+```
+
+规则：
+
+- 必须登录
+- 非参与者统一返回 `2701`
+
+### 5.4 process / complete / reject / close / reopen
+
+```http
+PATCH /api/v1/repairs/{id}/process
+PATCH /api/v1/repairs/{id}/complete
+PATCH /api/v1/repairs/{id}/reject
+PATCH /api/v1/repairs/{id}/close
+PATCH /api/v1/repairs/{id}/reopen
+```
+
+规则：
+
+- `process`：landlord/admin，`pending/reopened -> processing`
+- `complete`：landlord/admin，`processing -> completed`
+- `reject`：landlord/admin，`pending/reopened -> rejected`
+- `close`：tenant/admin，`completed -> closed`
+- `reopen`：tenant/admin，`completed/closed -> reopened`
+
+非法状态操作统一返回 `2702`。
+
+## 6. Repair 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2701 | 报修不存在或当前用户无权访问 |
+| 2702 | 非法报修状态操作 |
+| 2703 | contract 不是 active，不允许创建报修 |
+
+继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `2401` 合同不存在或不属于当前用户
+- `3001` 参数错误
+- `5000` 系统错误
+
+# 十七、Notification 模块补充
+
+> 本节为 v1.11 新增内容。Notification 第一版实现为站内通知模块，不做物理删除，不做广播通知，只提供单用户通知收件箱能力。
+
+## 1. 基本规则
+
+所有 Notification 接口都必须登录。
+
+通知只允许当前用户查看和操作自己的记录。
+
+`POST /api/v1/notifications` 仅保留给：
+
+- admin 手动创建
+- 系统测试
+
+第一版推荐 `source_type`：
+
+- `repair`
+- `complaint`
+- `contract`
+- `bill`
+
+## 2. Notification 表结构
+
+```text
+notifications
+-
+id
+user_id
+source_type
+source_id
+title
+message
+status
+created_at
+updated_at
+```
+
+说明：
+
+- `status` 默认 `unread`
+- `created_at / updated_at` 按 UTC 处理
+- 索引包含：
+  - `user_id`
+  - `status`
+  - `created_at`
+
+## 3. Notification 状态与流转
+
+状态集合：
+
+- `unread`
+- `read`
+
+主流程：
+
+- `create -> unread`
+- `unread -> read`
+
+说明：
+
+- `read` 视为终态
+- 第一版不提供 `DELETE /notifications/{id}`
+- 标记已读时会更新 `updated_at`
+
+## 4. 角色与权限规则
+
+tenant：
+
+- 可查看自己的通知
+- 可将自己的通知标记为已读
+
+landlord：
+
+- 可查看自己的通知
+- 可将自己的通知标记为已读
+
+admin：
+
+- 可查看自己的通知
+- 可将自己的通知标记为已读
+- 可通过 `POST /api/v1/notifications` 手动创建通知
+
+访问规则：
+
+- 所有角色都只能看自己的 notification
+- 非拥有者访问或操作统一返回 `2901`
+
+## 5. Notification 接口
+
+```text
+POST  /api/v1/notifications
+GET   /api/v1/notifications
+GET   /api/v1/notifications/{id}
+PATCH /api/v1/notifications/{id}/read
+```
+
+### 5.1 手动创建通知
+
+```http
+POST /api/v1/notifications
+```
+
+请求体示例：
+
+```json
+{
+  "user_id": 1,
+  "source_type": "repair",
+  "source_id": 12,
+  "title": "Repair update",
+  "message": "Your repair has a new update."
+}
+```
+
+规则：
+
+- 必须登录
+- 仅 admin 可创建
+- `user_id` 必须存在
+- 创建成功后 `status = unread`
+
+### 5.2 通知列表
+
+```http
+GET /api/v1/notifications?page=1&page_size=10
+GET /api/v1/notifications?page=1&page_size=10&status=unread
+GET /api/v1/notifications?page=1&page_size=10&status=read
+```
+
+规则：
+
+- 必须登录
+- 仅返回当前用户自己的通知
+- 支持分页
+- 支持按 `status` 筛选
+
+### 5.3 通知详情
+
+```http
+GET /api/v1/notifications/{id}
+```
+
+规则：
+
+- 必须登录
+- 非拥有者统一返回 `2901`
+
+### 5.4 标记已读
+
+```http
+PATCH /api/v1/notifications/{id}/read
+```
+
+规则：
+
+- 仅允许 `unread -> read`
+- 已经是 `read` 时返回 `2902`
+- 成功后会刷新 `updated_at`
+
+## 6. 自动通知触发
+
+以下模块在状态变更后自动创建通知：
+
+- `Repair`
+- `Complaint`
+- `Contract`
+- `Bill`
+- `Payment` 中触发的 `bill paid` 场景
+
+接收规则：
+
+- tenant 只接收自己的相关通知
+- landlord 只接收自己的相关通知
+- admin 只接收自己的相关通知
+- 第一版不做广播通知
+
+## 7. Notification 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2901 | 通知不存在或当前用户无权访问 |
+| 2902 | 非法通知状态操作 |
+
+继续复用：
+
+- `1001` 用户不存在
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `3001` 参数错误
+- `5000` 系统错误
+
+# 十八、Statistics 模块补充
+
+> 本节为 v1.12 新增内容。Statistics 第一版实现为只读后台统计模块，不新增表，不做时间范围筛选、导出或多维分析。
+
+## 1. 基本规则
+
+所有 Statistics 接口都必须登录。
+
+所有 Statistics 接口仅允许 admin 调用：
+
+- tenant 调用返回 `1004`
+- landlord 调用返回 `1004`
+
+本模块不新增独立统计表，直接聚合现有业务表：
+
+- `houses`
+- `contracts`
+- `payments`
+- `users`
+- `repairs`
+- `complaints`
+
+## 2. Statistics 接口
+
+```text
+GET /api/v1/statistics/house-utilization
+GET /api/v1/statistics/rent-income
+GET /api/v1/statistics/active-users
+GET /api/v1/statistics/complaint-repair-count
+```
+
+## 3. House Utilization
+
+```http
+GET /api/v1/statistics/house-utilization
+```
+
+返回字段：
+
+- `total_houses`
+- `occupied_houses`
+- `utilization_rate`
+
+统计口径：
+
+- `total_houses`：未逻辑删除的房源总数
+- `occupied_houses`：存在 `active contract` 的去重房源数
+- `utilization_rate`：`occupied_houses / total_houses`
+
+无数据时：
+
+- `total_houses = 0`
+- `occupied_houses = 0`
+- `utilization_rate = 0.0`
+
+## 4. Rent Income
+
+```http
+GET /api/v1/statistics/rent-income
+```
+
+返回字段：
+
+- `total_income`
+- `monthly_income`
+
+`monthly_income` 结构：
+
+```json
+[
+  {
+    "month": "2026-05",
+    "amount": 2600.0
+  }
+]
+```
+
+统计口径：
+
+- 总收入：累计已支付租金金额
+- 月度收入：按支付时间聚合月度金额
+- 时间维度以 `Payment.paid_at` 为准
+- 第一版仅统计 `bill_type = rent`
+
+无数据时：
+
+- `total_income = 0.0`
+- `monthly_income = []`
+
+## 5. Active Users
+
+```http
+GET /api/v1/statistics/active-users
+```
+
+返回字段：
+
+- `active_user_count`
+
+统计口径：
+
+- `users.status = active` 的用户数量
+- 第一版不引入最近登录、行为活跃等复杂定义
+
+无数据时返回 `0`。
+
+## 6. Complaint Repair Count
+
+```http
+GET /api/v1/statistics/complaint-repair-count
+```
+
+返回字段：
+
+- `repair_count`
+- `complaint_count`
+
+统计口径：
+
+- `repair_count`：`repairs` 表总数
+- `complaint_count`：`complaints` 表总数
+
+第一版不按状态拆分，不按时间窗口过滤。
+
+## 7. Statistics 错误码
+
+本模块不新增专属错误码，继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `3001` 参数错误
+- `5000` 系统错误
+
+# 二十一、Admin 模块补充
+
+> 本节为 v1.13 新增内容。Admin 第一版实现为后台统一管理入口，路由前缀为 `/api/v1/admin`，所有接口仅允许 admin 调用。
+
+## 1. 基本规则
+
+所有 Admin 接口都必须登录。
+
+所有 Admin 接口仅允许 admin 调用：
+
+- tenant 调用返回 `1004`
+- landlord 调用返回 `1004`
+
+Admin 第一版当前覆盖：
+
+- 用户管理
+- 房源只读管理
+- 投诉管理
+- 报修管理
+- 合同管理
+
+说明：
+
+- 第一版不新增 admin 专用统计镜像路由
+- 第一版不提供 Admin 删除用户接口
+- House 在第一版不走 admin 审核流，房东仍可直接上架
+- House 在第一版后台只提供列表和详情，不提供状态修改
+
+## 2. Admin 路由列表
+
+```text
+GET   /api/v1/admin/users
+GET   /api/v1/admin/users/{id}
+POST  /api/v1/admin/users
+PUT   /api/v1/admin/users/{id}
+PATCH /api/v1/admin/users/{id}/status
+
+GET   /api/v1/admin/houses
+GET   /api/v1/admin/houses/{id}
+
+GET   /api/v1/admin/complaints
+GET   /api/v1/admin/complaints/{id}
+PATCH /api/v1/admin/complaints/{id}/process
+PATCH /api/v1/admin/complaints/{id}/resolve
+PATCH /api/v1/admin/complaints/{id}/reject
+PATCH /api/v1/admin/complaints/{id}/close
+
+GET   /api/v1/admin/repairs
+GET   /api/v1/admin/repairs/{id}
+PATCH /api/v1/admin/repairs/{id}/process
+PATCH /api/v1/admin/repairs/{id}/complete
+PATCH /api/v1/admin/repairs/{id}/reject
+PATCH /api/v1/admin/repairs/{id}/close
+
+GET   /api/v1/admin/contracts
+GET   /api/v1/admin/contracts/{id}
+PATCH /api/v1/admin/contracts/{id}/status
+```
+
+## 3. 用户管理
+
+### 3.1 用户列表
+
+```http
+GET /api/v1/admin/users?page=1&page_size=10
+```
+
+规则：
+
+- 仅 admin 可访问
+- 支持分页
+- 返回 `list / total / page / page_size`
+
+### 3.2 用户详情
+
+```http
+GET /api/v1/admin/users/{id}
+```
+
+规则：
+
+- 仅 admin 可访问
+- 用户不存在返回 `1001`
+
+### 3.3 创建用户
+
+```http
+POST /api/v1/admin/users
+```
+
+请求体示例：
+
+```json
+{
+  "username": "managed_user",
+  "password": "Password123!",
+  "role": "tenant",
+  "email": "managed_user@example.com",
+  "status": "active"
+}
+```
+
+规则：
+
+- 仅 admin 可创建
+- `status` 仅允许：
+  - `active`
+  - `disabled`
+- 用户名冲突返回 `4009`
+
+### 3.4 更新用户
+
+```http
+PUT /api/v1/admin/users/{id}
+```
+
+规则：
+
+- 仅 admin 可更新
+- 支持更新：
+  - `username`
+  - `password`
+  - `role`
+  - `real_name`
+  - `phone`
+  - `email`
+  - `avatar`
+- 不存在返回 `1001`
+- 用户名冲突返回 `4009`
+
+### 3.5 启用 / 禁用用户
+
+```http
+PATCH /api/v1/admin/users/{id}/status
+```
+
+请求体示例：
+
+```json
+{
+  "status": "disabled"
+}
+```
+
+规则：
+
+- 第一版“删除”仅表现为启用 / 禁用
+- 不做物理删除
+
+## 4. 房源后台只读管理
+
+### 4.1 房源列表
+
+```http
+GET /api/v1/admin/houses?page=1&page_size=10
+```
+
+规则：
+
+- 仅 admin 可访问
+- 支持分页
+- 支持与 House 列表一致的筛选参数：
+  - `region`
+  - `house_type`
+  - `min_rent`
+  - `max_rent`
+  - `keyword`
+  - `min_area`
+  - `max_area`
+- 第一版只看未逻辑删除房源
+
+### 4.2 房源详情
+
+```http
+GET /api/v1/admin/houses/{id}
+```
+
+规则：
+
+- 仅 admin 可访问
+- 房源不存在返回 `2001`
+- 第一版不提供后台 `publish / offline / status` 修改接口
+
+## 5. 投诉后台管理
+
+```http
+GET   /api/v1/admin/complaints
+GET   /api/v1/admin/complaints/{id}
+PATCH /api/v1/admin/complaints/{id}/process
+PATCH /api/v1/admin/complaints/{id}/resolve
+PATCH /api/v1/admin/complaints/{id}/reject
+PATCH /api/v1/admin/complaints/{id}/close
+```
+
+规则：
+
+- admin 可查看全部 complaint
+- admin 复用 complaint 现有状态流规则：
+  - `pending -> processing`
+  - `processing -> resolved`
+  - `pending -> rejected`
+  - `resolved -> closed`
+- 非法状态操作返回 `2802`
+- 不存在返回 `2801`
+
+## 6. 报修后台管理
+
+```http
+GET   /api/v1/admin/repairs
+GET   /api/v1/admin/repairs/{id}
+PATCH /api/v1/admin/repairs/{id}/process
+PATCH /api/v1/admin/repairs/{id}/complete
+PATCH /api/v1/admin/repairs/{id}/reject
+PATCH /api/v1/admin/repairs/{id}/close
+```
+
+规则：
+
+- admin 可查看全部 repair
+- admin 复用 repair 现有状态流规则：
+  - `pending/reopened -> processing`
+  - `processing -> completed`
+  - `pending/reopened -> rejected`
+  - `completed -> closed`
+- 非法状态操作返回 `2702`
+- 不存在返回 `2701`
+
+## 7. 合同后台管理
+
+### 7.1 合同列表 / 详情
+
+```http
+GET /api/v1/admin/contracts?page=1&page_size=10
+GET /api/v1/admin/contracts/{id}
+```
+
+规则：
+
+- admin 可查看全部 contract
+- 不存在返回 `2401`
+
+### 7.2 修改合同状态
+
+```http
+PATCH /api/v1/admin/contracts/{id}/status
+```
+
+请求体示例：
+
+```json
+{
+  "status": "terminated"
+}
+```
+
+第一版允许输入：
+
+- `active`
+- `terminated`
+- `cancelled`
+
+允许流转：
+
+- `pending -> active`
+- `pending -> cancelled`
+- `active -> terminated`
+
+不开放：
+
+- admin 直接改成 `rejected`
+- 任意未定义状态跳转
+
+非法状态操作返回 `2402`。
+
+## 8. Admin 模块错误码
+
+Admin 第一版不新增专属错误码，继续复用：
+
+- `1001` 用户不存在
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `2001` 房源不存在
+- `2401` 合同不存在
+- `2402` 非法合同状态
+- `2701` 报修不存在或无权访问
+- `2702` 非法报修状态操作
+- `2801` 投诉不存在或无权访问
+- `2802` 非法投诉状态操作
+- `3001` 参数错误
+- `4009` 资源冲突
+- `5000` 系统错误
+
+# 十六、Complaint 模块补充
+
+> 本节为 v1.10 新增内容。Complaint 第一版实现为 HTTP 投诉模块，不做附件上传，不做物理删除，不新增 admin 专用路径。
+
+## 1. 基本规则
+
+所有 Complaint 接口都必须登录。
+
+Complaint 必须基于当前租客自己的 `active contract` 创建。
+
+创建时前端只允许提交：
+
+- `contract_id`
+- `description`
+
+以下字段由后端根据 contract 自动写入：
+
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+
+## 2. Complaint 表结构
+
+```text
+complaints
+-
+id
+contract_id
+house_id
+tenant_id
+landlord_id
+description
+status
+processed_at
+resolved_at
+closed_at
+rejected_at
+cancelled_at
+created_at
+updated_at
+```
+
+说明：
+
+- `status` 默认 `pending`
+- `cancelled_at` 仅为未来扩展预留字段
+- 第一版不引入 `cancelled` 状态
+- 索引包含：
+  - `contract_id`
+  - `house_id`
+  - `tenant_id`
+  - `landlord_id`
+  - `status`
+  - `created_at`
+
+## 3. Complaint 状态与流转
+
+状态集合：
+
+- `pending`
+- `processing`
+- `resolved`
+- `closed`
+- `rejected`
+
+主流程：
+
+- `create -> pending`
+- `pending -> processing`
+- `processing -> resolved`
+- `resolved -> closed`
+
+可选分支：
+
+- `pending -> rejected`
+
+说明：
+
+- `closed / rejected` 作为公开流程终态
+- 第一版不提供 `DELETE /complaints/{id}`
+
+## 4. 角色与权限规则
+
+tenant：
+
+- `create`
+- `close`
+
+landlord：
+
+- `process`
+- `resolve`
+- `reject`
+
+admin：
+
+- 可查看全部 complaint
+- 可执行所有合法状态流
+
+访问规则：
+
+- tenant 只看自己的 complaint
+- landlord 只看自己房源/合同相关的 complaint
+- admin 可看全部
+- 非参与者访问或操作统一返回 `2801`
+
+## 5. Complaint 接口
+
+```text
+POST  /api/v1/complaints
+GET   /api/v1/complaints
+GET   /api/v1/complaints/{id}
+PATCH /api/v1/complaints/{id}/process
+PATCH /api/v1/complaints/{id}/resolve
+PATCH /api/v1/complaints/{id}/reject
+PATCH /api/v1/complaints/{id}/close
+```
+
+### 5.1 创建投诉
+
+```http
+POST /api/v1/complaints
+```
+
+请求体示例：
+
+```json
+{
+  "contract_id": 1,
+  "description": "repeated construction noise late at night"
+}
+```
+
+规则：
+
+- 必须登录
+- 仅 tenant 可创建
+- `contract_id` 必须属于当前 tenant
+- `contract.status` 必须是 `active`
+- 创建成功后 `status = pending`
+
+### 5.2 投诉列表
+
+```http
+GET /api/v1/complaints?page=1&page_size=10
+GET /api/v1/complaints?page=1&page_size=10&status=pending
+```
+
+规则：
+
+- 必须登录
+- 支持分页
+- 支持按 `status` 筛选
+- tenant 只看自己的
+- landlord 只看关联房源的
+- admin 可看全部
+
+### 5.3 投诉详情
+
+```http
+GET /api/v1/complaints/{id}
+```
+
+规则：
+
+- 必须登录
+- 非参与者统一返回 `2801`
+
+### 5.4 process / resolve / reject / close
+
+```http
+PATCH /api/v1/complaints/{id}/process
+PATCH /api/v1/complaints/{id}/resolve
+PATCH /api/v1/complaints/{id}/reject
+PATCH /api/v1/complaints/{id}/close
+```
+
+规则：
+
+- `process`：landlord/admin，`pending -> processing`
+- `resolve`：landlord/admin，`processing -> resolved`
+- `reject`：landlord/admin，`pending -> rejected`
+- `close`：tenant/admin，`resolved -> closed`
+
+非法状态操作统一返回 `2802`。
+
+## 6. Complaint 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2801 | 投诉不存在或当前用户无权访问 |
+| 2802 | 非法投诉状态操作 |
+| 2803 | contract 不是 active，不允许创建投诉 |
+
+继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `2401` 合同不存在或不属于当前用户
+- `3001` 参数错误
+- `5000` 系统错误
+# 二十二、News 模块补充
+
+> 本节为 v1.14 新增内容。News 第一版实现为平台公告模块，路由前缀为 `/api/v1/news`，写接口仅允许 admin 调用。
+
+## 1. 基本规则
+
+- 状态仅包含：
+  - `draft`
+  - `published`
+- admin 默认可查看全部公告
+- tenant / landlord / 游客仅可查看 `published`
+- 删除为物理删除
+- 公告发布或更新已发布公告时，会触发站内通知
+
+## 2. News 表结构
+
+字段：
+
+```text
+id
+title
+content
+author_id
+status
+created_at
+updated_at
+```
+
+说明：
+
+- `author_id -> users.id`
+- `created_at` 建索引
+- `status` 默认 `draft`
+
+## 3. News 接口
+
+```text
+POST   /api/v1/news
+GET    /api/v1/news
+GET    /api/v1/news/{id}
+PATCH  /api/v1/news/{id}
+DELETE /api/v1/news/{id}
+```
+
+### 3.1 创建公告
+
+```http
+POST /api/v1/news
+```
+
+请求体示例：
+
+```json
+{
+  "title": "System maintenance notice",
+  "content": "The platform will be unavailable from 02:00 to 03:00.",
+  "status": "published"
+}
+```
+
+规则：
+
+- 必须登录
+- 仅 admin 可调用
+- `title` 去除首尾空白后必须非空
+- `content` 去除首尾空白后必须非空
+- `status = published` 时创建后触发通知
+
+### 3.2 公告列表
+
+```http
+GET /api/v1/news?page=1&page_size=10
+GET /api/v1/news?page=1&page_size=10&status=draft
+GET /api/v1/news?page=1&page_size=10&status=published
+```
+
+规则：
+
+- 支持分页
+- 支持按 `status` 筛选
+- admin 默认可看 `draft + published`
+- tenant / landlord / 游客仅返回 `published`
+- 非 admin 即使传 `status=draft`，仍按 `published` 处理
+
+### 3.3 公告详情
+
+```http
+GET /api/v1/news/{id}
+```
+
+规则：
+
+- admin 可查看任意状态公告
+- tenant / landlord / 游客仅可查看 `published`
+- 不存在或无权查看统一返回 `3002`
+
+### 3.4 更新公告
+
+```http
+PATCH /api/v1/news/{id}
+```
+
+请求体示例：
+
+```json
+{
+  "content": "Updated announcement content."
+}
+```
+
+规则：
+
+- 必须登录
+- 仅 admin 可调用
+- 支持部分更新：
+  - `title`
+  - `content`
+  - `status`
+- 空 body 或全部字段为空统一返回 `3001`
+- 更新后若状态为 `published`，触发通知
+
+### 3.5 删除公告
+
+```http
+DELETE /api/v1/news/{id}
+```
+
+规则：
+
+- 必须登录
+- 仅 admin 可调用
+- 物理删除公告
+- 已生成的 notification 记录保留
+
+## 4. Notification 联动
+
+- 创建 `draft` 不触发通知
+- 创建 `published` 触发通知
+- 更新已发布公告再次触发通知
+- 通知目标为所有 `active tenant` 与 `active landlord`
+- 不给 admin 发公告通知
+- `source_type = news`
+
+## 5. News 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 3002 | 公告不存在或当前用户无权访问 |
+| 3003 | 非法公告状态 |
+
+继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `3001` 参数错误
 - `5000` 系统错误
