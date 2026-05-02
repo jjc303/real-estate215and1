@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.14.2 - 2026-05-02
+
+### Changed
+
+#### Notification 批量接口彻底收口
+
+- `NotificationService` 只保留 `create_notification(...)` 一个创建入口
+- 删除 `create_notifications(...)`
+- 单用户与多用户通知统一走 `NotificationRepository.bulk_create(...)`
+- `POST /api/v1/notifications` 保持单用户 HTTP 接口不变，由 router 从返回列表中解包 `result[0]`
+- `News / Payment / Repair / Complaint / Contract / Bill / Admin` 全部迁移到同一个批量通知 service 接口
+- 删除旧的业务侧循环单发路径，不再保留批量与单条并存
+
+#### 操作日志审计能力补充
+
+- 新增 `operation_logs` 表与 `operation_log` 模块
+- 新增 `GET /api/v1/admin/logs` 后台日志分页查询接口
+- `Repair / Complaint / Contract / Bill / Payment / News` 关键写操作在同一事务内记录操作日志
+- 日志写入失败时，对应业务操作整体回滚
+
+### Added
+
+- Alembic migration:
+  - `b5c4d3e2f1a0_add_operation_logs_table.py`
+- Notification service 单测：
+  - `backend/tests/service/test_notification_service.py`
+
+### Verified
+
+- `pytest backend/tests/service/test_notification_service.py -q` 通过
+- 结果：`8 passed`
+- `docker compose -f deploy/docker-compose.yml exec backend pytest tests/api/test_payment_flow.py tests/api/test_news_flow.py tests/api/test_repair_flow.py tests/api/test_complaint_flow.py tests/api/test_admin_flow.py -q` 通过
+- 结果：`10 passed`
+
 ## v1.14.1 - 2026-05-02
 
 ### Changed
