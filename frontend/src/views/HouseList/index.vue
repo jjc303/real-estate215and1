@@ -80,8 +80,33 @@
                     >
                         {{ p.label }}
                     </span>
+                    <div class="custom-range">
+                        <input v-model.number="customPrice.min" type="number" placeholder="最低" class="range-input" min="0" />
+                        <span class="range-separator">-</span>
+                        <input v-model.number="customPrice.max" type="number" placeholder="最高" class="range-input" min="0" />
+                        <button type="button" class="range-confirm" @click="confirmPriceRange">确定</button>
+                    </div>
                 </div>
-                
+            </div>
+            <!--面积筛选-->
+             <div class="filter-row">
+                <span class="filter-label">面积</span>
+                <div class="filter-option">
+                    <span
+                        v-for="a in areas"
+                        :key="a.value"
+                        :class="{active:filter.area.includes(a.value)}"
+                        @click="setFilter('area',a.value)"
+                    >
+                        {{ a.label }}
+                    </span>
+                    <div class="custom-range">
+                        <input v-model.number="customArea.min" type="number" placeholder="最低" class="range-input" min="0" />
+                        <span class="range-separator">-</span>
+                        <input v-model.number="customArea.max" type="number" placeholder="最高" class="range-input" min="0" />
+                        <button type="button" class="range-confirm" @click="confirmAreaRange">确定</button>
+                    </div>
+                </div>
             </div>
             <!--户型筛选-->
              <div class="filter-row">
@@ -268,6 +293,26 @@ const prices = ref([
   { label: '5000以上', value: '5000' },
 ])
 
+const areas = ref([
+  { label: '30㎡以下', value: '30' },
+  { label: '30-50㎡', value: '30-50' },
+  { label: '50-80㎡', value: '50-80' },
+  { label: '80-100㎡', value: '80-100' },
+  { label: '100㎡以上', value: '100' },
+])
+
+// 自定义价格范围
+const customPrice = reactive({
+  min: null,
+  max: null
+})
+
+// 自定义面积范围
+const customArea = reactive({
+  min: null,
+  max: null
+})
+
 const rooms = ref([
   { label: '一室', value: '1' },
   { label: '二室', value: '2' },
@@ -287,6 +332,7 @@ const filterConfig = {
   district: 'single',       // 区域 单选
   type: 'single',       // 方式 单选
   price: 'multiple',    // 租金 多选
+  area: 'multiple',     // 面积 多选
   room: 'multiple',     // 户型 多选
   orientation: 'multiple', // 朝向 多选
   time:'multiple',//租期多选
@@ -299,11 +345,16 @@ const filter = reactive({
   type: '',
   elevator:'',
   price: [],
+  area: [],
   room: [],
   orientation: [],
   time:[],
   floor:[],
-  sort: 'default' //排序方式
+  sort: 'default', //排序方式
+  min_rent: null,
+  max_rent: null,
+  min_area: null,
+  max_area: null
 })
 const mockData = [
   { id: 1, title: "中南大学旁精致单间 拎包入住", district: "岳麓", businessArea: "麓谷", area: 35, room: "一室", orientation: "南北", price: 1800, images: ["https://picsum.photos/id/101/800/600"], tags: ["近地铁"], updateTime: "2026-04-25", isCollect: false },
@@ -351,17 +402,71 @@ const setFilter=(key,value)=>{
     pageNum.value = 1
     fetchHouseList()
 }
+
+// 确认自定义价格范围
+const confirmPriceRange = () => {
+  if (customPrice.min !== null && customPrice.min !== '') {
+    filter.min_rent = customPrice.min
+  } else {
+    filter.min_rent = null
+  }
+  if (customPrice.max !== null && customPrice.max !== '') {
+    filter.max_rent = customPrice.max
+  } else {
+    filter.max_rent = null
+  }
+  
+  if (filter.min_rent !== null && filter.max_rent !== null && filter.min_rent > filter.max_rent) {
+    alert('最低价格不能大于最高价格')
+    return
+  }
+  
+  pageNum.value = 1
+  fetchHouseList()
+}
+
+// 确认自定义面积范围
+const confirmAreaRange = () => {
+  if (customArea.min !== null && customArea.min !== '') {
+    filter.min_area = customArea.min
+  } else {
+    filter.min_area = null
+  }
+  if (customArea.max !== null && customArea.max !== '') {
+    filter.max_area = customArea.max
+  } else {
+    filter.max_area = null
+  }
+  
+  if (filter.min_area !== null && filter.max_area !== null && filter.min_area > filter.max_area) {
+    alert('最小面积不能大于最大面积')
+    return
+  }
+  
+  pageNum.value = 1
+  fetchHouseList()
+}
+
 // 清空所有筛选
 const clearAllFilter = () => {
   filter.district = ''
   filter.type = ''
   filter.elevator = ''
   filter.price = []
+  filter.area = []
   filter.room = []
   filter.orientation = []
   filter.time = []
   filter.floor = []
   filter.sort='default'
+  filter.min_rent = null
+  filter.max_rent = null
+  filter.min_area = null
+  filter.max_area = null
+  customPrice.min = null
+  customPrice.max = null
+  customArea.min = null
+  customArea.max = null
 
   pageNum.value = 1
   fetchHouseList()
@@ -542,6 +647,40 @@ onMounted(() => {
 .filter-option span.active {
   color: #006cd8;
   font-weight: bold;
+}
+.custom-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 10px;
+}
+.range-input {
+  width: 70px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+}
+.range-input:focus {
+  border-color: #006cd8;
+}
+.range-separator {
+  color: #999;
+}
+.range-confirm {
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 4px;
+  background-color: #006cd8;
+  color: white;
+  font-size: 14px;
+  cursor: pointer;
+}
+.range-confirm:hover {
+  background-color: #0056b3;
 }
 .more-toggle {
   display: flex;
