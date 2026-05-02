@@ -1,8 +1,8 @@
 ﻿# AI Context（Backend Project）
 
-Version: v1.9.0  
+Version: v1.11.0  
 Last Updated: 2026-05-02  
-Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
+Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 
 ------
 
@@ -1913,3 +1913,297 @@ Repair HTTP 测试：
 - tenant / landlord / admin 角色权限
 - `contract != active` 返回 `2703`
 - 列表分页与状态筛选
+
+# 18. v1.10 Complaint 模块补充
+
+> 本节为当前最新补充，若前文出现旧的 Complaint 描述，以本节为准。
+
+## 18.1 当前定位
+
+Complaint 第一版已经落地为当前后端模块：
+
+```text
+app/modules/complaint
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint
+```
+
+Complaint 第一版明确不做：
+
+- 附件上传
+- 泛化投诉对象建模（如 `target_type / target_id`）
+- 物理删除
+- admin 专用路由
+
+## 18.2 Complaint 表
+
+当前模型表：
+
+```text
+complaints
+```
+
+字段：
+
+- `id`
+- `contract_id`
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+- `description`
+- `status`
+- `processed_at`
+- `resolved_at`
+- `closed_at`
+- `rejected_at`
+- `cancelled_at`
+- `created_at`
+- `updated_at`
+
+约束：
+
+- Complaint 必须基于当前 tenant 自己的 `active contract` 创建
+- `POST /complaints` 不允许前端传 `house_id / tenant_id / landlord_id / status`
+- 上述冗余字段统一由后端从 contract 自动写入
+- 第一版保留 `cancelled_at` 字段，但不开放 `cancelled` 状态与接口
+
+## 18.3 Complaint 状态
+
+状态集合：
+
+- `pending`
+- `processing`
+- `resolved`
+- `closed`
+- `rejected`
+
+主流程：
+
+- `create -> pending`
+- `pending -> processing`
+- `processing -> resolved`
+- `resolved -> closed`
+
+可选分支：
+
+- `pending -> rejected`
+
+说明：
+
+- `closed / rejected` 视为公开流程终态
+
+## 18.4 Complaint 接口与权限
+
+```text
+POST  /api/v1/complaints
+GET   /api/v1/complaints
+GET   /api/v1/complaints/{id}
+PATCH /api/v1/complaints/{id}/process
+PATCH /api/v1/complaints/{id}/resolve
+PATCH /api/v1/complaints/{id}/reject
+PATCH /api/v1/complaints/{id}/close
+```
+
+角色规则：
+
+- tenant：
+  - `create`
+  - `close`
+- landlord：
+  - `process`
+  - `resolve`
+  - `reject`
+- admin：
+  - 可查看全部 complaint
+  - 可执行所有合法状态流
+
+访问规则：
+
+- tenant 只能看自己的 complaint
+- landlord 只能看自己房源/contract 相关的 complaint
+- admin 可看全部
+- 第一版不提供 `DELETE /api/v1/complaints/{id}`
+
+## 18.5 Complaint 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2801 | 投诉不存在或无权访问 |
+| 2802 | 非法投诉状态操作 |
+| 2803 | contract 不是 active，不允许创建投诉 |
+
+继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `2401` 合同不存在或不属于当前用户
+- `3001` 参数错误
+- `5000` 系统错误
+
+## 18.6 Alembic 与测试
+
+Complaint 第一版 migration：
+
+- `c8f91d4b2a10_add_complaints_table.py`
+
+Complaint HTTP 测试：
+
+- `backend/tests/api/test_complaint_flow.py`
+
+当前已覆盖：
+
+- 主流程：`pending -> processing -> resolved -> closed`
+- 可选分支：`reject`
+- tenant / landlord / admin 角色权限
+- `contract != active` 返回 `2803`
+- 列表分页与状态筛选
+
+# 19. v1.11 Notification 模块补充
+
+> 本节为当前最新补充，若前文出现旧的 Notification 描述，以本节为准。
+
+## 19.1 当前定位
+
+Notification 第一版已经落地为当前后端模块：
+
+```text
+app/modules/notification
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification
+```
+
+Notification 第一版明确不做：
+
+- 广播通知
+- 多接收人通知
+- 物理删除
+- 批量已读
+
+## 19.2 Notification 表
+
+当前模型表：
+
+```text
+notifications
+```
+
+字段：
+
+- `id`
+- `user_id`
+- `source_type`
+- `source_id`
+- `title`
+- `message`
+- `status`
+- `created_at`
+- `updated_at`
+
+约束：
+
+- Notification 仅允许单用户收件箱模型
+- `POST /notifications` 仅 admin 手动或系统测试使用
+- 推荐 `source_type`：`repair / complaint / contract / bill`
+- `created_at / updated_at` 统一按 UTC 处理
+
+## 19.3 Notification 状态
+
+状态集合：
+
+- `unread`
+- `read`
+
+主流程：
+
+- `create -> unread`
+- `unread -> read`
+
+说明：
+
+- `read` 视为终态
+- 标记已读时显式刷新 `updated_at`
+
+## 19.4 Notification 接口与权限
+
+```text
+POST  /api/v1/notifications
+GET   /api/v1/notifications
+GET   /api/v1/notifications/{id}
+PATCH /api/v1/notifications/{id}/read
+```
+
+角色规则：
+
+- tenant：
+  - 查看自己的通知
+  - 标记自己的通知已读
+- landlord：
+  - 查看自己的通知
+  - 标记自己的通知已读
+- admin：
+  - 查看自己的通知
+  - 标记自己的通知已读
+  - 手动创建通知
+
+访问规则：
+
+- 所有角色都只能看自己的 notification
+- 第一版不提供 `DELETE /api/v1/notifications/{id}`
+
+## 19.5 Notification 自动触发
+
+当前已接入自动通知的模块：
+
+- `Repair`
+- `Complaint`
+- `Contract`
+- `Bill`
+- `Payment` 中的 bill-paid 场景
+
+规则：
+
+- tenant 只接收自己的相关通知
+- landlord 只接收自己的相关通知
+- admin 只接收自己的相关通知
+- 不给无关用户创建通知
+
+## 19.6 Notification 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2901 | 通知不存在或无权访问 |
+| 2902 | 非法通知状态操作 |
+
+继续复用：
+
+- `1001` 用户不存在
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `3001` 参数错误
+- `5000` 系统错误
+
+## 19.7 Alembic 与测试
+
+Notification 第一版 migration：
+
+- `f1a7b92d4c33_add_notifications_table.py`
+
+Notification HTTP 测试：
+
+- `backend/tests/api/test_notification_flow.py`
+
+当前已覆盖：
+
+- admin 手动创建通知
+- 列表分页与 `unread/read` 状态筛选
+- 详情查询与标记已读
+- 非拥有者返回 `2901`
+- `Repair / Complaint / Contract / Bill / Payment` 自动通知联动

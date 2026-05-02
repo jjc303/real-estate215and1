@@ -53,3 +53,16 @@ class RepairStatus:
     REJECTED = "rejected"
     CANCELLED = "cancelled"
     REOPENED = "reopened"
+
+
+class ComplaintStatus:
+    PENDING = "pending"
+    PROCESSING = "processing"
+    RESOLVED = "resolved"
+    CLOSED = "closed"
+    REJECTED = "rejected"
+
+
+class NotificationStatus:
+    UNREAD = "unread"
+    READ = "read"

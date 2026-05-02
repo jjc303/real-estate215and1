@@ -1,5 +1,144 @@
 # Changelog
 
+## v1.11.0 - 2026-05-02
+
+### Added
+
+#### Notification 通知模块
+
+新增 Notification 第一版完整模块：
+
+- `app/modules/notification/model.py`
+- `app/modules/notification/schema.py`
+- `app/modules/notification/repository.py`
+- `app/modules/notification/service.py`
+- `app/modules/notification/router.py`
+
+新增表：
+
+- `notifications`
+
+新增接口：
+
+- `POST /api/v1/notifications`
+- `GET /api/v1/notifications`
+- `GET /api/v1/notifications/{id}`
+- `PATCH /api/v1/notifications/{id}/read`
+
+新增错误码：
+
+- `2901 notification not found`
+- `2902 invalid notification status`
+
+新增 migration：
+
+- `f1a7b92d4c33_add_notifications_table.py`
+
+### Changed
+
+#### Notification 业务规则
+
+- Notification 采用单用户站内通知模型
+- 状态集合：
+  - `unread`
+  - `read`
+- 主流程保持：
+  - `unread -> read`
+- 所有用户只允许读取和操作自己的通知
+- `POST /api/v1/notifications` 仅 admin 手动或系统测试使用
+- 推荐 `source_type`：
+  - `repair`
+  - `complaint`
+  - `contract`
+  - `bill`
+- `created_at / updated_at` 按 UTC 处理
+- 标记已读时显式更新 `updated_at`
+- 第一版不提供 `DELETE /notifications/{id}`，不做物理删除
+
+#### 自动通知联动
+
+- `Repair / Complaint / Contract / Bill` 状态变更时自动创建通知
+- `Payment` 中 bill paid 场景自动创建通知
+- tenant / landlord / admin 只接收自己相关通知
+
+### Verified
+
+- Notification blueprint 已注册到 `/api/v1/notifications`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_notification_flow.py`
+
+## v1.10.0 - 2026-05-02
+
+### Added
+
+#### Complaint 投诉模块
+
+新增 Complaint 第一版完整模块：
+
+- `app/modules/complaint/model.py`
+- `app/modules/complaint/schema.py`
+- `app/modules/complaint/repository.py`
+- `app/modules/complaint/service.py`
+- `app/modules/complaint/router.py`
+
+新增表：
+
+- `complaints`
+
+新增接口：
+
+- `POST /api/v1/complaints`
+- `GET /api/v1/complaints`
+- `GET /api/v1/complaints/{id}`
+- `PATCH /api/v1/complaints/{id}/process`
+- `PATCH /api/v1/complaints/{id}/resolve`
+- `PATCH /api/v1/complaints/{id}/reject`
+- `PATCH /api/v1/complaints/{id}/close`
+
+新增错误码：
+
+- `2801 complaint not found`
+- `2802 invalid complaint status`
+- `2803 contract status is not allowed for complaint`
+
+新增 migration：
+
+- `c8f91d4b2a10_add_complaints_table.py`
+
+### Changed
+
+#### Complaint 业务规则
+
+- Complaint 必须基于当前租客自己的 `active contract` 创建
+- 前端只允许传 `contract_id / description`
+- `house_id / tenant_id / landlord_id` 由后端从 contract 自动写入
+- 状态集合：
+  - `pending`
+  - `processing`
+  - `resolved`
+  - `closed`
+  - `rejected`
+- 主流程保持：
+  - `pending -> processing -> resolved -> closed`
+- 可选分支支持：
+  - `pending -> rejected`
+- tenant 允许：
+  - `create`
+  - `close`
+- landlord 允许：
+  - `process`
+  - `resolve`
+  - `reject`
+- admin 复用同一套 `/api/v1/complaints` 接口，可执行所有合法状态流
+- 第一版保留 `cancelled_at` 作为预留字段，但不开放 `cancelled` 状态与接口
+- 第一版不提供 `DELETE /complaints/{id}`，不做物理删除
+
+### Verified
+
+- Complaint blueprint 已注册到 `/api/v1/complaints`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_complaint_flow.py`
+
 ## v1.9.0 - 2026-05-02
 
 ### Added

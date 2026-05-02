@@ -44,6 +44,11 @@ BILL_ALREADY_PAID_CODE = 2604
 REPAIR_NOT_FOUND_CODE = 2701
 INVALID_REPAIR_STATUS_CODE = 2702
 CONTRACT_NOT_ACTIVE_FOR_REPAIR_CODE = 2703
+COMPLAINT_NOT_FOUND_CODE = 2801
+INVALID_COMPLAINT_STATUS_CODE = 2802
+CONTRACT_NOT_ACTIVE_FOR_COMPLAINT_CODE = 2803
+NOTIFICATION_NOT_FOUND_CODE = 2901
+INVALID_NOTIFICATION_STATUS_CODE = 2902
 
 
 def _map_http_status_to_app_code(status_code: int) -> int:
@@ -380,6 +385,60 @@ class ContractNotActiveForRepairException(AppException):
         super().__init__(
             message=message,
             code=CONTRACT_NOT_ACTIVE_FOR_REPAIR_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class ComplaintNotFoundException(AppException):
+    def __init__(self, message: str = "complaint not found", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=COMPLAINT_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class InvalidComplaintStatusException(AppException):
+    def __init__(self, message: str = "invalid complaint status", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=INVALID_COMPLAINT_STATUS_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class ContractNotActiveForComplaintException(AppException):
+    def __init__(
+        self,
+        message: str = "contract status is not allowed for complaint",
+        data: Any | None = None,
+    ) -> None:
+        super().__init__(
+            message=message,
+            code=CONTRACT_NOT_ACTIVE_FOR_COMPLAINT_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class NotificationNotFoundException(AppException):
+    def __init__(self, message: str = "notification not found", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=NOTIFICATION_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class InvalidNotificationStatusException(AppException):
+    def __init__(self, message: str = "invalid notification status", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=INVALID_NOTIFICATION_STATUS_CODE,
             status_code=400,
             data=data,
         )

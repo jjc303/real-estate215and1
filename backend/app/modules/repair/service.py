@@ -20,6 +20,7 @@ from app.modules.repair.repository import RepairRepository
 from app.modules.repair.schema import RepairReadSchema
 from app.modules.user.model import User
 from app.modules.user.repository import UserRepository
+from app.modules.notification.service import NotificationService
 
 
 class RepairService:
@@ -28,10 +29,12 @@ class RepairService:
         repair_repository: RepairRepository,
         contract_repository: ContractRepository,
         user_repository: UserRepository,
+        notification_service: NotificationService,
     ) -> None:
         self.repair_repository = repair_repository
         self.contract_repository = contract_repository
         self.user_repository = user_repository
+        self.notification_service = notification_service
 
     def create_repair(
         self,
@@ -60,6 +63,13 @@ class RepairService:
 
         try:
             self.repair_repository.create(db, repair)
+            db.flush()
+            self._notify_landlord(
+                db,
+                repair,
+                title="New repair request",
+                message=f"Repair #{repair.id} has been created by the tenant.",
+            )
             db.commit()
             db.refresh(repair)
         except Exception:
@@ -115,6 +125,12 @@ class RepairService:
         self._ensure_status(repair, {RepairStatus.PENDING, RepairStatus.REOPENED})
         repair.status = RepairStatus.PROCESSING
         repair.processed_at = self._now()
+        self._notify_tenant(
+            db,
+            repair,
+            title="Repair is being processed",
+            message=f"Repair #{repair.id} is now processing.",
+        )
         return self._commit_and_serialize(db, repair)
 
     def complete_repair(self, db: Session, current_user_id: int, repair_id: int) -> dict[str, object]:
@@ -124,6 +140,12 @@ class RepairService:
         self._ensure_status(repair, {RepairStatus.PROCESSING})
         repair.status = RepairStatus.COMPLETED
         repair.completed_at = self._now()
+        self._notify_tenant(
+            db,
+            repair,
+            title="Repair completed",
+            message=f"Repair #{repair.id} has been completed.",
+        )
         return self._commit_and_serialize(db, repair)
 
     def reject_repair(self, db: Session, current_user_id: int, repair_id: int) -> dict[str, object]:
@@ -133,6 +155,12 @@ class RepairService:
         self._ensure_status(repair, {RepairStatus.PENDING, RepairStatus.REOPENED})
         repair.status = RepairStatus.REJECTED
         repair.rejected_at = self._now()
+        self._notify_tenant(
+            db,
+            repair,
+            title="Repair rejected",
+            message=f"Repair #{repair.id} has been rejected.",
+        )
         return self._commit_and_serialize(db, repair)
 
     def close_repair(self, db: Session, current_user_id: int, repair_id: int) -> dict[str, object]:
@@ -142,6 +170,12 @@ class RepairService:
         self._ensure_status(repair, {RepairStatus.COMPLETED})
         repair.status = RepairStatus.CLOSED
         repair.closed_at = self._now()
+        self._notify_landlord(
+            db,
+            repair,
+            title="Repair closed",
+            message=f"Repair #{repair.id} has been closed by the tenant.",
+        )
         return self._commit_and_serialize(db, repair)
 
     def reopen_repair(self, db: Session, current_user_id: int, repair_id: int) -> dict[str, object]:
@@ -151,6 +185,12 @@ class RepairService:
         self._ensure_status(repair, {RepairStatus.COMPLETED, RepairStatus.CLOSED})
         repair.status = RepairStatus.REOPENED
         repair.reopened_at = self._now()
+        self._notify_landlord(
+            db,
+            repair,
+            title="Repair reopened",
+            message=f"Repair #{repair.id} has been reopened by the tenant.",
+        )
         return self._commit_and_serialize(db, repair)
 
     def _commit_and_serialize(self, db: Session, repair: Repair) -> dict[str, object]:
@@ -204,3 +244,25 @@ class RepairService:
 
     def _now(self) -> datetime:
         return datetime.now()
+
+    def _notify_tenant(self, db: Session, repair: Repair, *, title: str, message: str) -> None:
+        self.notification_service.create_notification(
+            db,
+            user_id=repair.tenant_id,
+            source_type="repair",
+            source_id=repair.id,
+            title=title,
+            message=message,
+            auto_commit=False,
+        )
+
+    def _notify_landlord(self, db: Session, repair: Repair, *, title: str, message: str) -> None:
+        self.notification_service.create_notification(
+            db,
+            user_id=repair.landlord_id,
+            source_type="repair",
+            source_id=repair.id,
+            title=title,
+            message=message,
+            auto_commit=False,
+        )

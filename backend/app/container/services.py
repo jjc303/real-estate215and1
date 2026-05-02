@@ -3,11 +3,13 @@ from __future__ import annotations
 from app.container.repositories import (
     get_appointment_repository,
     get_bill_repository,
+    get_complaint_repository,
     get_contract_repository,
     get_conversation_repository,
     get_favorite_repository,
     get_house_repository,
     get_message_repository,
+    get_notification_repository,
     get_payment_repository,
     get_repair_repository,
     get_user_repository,
@@ -15,10 +17,12 @@ from app.container.repositories import (
 from app.modules.appointment.service import AppointmentService
 from app.modules.auth.service import AuthService
 from app.modules.bill.service import BillService
+from app.modules.complaint.service import ComplaintService
 from app.modules.contract.service import ContractService
 from app.modules.conversation.service import ConversationService
 from app.modules.favorite.service import FavoriteService
 from app.modules.house.service import HouseService
+from app.modules.notification.service import NotificationService
 from app.modules.payment.service import PaymentService
 from app.modules.repair.service import RepairService
 from app.modules.user.service import UserService
@@ -34,23 +38,37 @@ _conversation_service = ConversationService(
     get_message_repository(),
     get_house_repository(),
 )
+_notification_service = NotificationService(
+    get_notification_repository(),
+    get_user_repository(),
+)
 _contract_service = ContractService(
     get_contract_repository(),
     get_appointment_repository(),
     get_house_repository(),
+    _notification_service,
 )
 _bill_service = BillService(
     get_bill_repository(),
     get_contract_repository(),
+    _notification_service,
 )
 _payment_service = PaymentService(
     get_payment_repository(),
     get_bill_repository(),
+    _notification_service,
 )
 _repair_service = RepairService(
     get_repair_repository(),
     get_contract_repository(),
     get_user_repository(),
+    _notification_service,
+)
+_complaint_service = ComplaintService(
+    get_complaint_repository(),
+    get_contract_repository(),
+    get_user_repository(),
+    _notification_service,
 )
 
 
@@ -92,3 +110,11 @@ def get_payment_service() -> PaymentService:
 
 def get_repair_service() -> RepairService:
     return _repair_service
+
+
+def get_complaint_service() -> ComplaintService:
+    return _complaint_service
+
+
+def get_notification_service() -> NotificationService:
+    return _notification_service

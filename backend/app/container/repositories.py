@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from app.modules.appointment.repository import AppointmentRepository
 from app.modules.bill.repository import BillRepository
+from app.modules.complaint.repository import ComplaintRepository
 from app.modules.contract.repository import ContractRepository
 from app.modules.conversation.repository import ConversationRepository, MessageRepository
 from app.modules.favorite.repository import FavoriteRepository
 from app.modules.house.repository import HouseRepository
+from app.modules.notification.repository import NotificationRepository
 from app.modules.payment.repository import PaymentRepository
 from app.modules.repair.repository import RepairRepository
 from app.modules.user.repository import UserRepository
@@ -21,6 +23,8 @@ _contract_repository = ContractRepository()
 _bill_repository = BillRepository()
 _payment_repository = PaymentRepository()
 _repair_repository = RepairRepository()
+_complaint_repository = ComplaintRepository()
+_notification_repository = NotificationRepository()
 
 
 def get_user_repository() -> UserRepository:
@@ -61,3 +65,11 @@ def get_payment_repository() -> PaymentRepository:
 
 def get_repair_repository() -> RepairRepository:
     return _repair_repository
+
+
+def get_complaint_repository() -> ComplaintRepository:
+    return _complaint_repository
+
+
+def get_notification_repository() -> NotificationRepository:
+    return _notification_repository

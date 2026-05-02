@@ -302,9 +302,9 @@
 建议流程：
 
 1. 租客提交投诉
-2. 选择投诉对象（房源/房东/服务）
-3. 管理员介入
-4. 处理反馈
+2. 选择合同/房源上下文
+3. 房东处理反馈
+4. 管理员可按需介入
 5. 关闭投诉单
 
 状态建议：
@@ -314,6 +314,16 @@
 - 已处理
 - 已驳回
 - 已关闭
+
+当前第一版补充约束：
+
+- 投诉必须基于当前租客自己的 `active contract` 创建
+- 第一版不做附件上传，不做 `target_type / target_id` 这类泛化投诉对象建模
+- 主流程为 `pending -> processing -> resolved -> closed`
+- 可选分支保留 `pending -> rejected`
+- tenant 负责 `create / close`
+- landlord 负责 `process / resolve / reject`
+- admin 复用同一套接口，可执行所有合法状态流
 
 ------
 
@@ -613,13 +623,25 @@
 ## 12. 投诉 Complaint
 
 - id
+- contract_id
+- house_id
 - tenant_id
-- target_type
-- target_id
-- content
+- landlord_id
+- description
 - status
+- processed_at
+- resolved_at
+- closed_at
+- rejected_at
+- cancelled_at
 - created_at
-- result
+- updated_at
+
+第一版说明：
+
+- 状态集合：`pending / processing / resolved / closed / rejected`
+- `cancelled_at` 字段仅作未来扩展预留，第一版不开放 `cancelled` 状态
+- 不提供物理删除，`closed` 表示公开流程终态
 
 ------
 
@@ -692,6 +714,18 @@
 - 签约通知
 - 支付提醒
 - 报修处理通知
+
+当前第一版补充约束：
+
+- Notification 已落地为单用户站内通知模块
+- 推荐 `source_type`：`repair / complaint / contract / bill`
+- 当前自动触发来源：
+  - Repair
+  - Complaint
+  - Contract
+  - Bill / Payment
+- 用户只能查看和标记自己的通知
+- 第一版不做广播通知和批量已读
 
 ## 5. 房源下架规则
 
@@ -776,6 +810,7 @@
 - 租金账单
 - 支付记录
 - 报修处理
+- 投诉处理
 - 房源状态联动
 
 做到这里，就是完整业务系统。
@@ -784,7 +819,6 @@
 
 最后做：
 
-- 投诉处理
 - 新闻公告
 - 报表统计
 - 智能问答/推荐

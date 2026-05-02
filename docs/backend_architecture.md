@@ -381,8 +381,10 @@ payment：支付
 repair：报修
 说明：当前已落地为基于 `active contract` 创建的 HTTP 报修模块，状态包含 `pending / processing / completed / closed / rejected / cancelled / reopened`，仍遵守 `router → service → repository → model`，表结构通过 Alembic migration 管理。
 complaint：投诉
+说明：当前已落地为基于 `active contract` 创建的 HTTP 投诉模块，状态包含 `pending / processing / resolved / closed / rejected`，仍遵守 `router → service → repository → model`，表结构通过 Alembic migration 管理。
 news：公告
 notification：通知
+说明：当前已落地为单用户 HTTP 站内通知模块，状态包含 `unread / read`，支持 admin 手动创建与业务状态变更自动触发，仍遵守 `router → service → repository → model`，表结构通过 Alembic migration 管理。
 
 statistics：统计（只读）
 log：日志
@@ -547,6 +549,7 @@ router -> service -> repository -> model
 
 - `backend/tests/api/test_bill_flow.py`
 - `backend/tests/api/test_repair_flow.py`
+- `backend/tests/api/test_complaint_flow.py`
 
 运行方式：
 
@@ -555,4 +558,5 @@ cd backend
 pytest tests/api/test_smoke_flow.py -q
 pytest tests/api/test_bill_flow.py -q
 pytest tests/api/test_repair_flow.py -q
+pytest tests/api/test_complaint_flow.py -q
 ```

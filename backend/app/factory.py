@@ -9,10 +9,12 @@ from app.core.logging import setup_logging
 from app.modules.appointment.router import bp as appointment_bp
 from app.modules.auth.router import bp as auth_bp
 from app.modules.bill.router import bp as bill_bp
+from app.modules.complaint.router import bp as complaint_bp
 from app.modules.contract.router import bp as contract_bp
 from app.modules.conversation.router import bp as conversation_bp
 from app.modules.favorite.router import bp as favorite_bp
 from app.modules.house.router import bp as house_bp
+from app.modules.notification.router import bp as notification_bp
 from app.modules.payment.router import bp as payment_bp
 from app.modules.repair.router import bp as repair_bp
 from app.modules.user.router import bp as user_bp
@@ -29,6 +31,8 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(bill_bp, url_prefix="/api/v1/bills")
     app.register_blueprint(payment_bp, url_prefix="/api/v1/payments")
     app.register_blueprint(repair_bp, url_prefix="/api/v1/repairs")
+    app.register_blueprint(complaint_bp, url_prefix="/api/v1/complaints")
+    app.register_blueprint(notification_bp, url_prefix="/api/v1/notifications")
 
 
 def create_app(config_name: str | None = None) -> Flask:
