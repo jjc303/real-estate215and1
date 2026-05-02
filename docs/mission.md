@@ -275,8 +275,8 @@
 
 1. 租客提交维修申请
 2. 选择房源/合同
-3. 填写问题描述并上传图片
-4. 房东接单/指派处理
+3. 填写问题描述
+4. 房东接单/处理
 5. 更新处理状态
 6. 租客确认是否解决
 
@@ -286,6 +286,16 @@
 - 处理中
 - 已完成
 - 已关闭
+
+当前第一版补充约束：
+
+- 报修必须基于当前租客自己的 `active contract` 创建
+- 第一版不做附件上传，`image_url` 不进入当前公开模型
+- 主流程为 `pending -> processing -> completed -> closed`
+- 可选分支保留 `rejected / cancelled / reopened`
+- tenant 负责 `create / close / reopen`
+- landlord 负责 `process / complete / reject`
+- admin 复用同一套接口，可执行所有合法状态流
 
 ### B. 投诉管理
 
@@ -574,17 +584,29 @@
 
 ------
 
-## 11. 维修申请 RepairRequest
+## 11. 维修申请 Repair
 
 - id
 - contract_id
 - house_id
 - tenant_id
+- landlord_id
 - description
-- image_url
 - status
+- processed_at
+- completed_at
+- closed_at
+- rejected_at
+- cancelled_at
+- reopened_at
 - created_at
-- handled_at
+- updated_at
+
+第一版说明：
+
+- 状态集合：`pending / processing / completed / closed / rejected / cancelled / reopened`
+- 第一版不做附件上传
+- 不提供物理删除，关闭通过状态流转完成
 
 ------
 
@@ -753,6 +775,7 @@
 - 合同管理
 - 租金账单
 - 支付记录
+- 报修处理
 - 房源状态联动
 
 做到这里，就是完整业务系统。
@@ -761,7 +784,6 @@
 
 最后做：
 
-- 维修申请
 - 投诉处理
 - 新闻公告
 - 报表统计

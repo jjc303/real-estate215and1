@@ -1,8 +1,8 @@
-# AI Context（Backend Project）
+﻿# AI Context（Backend Project）
 
-Version: v1.8.0  
-Last Updated: 2026-04-28  
-Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill 最小闭环已完成；House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
+Version: v1.9.0  
+Last Updated: 2026-05-02  
+Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 
 ------
 
@@ -1768,3 +1768,148 @@ pytest tests/api/test_payment_flow.py -q
 ```text
 2 passed
 ```
+
+
+# 17. v1.9 Repair 模块补充
+
+> 本节为当前最新补充，若前文出现旧的 Repair 描述，以本节为准。
+
+## 17.1 当前最新状态
+
+当前后端已完成：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair 最小闭环
+```
+
+Repair 第一版明确不做：
+
+- 附件上传
+- 物理删除
+- admin 专用路径
+
+## 17.2 Repair 表
+
+新增表：
+
+```text
+repairs
+```
+
+字段包括：
+
+- id
+- contract_id
+- house_id
+- tenant_id
+- landlord_id
+- description
+- status
+- processed_at
+- completed_at
+- closed_at
+- rejected_at
+- cancelled_at
+- reopened_at
+- created_at
+- updated_at
+
+关键规则：
+
+- Repair 必须基于当前 tenant 自己的 `active contract` 创建
+- `POST /repairs` 不允许前端传 `house_id / tenant_id / landlord_id / status`
+- `house_id / tenant_id / landlord_id` 由后端从 contract 自动写入
+
+## 17.3 Repair 状态
+
+```text
+pending / processing / completed / closed / rejected / cancelled / reopened
+```
+
+主流程：
+
+- `create -> pending`
+- `pending -> processing`
+- `processing -> completed`
+- `completed -> closed`
+
+可选分支：
+
+- `pending -> rejected`
+- `completed -> reopened`
+- `closed -> reopened`
+- `reopened -> processing`
+- `reopened -> rejected`
+
+说明：
+
+- 第一版保留 `cancelled` 状态常量与表字段，但不提供公开 `cancel` 接口
+- `rejected / cancelled` 视为结束状态
+
+## 17.4 Repair 接口与权限
+
+```text
+POST  /api/v1/repairs
+GET   /api/v1/repairs
+GET   /api/v1/repairs/{id}
+PATCH /api/v1/repairs/{id}/process
+PATCH /api/v1/repairs/{id}/complete
+PATCH /api/v1/repairs/{id}/reject
+PATCH /api/v1/repairs/{id}/close
+PATCH /api/v1/repairs/{id}/reopen
+```
+
+角色规则：
+
+- tenant：
+  - `create`
+  - `close`
+  - `reopen`
+- landlord：
+  - `process`
+  - `complete`
+  - `reject`
+- admin：
+  - 可查看全部 repair
+  - 可执行所有合法状态流
+
+访问规则：
+
+- tenant 只能看自己的 repair
+- landlord 只能看自己房源/contract 相关的 repair
+- admin 可看全部
+- 第一版不提供 `DELETE /api/v1/repairs/{id}`
+
+## 17.5 Repair 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2701 | 报修不存在或无权访问 |
+| 2702 | 非法报修状态操作 |
+| 2703 | contract 不是 active，不允许创建报修 |
+
+继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `2401` 合同不存在或不属于当前用户
+- `3001` 参数错误
+- `5000` 系统错误
+
+## 17.6 Alembic 与测试
+
+Repair 第一版 migration：
+
+- `7b4d6c2a9f31_add_repairs_table.py`
+
+Repair HTTP 测试：
+
+- `backend/tests/api/test_repair_flow.py`
+
+当前已覆盖：
+
+- 主流程：`pending -> processing -> completed -> closed`
+- 可选分支：`reject / reopen`
+- tenant / landlord / admin 角色权限
+- `contract != active` 返回 `2703`
+- 列表分页与状态筛选

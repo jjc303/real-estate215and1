@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.8.0
+Version: v1.9.0
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -2345,4 +2345,213 @@ GET /api/v1/payments/{id}
 - `2501` 账单不存在
 - `3001` 参数错误
 - `4009` 资源冲突
+- `5000` 系统错误
+
+------
+
+# 十五、Repair 模块补充
+
+> 本节为 v1.9 新增内容。Repair 第一版实现为 HTTP 报修模块，不做附件上传，不做物理删除，不新增 admin 专用路径。
+
+## 1. 业务规则总览
+
+所有 Repair 接口都必须登录。
+
+Repair 必须基于当前租客自己的 `active contract` 创建。
+
+请求体第一版只允许传：
+
+- `contract_id`
+- `description`
+
+前端不允许传：
+
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+- `status`
+- 所有时间字段
+
+后端从 contract 自动写入：
+
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+
+## 2. Repair 表结构
+
+```text
+repairs
+```
+
+字段包括：
+
+- `id`
+- `contract_id`
+- `house_id`
+- `tenant_id`
+- `landlord_id`
+- `description`
+- `status`
+- `processed_at`
+- `completed_at`
+- `closed_at`
+- `rejected_at`
+- `cancelled_at`
+- `reopened_at`
+- `created_at`
+- `updated_at`
+
+## 3. Repair 状态与流转
+
+状态集合：
+
+```text
+pending / processing / completed / closed / rejected / cancelled / reopened
+```
+
+主流程：
+
+- `create -> pending`
+- `pending -> processing`
+- `processing -> completed`
+- `completed -> closed`
+
+可选分支：
+
+- `pending -> rejected`
+- `completed -> reopened`
+- `closed -> reopened`
+- `reopened -> processing`
+- `reopened -> rejected`
+
+说明：
+
+- `rejected / cancelled` 作为结束状态保留
+- 第一版保留 `cancelled` 状态常量与表字段，但不提供公开 `cancel` 接口
+- 第一版不提供 `DELETE /repairs/{id}`
+
+## 4. 角色与权限规则
+
+tenant：
+
+- `create`
+- `close`
+- `reopen`
+
+landlord：
+
+- `process`
+- `complete`
+- `reject`
+
+admin：
+
+- 可查看全部 repair
+- 可执行所有合法状态流
+
+访问规则：
+
+- tenant 只看自己的 repair
+- landlord 只看自己房源/合同相关的 repair
+- admin 可看全部
+- 非参与者访问或操作统一返回 `2701`
+
+## 5. Repair 接口
+
+```text
+POST  /api/v1/repairs
+GET   /api/v1/repairs
+GET   /api/v1/repairs/{id}
+PATCH /api/v1/repairs/{id}/process
+PATCH /api/v1/repairs/{id}/complete
+PATCH /api/v1/repairs/{id}/reject
+PATCH /api/v1/repairs/{id}/close
+PATCH /api/v1/repairs/{id}/reopen
+```
+
+### 5.1 创建报修
+
+```http
+POST /api/v1/repairs
+```
+
+请求体示例：
+
+```json
+{
+  "contract_id": 1,
+  "description": "kitchen sink is leaking"
+}
+```
+
+规则：
+
+- 必须登录
+- 仅 tenant 可创建
+- `contract_id` 必须属于当前 tenant
+- `contract.status` 必须是 `active`
+- 创建成功后 `status = pending`
+
+### 5.2 报修列表
+
+```http
+GET /api/v1/repairs?page=1&page_size=10
+GET /api/v1/repairs?page=1&page_size=10&status=pending
+```
+
+规则：
+
+- 必须登录
+- 支持分页
+- 支持按 `status` 筛选
+- tenant 只看自己的
+- landlord 只看关联房源的
+- admin 可看全部
+
+### 5.3 报修详情
+
+```http
+GET /api/v1/repairs/{id}
+```
+
+规则：
+
+- 必须登录
+- 非参与者统一返回 `2701`
+
+### 5.4 process / complete / reject / close / reopen
+
+```http
+PATCH /api/v1/repairs/{id}/process
+PATCH /api/v1/repairs/{id}/complete
+PATCH /api/v1/repairs/{id}/reject
+PATCH /api/v1/repairs/{id}/close
+PATCH /api/v1/repairs/{id}/reopen
+```
+
+规则：
+
+- `process`：landlord/admin，`pending/reopened -> processing`
+- `complete`：landlord/admin，`processing -> completed`
+- `reject`：landlord/admin，`pending/reopened -> rejected`
+- `close`：tenant/admin，`completed -> closed`
+- `reopen`：tenant/admin，`completed/closed -> reopened`
+
+非法状态操作统一返回 `2702`。
+
+## 6. Repair 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 2701 | 报修不存在或当前用户无权访问 |
+| 2702 | 非法报修状态操作 |
+| 2703 | contract 不是 active，不允许创建报修 |
+
+继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `2401` 合同不存在或不属于当前用户
+- `3001` 参数错误
 - `5000` 系统错误

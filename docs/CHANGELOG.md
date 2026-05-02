@@ -1,5 +1,88 @@
 # Changelog
 
+## v1.9.0 - 2026-05-02
+
+### Added
+
+#### Repair 报修模块
+
+新增 Repair 第一版完整模块：
+
+- `app/modules/repair/model.py`
+- `app/modules/repair/schema.py`
+- `app/modules/repair/repository.py`
+- `app/modules/repair/service.py`
+- `app/modules/repair/router.py`
+
+新增表：
+
+- `repairs`
+
+新增接口：
+
+- `POST /api/v1/repairs`
+- `GET /api/v1/repairs`
+- `GET /api/v1/repairs/{id}`
+- `PATCH /api/v1/repairs/{id}/process`
+- `PATCH /api/v1/repairs/{id}/complete`
+- `PATCH /api/v1/repairs/{id}/reject`
+- `PATCH /api/v1/repairs/{id}/close`
+- `PATCH /api/v1/repairs/{id}/reopen`
+
+新增错误码：
+
+- `2701 repair not found`
+- `2702 invalid repair status`
+- `2703 contract status is not allowed for repair`
+
+新增 migration：
+
+- `7b4d6c2a9f31_add_repairs_table.py`
+
+### Changed
+
+#### Repair 业务规则
+
+- Repair 必须基于当前租客自己的 `active contract` 创建
+- 前端只允许传 `contract_id / description`
+- `house_id / tenant_id / landlord_id` 由后端从 contract 自动写入
+- 状态集合：
+  - `pending`
+  - `processing`
+  - `completed`
+  - `closed`
+  - `rejected`
+  - `cancelled`
+  - `reopened`
+- 主流程保持：
+  - `pending -> processing -> completed -> closed`
+- 可选分支支持：
+  - `pending -> rejected`
+  - `completed -> reopened`
+  - `closed -> reopened`
+  - `reopened -> processing`
+  - `reopened -> rejected`
+- tenant 允许：
+  - `create`
+  - `close`
+  - `reopen`
+- landlord 允许：
+  - `process`
+  - `complete`
+  - `reject`
+- admin 复用同一套 `/api/v1/repairs` 接口，可执行所有合法状态流
+- 第一版不提供 `DELETE /repairs/{id}`，不做物理删除
+
+### Verified
+
+- Repair blueprint 已注册到 `/api/v1/repairs`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_repair_flow.py`
+- 已覆盖主流程、reopen/reject 分支、角色权限、合同状态校验、分页与状态异常场景
+- 当前环境已完成源码级编译校验与 Flask 路由注册校验
+- 尚未在当前线程内执行真实 `pytest tests/api/test_repair_flow.py -q`
+  - 依赖运行中的 API 服务与已升级到最新 migration 的数据库
+
 ## v1.8.0 - 2026-04-28
 
 ### Added

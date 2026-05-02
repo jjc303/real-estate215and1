@@ -379,6 +379,7 @@ bill：账单
 payment：支付
 
 repair：报修
+说明：当前已落地为基于 `active contract` 创建的 HTTP 报修模块，状态包含 `pending / processing / completed / closed / rejected / cancelled / reopened`，仍遵守 `router → service → repository → model`，表结构通过 Alembic migration 管理。
 complaint：投诉
 news：公告
 notification：通知
@@ -545,6 +546,7 @@ router -> service -> repository -> model
 当前自动化接口冒烟测试除主链路外，已补充：
 
 - `backend/tests/api/test_bill_flow.py`
+- `backend/tests/api/test_repair_flow.py`
 
 运行方式：
 
@@ -552,4 +554,5 @@ router -> service -> repository -> model
 cd backend
 pytest tests/api/test_smoke_flow.py -q
 pytest tests/api/test_bill_flow.py -q
+pytest tests/api/test_repair_flow.py -q
 ```
