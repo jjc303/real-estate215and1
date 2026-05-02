@@ -10,6 +10,7 @@ from app.modules.house.repository import HouseRepository
 from app.modules.notification.repository import NotificationRepository
 from app.modules.payment.repository import PaymentRepository
 from app.modules.repair.repository import RepairRepository
+from app.modules.statistics.repository import StatisticsRepository
 from app.modules.user.repository import UserRepository
 
 
@@ -25,6 +26,7 @@ _payment_repository = PaymentRepository()
 _repair_repository = RepairRepository()
 _complaint_repository = ComplaintRepository()
 _notification_repository = NotificationRepository()
+_statistics_repository = StatisticsRepository()
 
 
 def get_user_repository() -> UserRepository:
@@ -73,3 +75,7 @@ def get_complaint_repository() -> ComplaintRepository:
 
 def get_notification_repository() -> NotificationRepository:
     return _notification_repository
+
+
+def get_statistics_repository() -> StatisticsRepository:
+    return _statistics_repository

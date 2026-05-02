@@ -12,6 +12,7 @@ from app.container.repositories import (
     get_notification_repository,
     get_payment_repository,
     get_repair_repository,
+    get_statistics_repository,
     get_user_repository,
 )
 from app.modules.appointment.service import AppointmentService
@@ -25,6 +26,7 @@ from app.modules.house.service import HouseService
 from app.modules.notification.service import NotificationService
 from app.modules.payment.service import PaymentService
 from app.modules.repair.service import RepairService
+from app.modules.statistics.service import StatisticsService
 from app.modules.user.service import UserService
 
 
@@ -69,6 +71,10 @@ _complaint_service = ComplaintService(
     get_contract_repository(),
     get_user_repository(),
     _notification_service,
+)
+_statistics_service = StatisticsService(
+    get_statistics_repository(),
+    get_user_repository(),
 )
 
 
@@ -118,3 +124,7 @@ def get_complaint_service() -> ComplaintService:
 
 def get_notification_service() -> NotificationService:
     return _notification_service
+
+
+def get_statistics_service() -> StatisticsService:
+    return _statistics_service
