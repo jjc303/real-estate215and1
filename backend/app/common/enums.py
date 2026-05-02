@@ -66,3 +66,8 @@ class ComplaintStatus:
 class NotificationStatus:
     UNREAD = "unread"
     READ = "read"
+
+
+class NewsStatus:
+    DRAFT = "draft"
+    PUBLISHED = "published"

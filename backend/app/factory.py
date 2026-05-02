@@ -15,6 +15,7 @@ from app.modules.contract.router import bp as contract_bp
 from app.modules.conversation.router import bp as conversation_bp
 from app.modules.favorite.router import bp as favorite_bp
 from app.modules.house.router import bp as house_bp
+from app.modules.news.router import bp as news_bp
 from app.modules.notification.router import bp as notification_bp
 from app.modules.payment.router import bp as payment_bp
 from app.modules.repair.router import bp as repair_bp
@@ -26,6 +27,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(user_bp, url_prefix="/api/v1/users")
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(house_bp, url_prefix="/api/v1/houses")
+    app.register_blueprint(news_bp, url_prefix="/api/v1/news")
     app.register_blueprint(favorite_bp, url_prefix="/api/v1/favorites")
     app.register_blueprint(appointment_bp, url_prefix="/api/v1/appointments")
     app.register_blueprint(conversation_bp, url_prefix="/api/v1/conversations")

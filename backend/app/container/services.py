@@ -10,6 +10,7 @@ from app.container.repositories import (
     get_favorite_repository,
     get_house_repository,
     get_message_repository,
+    get_news_repository,
     get_notification_repository,
     get_payment_repository,
     get_repair_repository,
@@ -25,6 +26,7 @@ from app.modules.contract.service import ContractService
 from app.modules.conversation.service import ConversationService
 from app.modules.favorite.service import FavoriteService
 from app.modules.house.service import HouseService
+from app.modules.news.service import NewsService
 from app.modules.notification.service import NotificationService
 from app.modules.payment.service import PaymentService
 from app.modules.repair.service import RepairService
@@ -45,6 +47,11 @@ _conversation_service = ConversationService(
 _notification_service = NotificationService(
     get_notification_repository(),
     get_user_repository(),
+)
+_news_service = NewsService(
+    get_news_repository(),
+    get_user_repository(),
+    _notification_service,
 )
 _contract_service = ContractService(
     get_contract_repository(),
@@ -109,6 +116,10 @@ def get_appointment_service() -> AppointmentService:
 
 def get_conversation_service() -> ConversationService:
     return _conversation_service
+
+
+def get_news_service() -> NewsService:
+    return _news_service
 
 
 def get_contract_service() -> ContractService:

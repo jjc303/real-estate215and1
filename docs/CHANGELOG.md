@@ -1,5 +1,62 @@
 # Changelog
 
+## v1.14.0 - 2026-05-02
+
+### Added
+
+#### News / 公告模块
+
+新增 News 第一版完整模块：
+
+- `app/modules/news/model.py`
+- `app/modules/news/schema.py`
+- `app/modules/news/repository.py`
+- `app/modules/news/service.py`
+- `app/modules/news/router.py`
+
+新增表：
+
+- `news`
+
+新增接口：
+
+- `POST /api/v1/news`
+- `GET /api/v1/news`
+- `GET /api/v1/news/{id}`
+- `PATCH /api/v1/news/{id}`
+- `DELETE /api/v1/news/{id}`
+
+### Changed
+
+#### News 业务规则
+
+- 公告状态第一版固定为：
+  - `draft`
+  - `published`
+- admin 默认可查看全部公告
+- tenant / landlord / 游客仅可查看 `published`
+- 删除策略采用物理删除
+- 公告发布或更新已发布公告时，复用 `NotificationService` 给全部 `active tenant + active landlord` 发通知
+- 已发通知记录保留，不随公告删除
+
+#### 公共层补充
+
+- `app/common/enums.py` 新增 `NewsStatus`
+- `app/core/exceptions.py` 新增：
+  - `3002 news not found`
+  - `3003 invalid news status`
+- `app/modules/user/repository.py` 新增按角色查询 active 用户方法，供公告通知批量分发复用
+- Alembic 新增：
+  - `a4b3c2d1e0f9_add_news_table.py`
+
+### Verified
+
+- News blueprint 已注册到 `/api/v1/news`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_news_flow.py`
+- `docker compose exec backend pytest tests/api/test_news_flow.py -q` 通过
+- 结果：`2 passed`
+
 ## v1.13.0 - 2026-05-02
 
 ### Added

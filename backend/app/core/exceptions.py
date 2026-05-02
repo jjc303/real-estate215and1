@@ -49,6 +49,8 @@ INVALID_COMPLAINT_STATUS_CODE = 2802
 CONTRACT_NOT_ACTIVE_FOR_COMPLAINT_CODE = 2803
 NOTIFICATION_NOT_FOUND_CODE = 2901
 INVALID_NOTIFICATION_STATUS_CODE = 2902
+NEWS_NOT_FOUND_CODE = 3002
+INVALID_NEWS_STATUS_CODE = 3003
 
 
 def _map_http_status_to_app_code(status_code: int) -> int:
@@ -439,6 +441,26 @@ class InvalidNotificationStatusException(AppException):
         super().__init__(
             message=message,
             code=INVALID_NOTIFICATION_STATUS_CODE,
+            status_code=400,
+            data=data,
+        )
+
+
+class NewsNotFoundException(AppException):
+    def __init__(self, message: str = "news not found", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=NEWS_NOT_FOUND_CODE,
+            status_code=404,
+            data=data,
+        )
+
+
+class InvalidNewsStatusException(AppException):
+    def __init__(self, message: str = "invalid news status", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=INVALID_NEWS_STATUS_CODE,
             status_code=400,
             data=data,
         )

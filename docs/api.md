@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.13.0
+Version: v1.14.0
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -3372,5 +3372,161 @@ PATCH /api/v1/complaints/{id}/close
 - `1003` 未登录
 - `1004` role 不允许执行该动作
 - `2401` 合同不存在或不属于当前用户
+- `3001` 参数错误
+- `5000` 系统错误
+# 二十二、News 模块补充
+
+> 本节为 v1.14 新增内容。News 第一版实现为平台公告模块，路由前缀为 `/api/v1/news`，写接口仅允许 admin 调用。
+
+## 1. 基本规则
+
+- 状态仅包含：
+  - `draft`
+  - `published`
+- admin 默认可查看全部公告
+- tenant / landlord / 游客仅可查看 `published`
+- 删除为物理删除
+- 公告发布或更新已发布公告时，会触发站内通知
+
+## 2. News 表结构
+
+字段：
+
+```text
+id
+title
+content
+author_id
+status
+created_at
+updated_at
+```
+
+说明：
+
+- `author_id -> users.id`
+- `created_at` 建索引
+- `status` 默认 `draft`
+
+## 3. News 接口
+
+```text
+POST   /api/v1/news
+GET    /api/v1/news
+GET    /api/v1/news/{id}
+PATCH  /api/v1/news/{id}
+DELETE /api/v1/news/{id}
+```
+
+### 3.1 创建公告
+
+```http
+POST /api/v1/news
+```
+
+请求体示例：
+
+```json
+{
+  "title": "System maintenance notice",
+  "content": "The platform will be unavailable from 02:00 to 03:00.",
+  "status": "published"
+}
+```
+
+规则：
+
+- 必须登录
+- 仅 admin 可调用
+- `title` 去除首尾空白后必须非空
+- `content` 去除首尾空白后必须非空
+- `status = published` 时创建后触发通知
+
+### 3.2 公告列表
+
+```http
+GET /api/v1/news?page=1&page_size=10
+GET /api/v1/news?page=1&page_size=10&status=draft
+GET /api/v1/news?page=1&page_size=10&status=published
+```
+
+规则：
+
+- 支持分页
+- 支持按 `status` 筛选
+- admin 默认可看 `draft + published`
+- tenant / landlord / 游客仅返回 `published`
+- 非 admin 即使传 `status=draft`，仍按 `published` 处理
+
+### 3.3 公告详情
+
+```http
+GET /api/v1/news/{id}
+```
+
+规则：
+
+- admin 可查看任意状态公告
+- tenant / landlord / 游客仅可查看 `published`
+- 不存在或无权查看统一返回 `3002`
+
+### 3.4 更新公告
+
+```http
+PATCH /api/v1/news/{id}
+```
+
+请求体示例：
+
+```json
+{
+  "content": "Updated announcement content."
+}
+```
+
+规则：
+
+- 必须登录
+- 仅 admin 可调用
+- 支持部分更新：
+  - `title`
+  - `content`
+  - `status`
+- 空 body 或全部字段为空统一返回 `3001`
+- 更新后若状态为 `published`，触发通知
+
+### 3.5 删除公告
+
+```http
+DELETE /api/v1/news/{id}
+```
+
+规则：
+
+- 必须登录
+- 仅 admin 可调用
+- 物理删除公告
+- 已生成的 notification 记录保留
+
+## 4. Notification 联动
+
+- 创建 `draft` 不触发通知
+- 创建 `published` 触发通知
+- 更新已发布公告再次触发通知
+- 通知目标为所有 `active tenant` 与 `active landlord`
+- 不给 admin 发公告通知
+- `source_type = news`
+
+## 5. News 错误码
+
+| code | 含义 |
+| ---- | ---- |
+| 3002 | 公告不存在或当前用户无权访问 |
+| 3003 | 非法公告状态 |
+
+继续复用：
+
+- `1003` 未登录
+- `1004` role 不允许执行该动作
 - `3001` 参数错误
 - `5000` 系统错误

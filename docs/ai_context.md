@@ -1,8 +1,8 @@
 ﻿# AI Context（Backend Project）
 
-Version: v1.13.0  
+Version: v1.14.0  
 Last Updated: 2026-05-02  
-Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics + Admin 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
+Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + News + Notification + Statistics + Admin 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 
 ------
 
@@ -2417,3 +2417,124 @@ Admin HTTP 测试：
 - admin repair / complaint 状态流
 - admin contract 状态流
 - tenant / landlord 调用后台接口返回 `1004`
+
+# 22. v1.14 News 模块补充
+
+> 本节为 v1.14 新增内容。News 第一版实现为平台公告模块，遵守 `router -> service -> repository -> model/schema`，并复用现有 NotificationService 做站内通知触发。
+
+## 22.1 当前定位
+
+News 第一版已经落地为当前后端模块：
+
+```text
+app/modules/news
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + News + Notification + Statistics + Admin
+```
+
+News 第一版明确范围：
+
+- 公告 CRUD
+- 公告列表与详情
+- 按 `status` 分页筛选
+- `published` 公告对外可见
+- 发布或更新已发布公告触发 Notification
+
+News 第一版明确不做：
+
+- 公告软删除
+- 公告定向受众配置
+- `/api/v1/admin/news` 独立后台前缀
+
+## 22.2 表结构
+
+表名：
+
+```text
+news
+```
+
+字段：
+
+```text
+id
+title
+content
+author_id
+status
+created_at
+updated_at
+```
+
+说明：
+
+- `author_id -> users.id`
+- `status` 仅允许：
+  - `draft`
+  - `published`
+- `created_at` 建索引：
+  - `ix_news_created_at`
+- 删除策略为物理删除，不保留 `deleted_at`
+
+## 22.3 路由与权限
+
+统一前缀：
+
+```text
+/api/v1/news
+```
+
+当前已落地接口：
+
+- `POST /api/v1/news`
+- `GET /api/v1/news`
+- `GET /api/v1/news/{id}`
+- `PATCH /api/v1/news/{id}`
+- `DELETE /api/v1/news/{id}`
+
+权限规则：
+
+- admin 可创建、更新、删除、查看全部公告
+- tenant / landlord / 游客仅可查看 `published`
+- 非 admin 调用写接口统一返回 `1004`
+- 非 admin 或游客访问 `draft` 详情统一返回 `3002`
+
+## 22.4 Notification 联动
+
+触发规则：
+
+- 创建 `draft` 公告不发通知
+- 创建 `published` 公告时发通知
+- 更新后若公告状态为 `published`，再次发通知
+- `published -> draft` 不发通知
+
+通知范围：
+
+- 所有 `active tenant`
+- 所有 `active landlord`
+- 不给 admin 发公告通知
+
+通知约定：
+
+- `source_type = news`
+- `source_id = news.id`
+- 已发通知保留，不随 news 删除
+
+## 22.5 测试
+
+News HTTP 测试：
+
+- `backend/tests/api/test_news_flow.py`
+
+当前已覆盖：
+
+- admin 创建 `draft / published` 公告
+- admin 更新、发布、删除公告
+- tenant / landlord / 游客的可见性差异
+- 非 admin 写接口返回 `1004`
+- 分页、`status` 筛选、空 body / 空字符串 / 超长 content 校验
+- Notification 触发与删除后保留验证
