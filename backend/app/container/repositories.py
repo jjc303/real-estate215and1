@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from app.modules.admin.repository import AdminRepository
 from app.modules.appointment.repository import AppointmentRepository
 from app.modules.bill.repository import BillRepository
 from app.modules.complaint.repository import ComplaintRepository
@@ -27,6 +28,7 @@ _repair_repository = RepairRepository()
 _complaint_repository = ComplaintRepository()
 _notification_repository = NotificationRepository()
 _statistics_repository = StatisticsRepository()
+_admin_repository = AdminRepository()
 
 
 def get_user_repository() -> UserRepository:
@@ -79,3 +81,7 @@ def get_notification_repository() -> NotificationRepository:
 
 def get_statistics_repository() -> StatisticsRepository:
     return _statistics_repository
+
+
+def get_admin_repository() -> AdminRepository:
+    return _admin_repository

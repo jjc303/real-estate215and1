@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from app.container.repositories import (
+    get_admin_repository,
     get_appointment_repository,
     get_bill_repository,
     get_complaint_repository,
@@ -15,6 +16,7 @@ from app.container.repositories import (
     get_statistics_repository,
     get_user_repository,
 )
+from app.modules.admin.service import AdminService
 from app.modules.appointment.service import AppointmentService
 from app.modules.auth.service import AuthService
 from app.modules.bill.service import BillService
@@ -76,6 +78,13 @@ _statistics_service = StatisticsService(
     get_statistics_repository(),
     get_user_repository(),
 )
+_admin_service = AdminService(
+    get_admin_repository(),
+    get_user_repository(),
+    _repair_service,
+    _complaint_service,
+    _notification_service,
+)
 
 
 def get_user_service() -> UserService:
@@ -128,3 +137,7 @@ def get_notification_service() -> NotificationService:
 
 def get_statistics_service() -> StatisticsService:
     return _statistics_service
+
+
+def get_admin_service() -> AdminService:
+    return _admin_service

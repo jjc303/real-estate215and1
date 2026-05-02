@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.12.0
+Version: v1.13.0
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -2879,6 +2879,298 @@ GET /api/v1/statistics/complaint-repair-count
 - `1003` 未登录
 - `1004` role 不允许执行该动作
 - `3001` 参数错误
+- `5000` 系统错误
+
+# 二十一、Admin 模块补充
+
+> 本节为 v1.13 新增内容。Admin 第一版实现为后台统一管理入口，路由前缀为 `/api/v1/admin`，所有接口仅允许 admin 调用。
+
+## 1. 基本规则
+
+所有 Admin 接口都必须登录。
+
+所有 Admin 接口仅允许 admin 调用：
+
+- tenant 调用返回 `1004`
+- landlord 调用返回 `1004`
+
+Admin 第一版当前覆盖：
+
+- 用户管理
+- 房源只读管理
+- 投诉管理
+- 报修管理
+- 合同管理
+
+说明：
+
+- 第一版不新增 admin 专用统计镜像路由
+- 第一版不提供 Admin 删除用户接口
+- House 在第一版不走 admin 审核流，房东仍可直接上架
+- House 在第一版后台只提供列表和详情，不提供状态修改
+
+## 2. Admin 路由列表
+
+```text
+GET   /api/v1/admin/users
+GET   /api/v1/admin/users/{id}
+POST  /api/v1/admin/users
+PUT   /api/v1/admin/users/{id}
+PATCH /api/v1/admin/users/{id}/status
+
+GET   /api/v1/admin/houses
+GET   /api/v1/admin/houses/{id}
+
+GET   /api/v1/admin/complaints
+GET   /api/v1/admin/complaints/{id}
+PATCH /api/v1/admin/complaints/{id}/process
+PATCH /api/v1/admin/complaints/{id}/resolve
+PATCH /api/v1/admin/complaints/{id}/reject
+PATCH /api/v1/admin/complaints/{id}/close
+
+GET   /api/v1/admin/repairs
+GET   /api/v1/admin/repairs/{id}
+PATCH /api/v1/admin/repairs/{id}/process
+PATCH /api/v1/admin/repairs/{id}/complete
+PATCH /api/v1/admin/repairs/{id}/reject
+PATCH /api/v1/admin/repairs/{id}/close
+
+GET   /api/v1/admin/contracts
+GET   /api/v1/admin/contracts/{id}
+PATCH /api/v1/admin/contracts/{id}/status
+```
+
+## 3. 用户管理
+
+### 3.1 用户列表
+
+```http
+GET /api/v1/admin/users?page=1&page_size=10
+```
+
+规则：
+
+- 仅 admin 可访问
+- 支持分页
+- 返回 `list / total / page / page_size`
+
+### 3.2 用户详情
+
+```http
+GET /api/v1/admin/users/{id}
+```
+
+规则：
+
+- 仅 admin 可访问
+- 用户不存在返回 `1001`
+
+### 3.3 创建用户
+
+```http
+POST /api/v1/admin/users
+```
+
+请求体示例：
+
+```json
+{
+  "username": "managed_user",
+  "password": "Password123!",
+  "role": "tenant",
+  "email": "managed_user@example.com",
+  "status": "active"
+}
+```
+
+规则：
+
+- 仅 admin 可创建
+- `status` 仅允许：
+  - `active`
+  - `disabled`
+- 用户名冲突返回 `4009`
+
+### 3.4 更新用户
+
+```http
+PUT /api/v1/admin/users/{id}
+```
+
+规则：
+
+- 仅 admin 可更新
+- 支持更新：
+  - `username`
+  - `password`
+  - `role`
+  - `real_name`
+  - `phone`
+  - `email`
+  - `avatar`
+- 不存在返回 `1001`
+- 用户名冲突返回 `4009`
+
+### 3.5 启用 / 禁用用户
+
+```http
+PATCH /api/v1/admin/users/{id}/status
+```
+
+请求体示例：
+
+```json
+{
+  "status": "disabled"
+}
+```
+
+规则：
+
+- 第一版“删除”仅表现为启用 / 禁用
+- 不做物理删除
+
+## 4. 房源后台只读管理
+
+### 4.1 房源列表
+
+```http
+GET /api/v1/admin/houses?page=1&page_size=10
+```
+
+规则：
+
+- 仅 admin 可访问
+- 支持分页
+- 支持与 House 列表一致的筛选参数：
+  - `region`
+  - `house_type`
+  - `min_rent`
+  - `max_rent`
+  - `keyword`
+  - `min_area`
+  - `max_area`
+- 第一版只看未逻辑删除房源
+
+### 4.2 房源详情
+
+```http
+GET /api/v1/admin/houses/{id}
+```
+
+规则：
+
+- 仅 admin 可访问
+- 房源不存在返回 `2001`
+- 第一版不提供后台 `publish / offline / status` 修改接口
+
+## 5. 投诉后台管理
+
+```http
+GET   /api/v1/admin/complaints
+GET   /api/v1/admin/complaints/{id}
+PATCH /api/v1/admin/complaints/{id}/process
+PATCH /api/v1/admin/complaints/{id}/resolve
+PATCH /api/v1/admin/complaints/{id}/reject
+PATCH /api/v1/admin/complaints/{id}/close
+```
+
+规则：
+
+- admin 可查看全部 complaint
+- admin 复用 complaint 现有状态流规则：
+  - `pending -> processing`
+  - `processing -> resolved`
+  - `pending -> rejected`
+  - `resolved -> closed`
+- 非法状态操作返回 `2802`
+- 不存在返回 `2801`
+
+## 6. 报修后台管理
+
+```http
+GET   /api/v1/admin/repairs
+GET   /api/v1/admin/repairs/{id}
+PATCH /api/v1/admin/repairs/{id}/process
+PATCH /api/v1/admin/repairs/{id}/complete
+PATCH /api/v1/admin/repairs/{id}/reject
+PATCH /api/v1/admin/repairs/{id}/close
+```
+
+规则：
+
+- admin 可查看全部 repair
+- admin 复用 repair 现有状态流规则：
+  - `pending/reopened -> processing`
+  - `processing -> completed`
+  - `pending/reopened -> rejected`
+  - `completed -> closed`
+- 非法状态操作返回 `2702`
+- 不存在返回 `2701`
+
+## 7. 合同后台管理
+
+### 7.1 合同列表 / 详情
+
+```http
+GET /api/v1/admin/contracts?page=1&page_size=10
+GET /api/v1/admin/contracts/{id}
+```
+
+规则：
+
+- admin 可查看全部 contract
+- 不存在返回 `2401`
+
+### 7.2 修改合同状态
+
+```http
+PATCH /api/v1/admin/contracts/{id}/status
+```
+
+请求体示例：
+
+```json
+{
+  "status": "terminated"
+}
+```
+
+第一版允许输入：
+
+- `active`
+- `terminated`
+- `cancelled`
+
+允许流转：
+
+- `pending -> active`
+- `pending -> cancelled`
+- `active -> terminated`
+
+不开放：
+
+- admin 直接改成 `rejected`
+- 任意未定义状态跳转
+
+非法状态操作返回 `2402`。
+
+## 8. Admin 模块错误码
+
+Admin 第一版不新增专属错误码，继续复用：
+
+- `1001` 用户不存在
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `2001` 房源不存在
+- `2401` 合同不存在
+- `2402` 非法合同状态
+- `2701` 报修不存在或无权访问
+- `2702` 非法报修状态操作
+- `2801` 投诉不存在或无权访问
+- `2802` 非法投诉状态操作
+- `3001` 参数错误
+- `4009` 资源冲突
 - `5000` 系统错误
 
 # 十六、Complaint 模块补充

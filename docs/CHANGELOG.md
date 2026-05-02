@@ -1,5 +1,66 @@
 # Changelog
 
+## v1.13.0 - 2026-05-02
+
+### Added
+
+#### Admin 后台管理模块
+
+新增 Admin 第一版完整模块：
+
+- `app/modules/admin/schema.py`
+- `app/modules/admin/repository.py`
+- `app/modules/admin/service.py`
+- `app/modules/admin/router.py`
+
+新增接口：
+- `GET /api/v1/admin/users`
+- `GET /api/v1/admin/users/{id}`
+- `POST /api/v1/admin/users`
+- `PUT /api/v1/admin/users/{id}`
+- `PATCH /api/v1/admin/users/{id}/status`
+- `GET /api/v1/admin/houses`
+- `GET /api/v1/admin/houses/{id}`
+- `GET /api/v1/admin/complaints`
+- `GET /api/v1/admin/complaints/{id}`
+- `PATCH /api/v1/admin/complaints/{id}/process`
+- `PATCH /api/v1/admin/complaints/{id}/resolve`
+- `PATCH /api/v1/admin/complaints/{id}/reject`
+- `PATCH /api/v1/admin/complaints/{id}/close`
+- `GET /api/v1/admin/repairs`
+- `GET /api/v1/admin/repairs/{id}`
+- `PATCH /api/v1/admin/repairs/{id}/process`
+- `PATCH /api/v1/admin/repairs/{id}/complete`
+- `PATCH /api/v1/admin/repairs/{id}/reject`
+- `PATCH /api/v1/admin/repairs/{id}/close`
+- `GET /api/v1/admin/contracts`
+- `GET /api/v1/admin/contracts/{id}`
+- `PATCH /api/v1/admin/contracts/{id}/status`
+
+### Changed
+
+#### Admin 第一版业务边界
+
+- Admin 统一使用 `/api/v1/admin` 前缀
+- 所有后台接口仅允许 admin 调用
+- User 的“删除”在第一版仅表现为启用 / 禁用
+- House 第一版后台只做只读列表和详情，不做审核和状态修改
+- Complaint / Repair 后台状态流直接复用现有 admin 兼容逻辑
+- Contract 后台状态流固定为：
+  - `pending -> active`
+  - `pending -> cancelled`
+  - `active -> terminated`
+- Admin 模块可复用 Notification 发通知
+- Statistics 保持独立前缀 `/api/v1/statistics`
+
+### Verified
+
+- Admin blueprint 已注册到 `/api/v1/admin`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_admin_flow.py`
+- `docker compose exec backend pytest tests/api/test_admin_flow.py -q` 通过
+- 结果：`2 passed`
+
 ## v1.12.0 - 2026-05-02
 
 ### Added

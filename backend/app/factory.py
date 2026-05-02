@@ -6,6 +6,7 @@ from app.core.config import load_config
 from app.core.database import init_database
 from app.core.exceptions import register_error_handlers
 from app.core.logging import setup_logging
+from app.modules.admin.router import bp as admin_bp
 from app.modules.appointment.router import bp as appointment_bp
 from app.modules.auth.router import bp as auth_bp
 from app.modules.bill.router import bp as bill_bp
@@ -35,6 +36,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(complaint_bp, url_prefix="/api/v1/complaints")
     app.register_blueprint(notification_bp, url_prefix="/api/v1/notifications")
     app.register_blueprint(statistics_bp, url_prefix="/api/v1/statistics")
+    app.register_blueprint(admin_bp, url_prefix="/api/v1/admin")
 
 
 def create_app(config_name: str | None = None) -> Flask:

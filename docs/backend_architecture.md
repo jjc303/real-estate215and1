@@ -158,6 +158,7 @@ backend/
 
       admin/
         router.py
+        repository.py
         service.py
         schema.py
 
@@ -551,6 +552,9 @@ router -> service -> repository -> model
 - `backend/tests/api/test_bill_flow.py`
 - `backend/tests/api/test_repair_flow.py`
 - `backend/tests/api/test_complaint_flow.py`
+- `backend/tests/api/test_notification_flow.py`
+- `backend/tests/api/test_statistics_flow.py`
+- `backend/tests/api/test_admin_flow.py`
 
 运行方式：
 
@@ -560,4 +564,32 @@ pytest tests/api/test_smoke_flow.py -q
 pytest tests/api/test_bill_flow.py -q
 pytest tests/api/test_repair_flow.py -q
 pytest tests/api/test_complaint_flow.py -q
+pytest tests/api/test_notification_flow.py -q
+pytest tests/api/test_statistics_flow.py -q
+pytest tests/api/test_admin_flow.py -q
 ```
+
+## 22. Admin 模块补充
+
+`app/modules/admin` 已纳入当前后端模块列表，当前仍遵守：
+
+```text
+router -> service -> repository -> schema
+```
+
+约束保持不变：
+
+- repository 不 `commit / rollback`
+- service 统一负责 admin 权限校验、事务和业务逻辑
+- service 返回序列化 dict，不返回 ORM 对象
+
+当前 Admin 第一版定位：
+
+- 路由前缀固定为 `/api/v1/admin`
+- 所有接口 `admin-only`
+- `User` 支持列表、详情、创建、更新、启用 / 禁用
+- `House` 仅提供后台只读列表和详情
+- `Repair / Complaint` 复用现有 service 的 admin 兼容状态流
+- `Contract` 提供后台全量查询和有限状态流
+- 可复用 `NotificationService`
+- 不镜像 `/api/v1/admin/statistics`

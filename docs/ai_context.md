@@ -1,8 +1,8 @@
 ﻿# AI Context（Backend Project）
 
-Version: v1.12.0  
+Version: v1.13.0  
 Last Updated: 2026-05-02  
-Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
+Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics + Admin 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 
 ------
 
@@ -767,16 +767,15 @@ app/common/dependencies.py
 - token 黑名单
 - 房源图片 / 视频
 - 房源审核流
-- 账单 / 支付
-- 报修 / 投诉
-- 管理后台
+- 广播通知 / 批量已读
+- 报表导出 / 多维统计分析
 
 ------
 
 # 9. 当前阶段
 
 ```text
-User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构、Alembic 迁移接管与 HTTP smoke test 自动化已完成
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics + Admin 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 ```
 
 系统能力：
@@ -809,6 +808,9 @@ User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contr
 - 拒绝合同
 - 取消合同
 - 终止合同
+- 站内通知
+- 后台统计
+- 管理后台
 - 最小所有权校验
 - 统一响应 + 异常体系
 - pytest + requests 真实 HTTP smoke test
@@ -2299,3 +2301,119 @@ Statistics HTTP 测试：
 - tenant / landlord 返回 `1004`
 - 无数据边界返回 0 或空列表
 - 聚合结果随 house / contract / payment / repair / complaint 数据变化而变化
+
+# 21. v1.13 Admin 模块补充
+
+> 本节为当前最新补充，若前文出现旧的“Admin 未实现 / House 需要管理员审核上架”描述，以本节为准。
+
+## 21.1 当前定位
+
+Admin 第一版已经落地为当前后端模块：
+
+```text
+app/modules/admin
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics + Admin
+```
+
+Admin 第一版明确不做：
+
+- 用户物理删除
+- House 后台审核流
+- House 后台状态修改
+- `/api/v1/admin/statistics` 镜像接口
+
+## 21.2 路由与权限
+
+统一前缀：
+
+```text
+/api/v1/admin
+```
+
+所有 Admin 接口仅允许 admin 调用：
+
+- tenant 调用返回 `1004`
+- landlord 调用返回 `1004`
+
+当前已落地接口：
+
+- `GET /api/v1/admin/users`
+- `GET /api/v1/admin/users/{id}`
+- `POST /api/v1/admin/users`
+- `PUT /api/v1/admin/users/{id}`
+- `PATCH /api/v1/admin/users/{id}/status`
+- `GET /api/v1/admin/houses`
+- `GET /api/v1/admin/houses/{id}`
+- `GET /api/v1/admin/complaints`
+- `GET /api/v1/admin/complaints/{id}`
+- `PATCH /api/v1/admin/complaints/{id}/process`
+- `PATCH /api/v1/admin/complaints/{id}/resolve`
+- `PATCH /api/v1/admin/complaints/{id}/reject`
+- `PATCH /api/v1/admin/complaints/{id}/close`
+- `GET /api/v1/admin/repairs`
+- `GET /api/v1/admin/repairs/{id}`
+- `PATCH /api/v1/admin/repairs/{id}/process`
+- `PATCH /api/v1/admin/repairs/{id}/complete`
+- `PATCH /api/v1/admin/repairs/{id}/reject`
+- `PATCH /api/v1/admin/repairs/{id}/close`
+- `GET /api/v1/admin/contracts`
+- `GET /api/v1/admin/contracts/{id}`
+- `PATCH /api/v1/admin/contracts/{id}/status`
+
+## 21.3 Admin 第一版范围
+
+User 管理：
+
+- 支持列表、详情、创建、更新、启用 / 禁用
+- `status` 第一版允许：
+  - `active`
+  - `disabled`
+- “删除”在第一版仅表现为禁用，不做物理删除
+
+House 管理：
+
+- 仅提供后台全量列表和详情
+- 房东仍可直接上架
+- 第一版不提供 admin 审核或状态修改接口
+
+Complaint / Repair 管理：
+
+- admin 可查看全部 complaint / repair
+- admin 直接复用现有业务 service 中的 admin 兼容状态流
+
+Contract 管理：
+
+- admin 可查看全部 contract
+- 第一版允许：
+  - `pending -> active`
+  - `pending -> cancelled`
+  - `active -> terminated`
+
+## 21.4 Notification / Statistics 复用
+
+- Admin 模块可复用 `NotificationService` 给相关 tenant / landlord 发通知
+- Admin 模块不复制 Statistics 路由
+- 统计仍通过：
+  - `/api/v1/statistics/house-utilization`
+  - `/api/v1/statistics/rent-income`
+  - `/api/v1/statistics/active-users`
+  - `/api/v1/statistics/complaint-repair-count`
+
+## 21.5 测试
+
+Admin HTTP 测试：
+
+- `backend/tests/api/test_admin_flow.py`
+
+当前已覆盖：
+
+- admin 用户管理增改与启用 / 禁用
+- admin 房源列表与详情只读访问
+- admin repair / complaint 状态流
+- admin contract 状态流
+- tenant / landlord 调用后台接口返回 `1004`
