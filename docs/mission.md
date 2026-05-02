@@ -344,6 +344,18 @@
 注意：
  第一版统计图不需要太复杂，有折线图、柱状图、饼图就够。
 
+当前第一版补充约束：
+
+- Statistics 已落地为只读后台统计模块
+- 当前接口：
+  - `house-utilization`
+  - `rent-income`
+  - `active-users`
+  - `complaint-repair-count`
+- 仅 admin 可访问
+- `rent-income` 的时间口径以 `Payment.paid_at` 为准
+- 第一版不做时间范围筛选、导出和多维分析
+
 ------
 
 ## 8. 系统监控与后台管理模块

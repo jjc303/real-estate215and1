@@ -1,8 +1,8 @@
 ﻿# AI Context（Backend Project）
 
-Version: v1.11.0  
+Version: v1.12.0  
 Last Updated: 2026-05-02  
-Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
+Status: User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics 最小闭环已完成，House 列表筛选、参数异常处理、common 公共能力重构（含 BaseRepository）、Alembic 迁移接管与 HTTP smoke test 自动化已完成
 
 ------
 
@@ -2207,3 +2207,95 @@ Notification HTTP 测试：
 - 详情查询与标记已读
 - 非拥有者返回 `2901`
 - `Repair / Complaint / Contract / Bill / Payment` 自动通知联动
+
+# 20. v1.12 Statistics 模块补充
+
+> 本节为当前最新补充，若前文出现旧的 Statistics 描述，以本节为准。
+
+## 20.1 当前定位
+
+Statistics 第一版已经落地为当前后端模块：
+
+```text
+app/modules/statistics
+```
+
+当前完成的最小闭环：
+
+```text
+User + Auth + House + Favorite + Appointment + Conversation/Message HTTP + Contract + Bill + Payment + Repair + Complaint + Notification + Statistics
+```
+
+Statistics 第一版明确不做：
+
+- 独立统计表
+- 时间范围筛选
+- 导出报表
+- 多维下钻分析
+
+## 20.2 数据来源
+
+当前统计直接聚合现有业务表：
+
+- `houses`
+- `contracts`
+- `payments`
+- `users`
+- `repairs`
+- `complaints`
+
+约束：
+
+- 不新增 Alembic migration
+- 不新增独立 ORM 持久化实体
+- repository 只做聚合查询，不做事务处理
+
+## 20.3 接口与权限
+
+```text
+GET /api/v1/statistics/house-utilization
+GET /api/v1/statistics/rent-income
+GET /api/v1/statistics/active-users
+GET /api/v1/statistics/complaint-repair-count
+```
+
+权限规则：
+
+- 仅 admin 可访问
+- tenant / landlord 统一返回 `1004`
+
+## 20.4 统计口径
+
+`house-utilization`
+
+- `total_houses`：未逻辑删除房源总数
+- `occupied_houses`：存在 `active contract` 的去重房源数
+- `utilization_rate`：`occupied_houses / total_houses`
+
+`rent-income`
+
+- `total_income`：累计已支付租金金额
+- `monthly_income`：按 `Payment.paid_at` 聚合的月度收入
+- 第一版仅统计 rent bill
+
+`active-users`
+
+- `users.status = active` 的用户数量
+
+`complaint-repair-count`
+
+- `repair_count`：报修总数
+- `complaint_count`：投诉总数
+
+## 20.5 测试
+
+Statistics HTTP 测试：
+
+- `backend/tests/api/test_statistics_flow.py`
+
+当前已覆盖：
+
+- admin 调用全部统计接口成功
+- tenant / landlord 返回 `1004`
+- 无数据边界返回 0 或空列表
+- 聚合结果随 house / contract / payment / repair / complaint 数据变化而变化

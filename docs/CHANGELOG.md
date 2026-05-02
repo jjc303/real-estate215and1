@@ -1,5 +1,42 @@
 # Changelog
 
+## v1.12.0 - 2026-05-02
+
+### Added
+
+#### Statistics 统计模块
+
+新增 Statistics 第一版只读模块：
+
+- `app/modules/statistics/schema.py`
+- `app/modules/statistics/repository.py`
+- `app/modules/statistics/service.py`
+- `app/modules/statistics/router.py`
+
+新增接口：
+
+- `GET /api/v1/statistics/house-utilization`
+- `GET /api/v1/statistics/rent-income`
+- `GET /api/v1/statistics/active-users`
+- `GET /api/v1/statistics/complaint-repair-count`
+
+### Changed
+
+#### Statistics 业务规则
+
+- Statistics 第一版不新增表，直接聚合现有业务数据
+- 仅 admin 可访问统计接口
+- `house-utilization` 统计未删除房源与 active contract 占用率
+- `rent-income` 按 `Payment.paid_at` 聚合累计收入和月度收入
+- `active-users` 统计 `users.status = active`
+- `complaint-repair-count` 统计报修和投诉总数
+
+### Verified
+
+- Statistics blueprint 已注册到 `/api/v1/statistics`
+- 新增 HTTP 测试文件：
+  - `backend/tests/api/test_statistics_flow.py`
+
 ## v1.11.0 - 2026-05-02
 
 ### Added

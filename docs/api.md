@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.11.0
+Version: v1.12.0
 Base URL: `http://127.0.0.1:8000`
 
 统一前缀：
@@ -2743,6 +2743,139 @@ PATCH /api/v1/notifications/{id}/read
 继续复用：
 
 - `1001` 用户不存在
+- `1003` 未登录
+- `1004` role 不允许执行该动作
+- `3001` 参数错误
+- `5000` 系统错误
+
+# 十八、Statistics 模块补充
+
+> 本节为 v1.12 新增内容。Statistics 第一版实现为只读后台统计模块，不新增表，不做时间范围筛选、导出或多维分析。
+
+## 1. 基本规则
+
+所有 Statistics 接口都必须登录。
+
+所有 Statistics 接口仅允许 admin 调用：
+
+- tenant 调用返回 `1004`
+- landlord 调用返回 `1004`
+
+本模块不新增独立统计表，直接聚合现有业务表：
+
+- `houses`
+- `contracts`
+- `payments`
+- `users`
+- `repairs`
+- `complaints`
+
+## 2. Statistics 接口
+
+```text
+GET /api/v1/statistics/house-utilization
+GET /api/v1/statistics/rent-income
+GET /api/v1/statistics/active-users
+GET /api/v1/statistics/complaint-repair-count
+```
+
+## 3. House Utilization
+
+```http
+GET /api/v1/statistics/house-utilization
+```
+
+返回字段：
+
+- `total_houses`
+- `occupied_houses`
+- `utilization_rate`
+
+统计口径：
+
+- `total_houses`：未逻辑删除的房源总数
+- `occupied_houses`：存在 `active contract` 的去重房源数
+- `utilization_rate`：`occupied_houses / total_houses`
+
+无数据时：
+
+- `total_houses = 0`
+- `occupied_houses = 0`
+- `utilization_rate = 0.0`
+
+## 4. Rent Income
+
+```http
+GET /api/v1/statistics/rent-income
+```
+
+返回字段：
+
+- `total_income`
+- `monthly_income`
+
+`monthly_income` 结构：
+
+```json
+[
+  {
+    "month": "2026-05",
+    "amount": 2600.0
+  }
+]
+```
+
+统计口径：
+
+- 总收入：累计已支付租金金额
+- 月度收入：按支付时间聚合月度金额
+- 时间维度以 `Payment.paid_at` 为准
+- 第一版仅统计 `bill_type = rent`
+
+无数据时：
+
+- `total_income = 0.0`
+- `monthly_income = []`
+
+## 5. Active Users
+
+```http
+GET /api/v1/statistics/active-users
+```
+
+返回字段：
+
+- `active_user_count`
+
+统计口径：
+
+- `users.status = active` 的用户数量
+- 第一版不引入最近登录、行为活跃等复杂定义
+
+无数据时返回 `0`。
+
+## 6. Complaint Repair Count
+
+```http
+GET /api/v1/statistics/complaint-repair-count
+```
+
+返回字段：
+
+- `repair_count`
+- `complaint_count`
+
+统计口径：
+
+- `repair_count`：`repairs` 表总数
+- `complaint_count`：`complaints` 表总数
+
+第一版不按状态拆分，不按时间窗口过滤。
+
+## 7. Statistics 错误码
+
+本模块不新增专属错误码，继续复用：
+
 - `1003` 未登录
 - `1004` role 不允许执行该动作
 - `3001` 参数错误

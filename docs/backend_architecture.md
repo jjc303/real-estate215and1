@@ -387,6 +387,7 @@ notification：通知
 说明：当前已落地为单用户 HTTP 站内通知模块，状态包含 `unread / read`，支持 admin 手动创建与业务状态变更自动触发，仍遵守 `router → service → repository → model`，表结构通过 Alembic migration 管理。
 
 statistics：统计（只读）
+说明：当前已落地为只读 HTTP 统计模块，不新增表，直接聚合 `House / Contract / Payment / User / Repair / Complaint` 数据，仍遵守 `router → service → repository`，由 service 负责 admin 权限校验。
 log：日志
 storage：文件
 admin：后台
