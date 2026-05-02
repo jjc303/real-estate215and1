@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.common.base_schema import BaseSchema
 from app.common.enums import ContractStatus
 from app.common.pagination import build_page_result, get_offset
+from app.common.enums import OperationLogModule
 from app.core.exceptions import (
     ConflictException,
     ContractNotFoundException,
@@ -28,6 +29,7 @@ from app.modules.contract.model import Contract
 from app.modules.contract.schema import ContractHouseSummarySchema
 from app.modules.house.model import House
 from app.modules.notification.service import NotificationService
+from app.modules.operation_log.service import OperationLogService
 from app.modules.repair.schema import RepairReadSchema
 from app.modules.repair.service import RepairService
 from app.modules.user.model import User
@@ -42,12 +44,14 @@ class AdminService:
         repair_service: RepairService,
         complaint_service: ComplaintService,
         notification_service: NotificationService,
+        operation_log_service: OperationLogService,
     ) -> None:
         self.admin_repository = admin_repository
         self.user_repository = user_repository
         self.repair_service = repair_service
         self.complaint_service = complaint_service
         self.notification_service = notification_service
+        self.operation_log_service = operation_log_service
 
     def list_users(self, db: Session, current_user_id: int, page: int, page_size: int) -> dict[str, object]:
         self._require_admin(db, current_user_id)
@@ -272,6 +276,25 @@ class AdminService:
         items = [self._serialize_contract(contract, house) for contract, house in rows]
         return build_page_result(items=items, total=total, page=page, page_size=page_size)
 
+    def list_logs(
+        self,
+        db: Session,
+        current_user_id: int,
+        page: int,
+        page_size: int,
+        module: str | None = None,
+        user_id: int | None = None,
+    ) -> dict[str, object]:
+        self._require_admin(db, current_user_id)
+        return self.operation_log_service.list_logs(
+            db,
+            current_user_id=current_user_id,
+            page=page,
+            page_size=page_size,
+            module=module,
+            user_id=user_id,
+        )
+
     def get_contract_detail(self, db: Session, current_user_id: int, contract_id: int) -> dict[str, object]:
         self._require_admin(db, current_user_id)
         row = self.admin_repository.get_contract_by_id_admin(db, contract_id)
@@ -292,6 +315,7 @@ class AdminService:
         if row is None:
             raise ContractNotFoundException()
         contract, house = row
+        before_status = contract.status
 
         if status == ContractStatus.ACTIVE and contract.status == ContractStatus.PENDING:
             contract.status = ContractStatus.ACTIVE
@@ -324,6 +348,15 @@ class AdminService:
             raise InvalidContractStatusException()
 
         try:
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.CONTRACT,
+                record_id=contract.id,
+                action="admin_status_update",
+                before_status=before_status,
+                after_status=contract.status,
+            )
             db.commit()
             db.refresh(contract)
         except Exception:
@@ -372,7 +405,7 @@ class AdminService:
     ) -> None:
         self.notification_service.create_notification(
             db,
-            user_id=contract.tenant_id,
+            user_ids=[contract.tenant_id],
             source_type="contract",
             source_id=contract.id,
             title=title,
@@ -381,7 +414,7 @@ class AdminService:
         )
         self.notification_service.create_notification(
             db,
-            user_id=contract.landlord_id,
+            user_ids=[contract.landlord_id],
             source_type="contract",
             source_id=contract.id,
             title=title,

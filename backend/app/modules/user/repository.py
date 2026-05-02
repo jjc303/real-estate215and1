@@ -33,3 +33,10 @@ class UserRepository(BaseRepository[User]):
             .order_by(User.id.asc())
         )
         return list(db.execute(stmt).scalars().all())
+
+    def list_by_ids(self, db: Session, user_ids: Iterable[int]) -> list[User]:
+        values = tuple(user_ids)
+        if not values:
+            return []
+        stmt = select(User).where(User.id.in_(values))
+        return list(db.execute(stmt).scalars().all())

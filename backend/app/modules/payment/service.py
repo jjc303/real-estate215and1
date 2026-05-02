@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.common.enums import BillStatus, PaymentStatus
 from app.common.pagination import build_page_result, get_offset
+from app.common.enums import OperationLogModule
 from app.core.exceptions import (
     BillAlreadyPaidException,
     BillNotFoundException,
@@ -18,6 +19,7 @@ from app.core.exceptions import (
 )
 from app.modules.bill.repository import BillRepository
 from app.modules.notification.service import NotificationService
+from app.modules.operation_log.service import OperationLogService
 from app.modules.payment.model import Payment
 from app.modules.payment.repository import PaymentRepository
 from app.modules.payment.schema import PaymentReadSchema
@@ -29,10 +31,12 @@ class PaymentService:
         payment_repository: PaymentRepository,
         bill_repository: BillRepository,
         notification_service: NotificationService,
+        operation_log_service: OperationLogService,
     ) -> None:
         self.payment_repository = payment_repository
         self.bill_repository = bill_repository
         self.notification_service = notification_service
+        self.operation_log_service = operation_log_service
 
     def create_payment(
         self,
@@ -69,12 +73,13 @@ class PaymentService:
         )
 
         try:
+            before_status = bill.status
             self.payment_repository.create(db, payment)
             db.flush()
             bill.status = BillStatus.PAID
             self.notification_service.create_notification(
                 db,
-                user_id=bill.landlord_id,
+                user_ids=[bill.landlord_id],
                 source_type="bill",
                 source_id=bill.id,
                 title="Bill paid",
@@ -83,12 +88,21 @@ class PaymentService:
             )
             self.notification_service.create_notification(
                 db,
-                user_id=bill.tenant_id,
+                user_ids=[bill.tenant_id],
                 source_type="bill",
                 source_id=bill.id,
                 title="Payment successful",
                 message=f"Your payment for bill #{bill.id} was successful.",
                 auto_commit=False,
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.PAYMENT,
+                record_id=payment.id,
+                action="pay",
+                before_status=before_status,
+                after_status=BillStatus.PAID,
             )
             db.commit()
             db.refresh(payment)

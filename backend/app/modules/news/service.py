@@ -3,12 +3,14 @@ from __future__ import annotations
 from sqlalchemy.orm import Session
 
 from app.common.enums import NewsStatus
+from app.common.enums import OperationLogModule
 from app.common.pagination import build_page_result, get_offset
 from app.core.exceptions import ForbiddenException, NewsNotFoundException, UnauthorizedException
 from app.modules.news.model import News
 from app.modules.news.repository import NewsRepository
 from app.modules.news.schema import NewsCreateSchema, NewsReadSchema, NewsUpdateSchema
 from app.modules.notification.service import NotificationService
+from app.modules.operation_log.service import OperationLogService
 from app.modules.user.model import User
 from app.modules.user.repository import UserRepository
 
@@ -19,10 +21,12 @@ class NewsService:
         news_repository: NewsRepository,
         user_repository: UserRepository,
         notification_service: NotificationService,
+        operation_log_service: OperationLogService,
     ) -> None:
         self.news_repository = news_repository
         self.user_repository = user_repository
         self.notification_service = notification_service
+        self.operation_log_service = operation_log_service
 
     def create_news(self, db: Session, current_user_id: int, data: NewsCreateSchema) -> dict[str, object]:
         admin_user = self._require_admin(db, current_user_id)
@@ -43,6 +47,15 @@ class NewsService:
                     title=news.title,
                     message="A new announcement has been published.",
                 )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.NEWS,
+                record_id=news.id,
+                action="create",
+                before_status=None,
+                after_status=news.status,
+            )
             db.commit()
             db.refresh(news)
         except Exception:
@@ -103,6 +116,7 @@ class NewsService:
         news = self.news_repository.get_by_id(db, news_id)
         if news is None:
             raise NewsNotFoundException()
+        before_status = news.status
 
         if data.title is not None:
             news.title = data.title
@@ -120,6 +134,15 @@ class NewsService:
                     title=news.title,
                     message="An announcement has been updated.",
                 )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.NEWS,
+                record_id=news.id,
+                action="update",
+                before_status=before_status,
+                after_status=news.status,
+            )
             db.commit()
             db.refresh(news)
         except Exception:
@@ -135,6 +158,15 @@ class NewsService:
             raise NewsNotFoundException()
 
         try:
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.NEWS,
+                record_id=news.id,
+                action="delete",
+                before_status=news.status,
+                after_status=None,
+            )
             self.news_repository.delete(db, news)
             db.commit()
         except Exception:
@@ -143,16 +175,15 @@ class NewsService:
 
     def _notify_published_news(self, db: Session, news: News, title: str, message: str) -> None:
         recipients = self.user_repository.list_active_by_roles(db, roles=("tenant", "landlord"))
-        for recipient in recipients:
-            self.notification_service.create_notification(
-                db,
-                user_id=recipient.id,
-                source_type="news",
-                source_id=news.id,
-                title=title,
-                message=message,
-                auto_commit=False,
-            )
+        self.notification_service.create_notification(
+            db,
+            user_ids=[recipient.id for recipient in recipients],
+            source_type="news",
+            source_id=news.id,
+            title=title,
+            message=message,
+            auto_commit=False,
+        )
 
     def _require_admin(self, db: Session, current_user_id: int) -> User:
         user = self.user_repository.get_by_id(db, current_user_id)

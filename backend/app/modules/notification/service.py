@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.common.enums import NotificationStatus
 from app.common.pagination import build_page_result, get_offset
 from app.core.exceptions import (
+    BadRequestException,
     ForbiddenException,
     InvalidNotificationStatusException,
     NotificationNotFoundException,
@@ -33,7 +34,8 @@ class NotificationService:
         self,
         db: Session,
         *,
-        user_id: int,
+        user_ids: list[int] | None = None,
+        user_id: int | None = None,
         source_type: str,
         source_id: int,
         title: str,
@@ -41,39 +43,60 @@ class NotificationService:
         current_user_id: int | None = None,
         require_admin: bool = False,
         auto_commit: bool = True,
-    ) -> dict[str, object]:
+    ) -> list[dict[str, object]]:
         if require_admin:
             user = self._get_current_user(db, current_user_id)
             self._require_role(user, {"admin"})
 
-        target_user = self.user_repository.get_by_id(db, user_id)
-        if target_user is None:
+        normalized_user_ids = self._normalize_user_ids(user_ids=user_ids, user_id=user_id)
+        target_users = self.user_repository.list_by_ids(db, normalized_user_ids)
+        existing_ids = {user.id for user in target_users}
+        missing_ids = [target_user_id for target_user_id in normalized_user_ids if target_user_id not in existing_ids]
+        if missing_ids:
             raise UserNotFoundException()
 
         now = self._utc_now()
-        notification = Notification(
-            user_id=user_id,
-            source_type=source_type,
-            source_id=source_id,
-            title=title,
-            message=message,
-            status=NotificationStatus.UNREAD,
-            created_at=now,
-            updated_at=now,
-        )
-        self.notification_repository.create(db, notification)
-
-        if auto_commit:
-            try:
+        notifications = [
+            Notification(
+                user_id=target_user_id,
+                source_type=source_type,
+                source_id=source_id,
+                title=title,
+                message=message,
+                status=NotificationStatus.UNREAD,
+                created_at=now,
+                updated_at=now,
+            )
+            for target_user_id in normalized_user_ids
+        ]
+        try:
+            self.notification_repository.bulk_create(db, notifications)
+            if auto_commit:
                 db.commit()
-                db.refresh(notification)
-            except Exception:
+            else:
+                db.flush()
+        except Exception:
+            if auto_commit:
                 db.rollback()
-                raise
-        else:
-            db.flush()
+            raise
 
-        return self._serialize(notification)
+        return [self._serialize(notification) for notification in notifications]
+
+    def _normalize_user_ids(
+        self,
+        *,
+        user_ids: list[int] | None,
+        user_id: int | None,
+    ) -> list[int]:
+        if user_ids is None and user_id is None:
+            raise BadRequestException(message="bad request")
+        if user_ids is not None and user_id is not None:
+            raise BadRequestException(message="bad request")
+        if user_id is not None:
+            return [user_id]
+        if user_ids is None or len(user_ids) == 0:
+            raise BadRequestException(message="bad request")
+        return user_ids
 
     def list_notifications(
         self,

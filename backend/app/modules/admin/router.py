@@ -15,6 +15,7 @@ from app.modules.admin.schema import (
     UserAdminUpdateSchema,
 )
 from app.modules.complaint.schema import ComplaintListQuerySchema
+from app.modules.operation_log.schema import OperationLogListQuerySchema
 from app.modules.repair.schema import RepairListQuerySchema
 
 
@@ -219,6 +220,22 @@ def list_contracts():
     query = ContractAdminListQuerySchema(**request.args.to_dict())
     service = get_admin_service()
     result = service.list_contracts(g.db, current_user_id=current_user_id, page=query.page, page_size=query.page_size)
+    return success(data=result)
+
+
+@bp.get("/logs")
+def list_logs():
+    current_user_id = get_required_current_user_id()
+    query = OperationLogListQuerySchema(**request.args.to_dict())
+    service = get_admin_service()
+    result = service.list_logs(
+        g.db,
+        current_user_id=current_user_id,
+        page=query.page,
+        page_size=query.page_size,
+        module=query.module,
+        user_id=query.user_id,
+    )
     return success(data=result)
 
 

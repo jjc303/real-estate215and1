@@ -26,7 +26,7 @@ def create_notification():
         title=data.title,
         message=data.message,
     )
-    return success(data=result, status_code=201)
+    return success(data=result[0], status_code=201)
 
 
 @bp.get("")

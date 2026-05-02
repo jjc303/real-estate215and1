@@ -22,6 +22,7 @@ from app.modules.favorite.model import Favorite
 from app.modules.house.model import House
 from app.modules.news.model import News
 from app.modules.payment.model import Payment
+from app.modules.operation_log.model import OperationLog
 from app.modules.user.model import User
 
 
