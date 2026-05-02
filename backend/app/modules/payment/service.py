@@ -12,6 +12,7 @@ from app.core.exceptions import (
     BillAlreadyPaidException,
     BillNotFoundException,
     BillNotPayableException,
+    ForbiddenException,
     PaymentAmountMismatchException,
     PaymentNotFoundException,
 )
@@ -43,8 +44,10 @@ class PaymentService:
         remark: str | None = None,
     ) -> dict[str, object]:
         bill = self.bill_repository.get_by_id(db, bill_id)
-        if bill is None or bill.tenant_id != current_user_id:
+        if bill is None:
             raise BillNotFoundException()
+        if bill.tenant_id != current_user_id:
+            raise ForbiddenException()
         if bill.status == BillStatus.PAID:
             raise BillAlreadyPaidException()
         if bill.status not in {BillStatus.UNPAID, BillStatus.OVERDUE}:
@@ -76,6 +79,15 @@ class PaymentService:
                 source_id=bill.id,
                 title="Bill paid",
                 message=f"Bill #{bill.id} has been paid by the tenant.",
+                auto_commit=False,
+            )
+            self.notification_service.create_notification(
+                db,
+                user_id=bill.tenant_id,
+                source_type="bill",
+                source_id=bill.id,
+                title="Payment successful",
+                message=f"Your payment for bill #{bill.id} was successful.",
                 auto_commit=False,
             )
             db.commit()

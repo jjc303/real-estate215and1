@@ -3530,3 +3530,38 @@ DELETE /api/v1/news/{id}
 - `1004` role 不允许执行该动作
 - `3001` 参数错误
 - `5000` 系统错误
+
+# 二十三、Payment v1.14.1 补充
+
+> 本节为 v1.14.1 补充内容。若前文 Payment 权限或通知规则与本节不一致，以本节为准。
+
+## 1. 支付权限修正
+
+- `POST /api/v1/payments` 仅允许账单所属 tenant 调用
+- bill 不存在时返回 `2501`
+- 非账单所属租客、房东、admin 支付统一返回 `1004`
+- `GET /api/v1/payments` 与 `GET /api/v1/payments/{id}` 仍只允许 bill 参与者访问
+- 非参与者查看 payment 统一返回 `2601`
+
+## 2. 支付成功联动
+
+支付成功时，后端在同一事务中：
+
+1. 插入 `Payment`
+2. 更新 `Bill.status = paid`
+3. 给 landlord 创建 `Bill paid` 通知
+4. 给 tenant 创建 `Payment successful` 通知
+
+说明：
+
+- 两条通知都使用 `source_type = bill`
+- `source_id = bill.id`
+- 任一通知创建失败则整体回滚
+
+## 3. 当前错误语义
+
+- `2501`：账单真实不存在
+- `2602`：账单状态不允许支付
+- `2603`：支付金额不匹配
+- `2604`：账单已支付
+- `1004`：当前用户无权支付该账单

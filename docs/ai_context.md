@@ -2538,3 +2538,48 @@ News HTTP 测试：
 - 非 admin 写接口返回 `1004`
 - 分页、`status` 筛选、空 body / 空字符串 / 超长 content 校验
 - Notification 触发与删除后保留验证
+
+# 23. v1.14.1 Payment / Bill 支付闭环补充
+
+> 本节为 v1.14.1 补充说明。若前文 Payment 权限或通知描述与本节不一致，以本节为准。
+
+## 23.1 支付权限修正
+
+- `POST /api/v1/payments` 仍只允许账单所属 tenant 调用
+- bill 真实不存在时，返回 `2501`
+- 非账单所属租客、房东、admin 支付时，统一返回 `1004`
+- `GET /api/v1/payments` 与 `GET /api/v1/payments/{id}` 仍只允许 bill 参与者查看
+- 非参与者查看 payment 统一返回 `2601`
+
+## 23.2 Payment 与 Bill 事务闭环
+
+支付成功时，service 层固定按以下顺序在同一事务内执行：
+
+1. 创建 `Payment`
+2. `db.flush()`
+3. 更新 `Bill.status = paid`
+4. 给 landlord 创建 `Bill paid` 通知
+5. 给 tenant 创建 `Payment successful` 通知
+6. `db.commit()`
+
+说明：
+
+- 任一步骤失败统一 `rollback`
+- 仍不引入第三方支付、回调、退款、部分支付
+
+## 23.3 测试
+
+Payment HTTP 测试仍使用：
+
+- `backend/tests/api/test_payment_flow.py`
+
+当前已覆盖补强：
+
+- tenant 支付 `unpaid / overdue` 成功
+- `Bill.status` 更新为 `paid`
+- tenant / landlord 都能收到 bill 相关通知
+- 房东、admin、其他 tenant 支付统一返回 `1004`
+- bill 不存在返回 `2501`
+- 金额不匹配返回 `2603`
+- bill 状态不允许支付返回 `2602`
+- 重复支付返回 `2604`

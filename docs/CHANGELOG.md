@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.14.1 - 2026-05-02
+
+### Changed
+
+#### Payment / Bill 支付闭环补强
+
+- `POST /api/v1/payments` 改为先判断账单是否存在，再单独校验支付权限
+- 非账单所属租客、房东、admin 支付统一返回 `1004`
+- 支付成功后，除 landlord 的 `Bill paid` 通知外，新增 tenant 的 `Payment successful` 通知
+- 两条通知与 Payment 创建、Bill 状态更新保持同一事务提交
+
+### Verified
+
+- `docker compose exec backend pytest tests/api/test_payment_flow.py -q` 通过
+- 结果：`2 passed`
+
 ## v1.14.0 - 2026-05-02
 
 ### Added

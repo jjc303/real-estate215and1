@@ -10,6 +10,9 @@ from typing import Any
 import requests
 
 
+FORBIDDEN_CODE = 1004
+
+
 def request_payload(
     http: requests.Session,
     base_url: str,
@@ -117,6 +120,31 @@ def create_outsider_token(unique_suffix: str, api_request) -> str:
         json={"username": username, "password": password},
     )
     return outsider_login["data"]["token"]
+
+
+def create_admin_token(unique_suffix: str, api_request) -> str:
+    username = f"payment_admin_{unique_suffix}"
+    password = "Password123!"
+    api_request(
+        "POST",
+        "/api/v1/users",
+        step_name="register payment admin",
+        expected_status=201,
+        json={
+            "username": username,
+            "password": password,
+            "role": "admin",
+            "email": f"{username}@example.com",
+        },
+    )
+    admin_login = api_request(
+        "POST",
+        "/api/v1/auth/login",
+        step_name="payment admin login",
+        expected_status=200,
+        json={"username": username, "password": password},
+    )
+    return admin_login["data"]["token"]
 
 
 def create_house_and_confirmed_appointment(
@@ -275,6 +303,18 @@ def create_bill(
     )
 
 
+def list_notifications(api_request, auth_headers, token: str) -> list[dict[str, Any]]:
+    response = api_request(
+        "GET",
+        "/api/v1/notifications",
+        step_name="list payment notifications",
+        expected_status=200,
+        headers=auth_headers(token),
+        params={"page": 1, "page_size": 100},
+    )
+    return response["data"]["list"]
+
+
 def test_payment_flow(
     unique_suffix: str,
     api_request,
@@ -284,6 +324,7 @@ def test_payment_flow(
 ) -> None:
     landlord_token, tenant_token = create_authenticated_users(unique_suffix, api_request)
     outsider_token = create_outsider_token(unique_suffix, api_request)
+    admin_token = create_admin_token(unique_suffix, api_request)
 
     unpaid_contract = create_active_contract(
         f"unpaid_{unique_suffix}",
@@ -325,6 +366,21 @@ def test_payment_flow(
     assert payment["tenant_id"] == unpaid_contract["tenant_id"]
     assert payment["landlord_id"] == unpaid_contract["landlord_id"]
     datetime.fromisoformat(payment["paid_at"])
+
+    tenant_notifications = list_notifications(api_request, auth_headers, tenant_token)
+    landlord_notifications = list_notifications(api_request, auth_headers, landlord_token)
+    tenant_payment_notification = next(
+        (item for item in tenant_notifications if item["source_type"] == "bill" and item["source_id"] == unpaid_bill["id"]),
+        None,
+    )
+    landlord_payment_notification = next(
+        (item for item in landlord_notifications if item["source_type"] == "bill" and item["source_id"] == unpaid_bill["id"]),
+        None,
+    )
+    assert tenant_payment_notification is not None, f"tenant payment notification missing: {tenant_notifications!r}"
+    assert landlord_payment_notification is not None, f"landlord payment notification missing: {landlord_notifications!r}"
+    assert tenant_payment_notification["title"] == "Payment successful"
+    assert landlord_payment_notification["title"] == "Bill paid"
 
     paid_bill_detail = api_request(
         "GET",
@@ -387,6 +443,38 @@ def test_payment_flow(
         },
     )
     assert duplicate_payment["code"] == 2604
+
+    landlord_pay = request_payload(
+        http,
+        base_url,
+        "POST",
+        "/api/v1/payments",
+        step_name="landlord cannot pay bill",
+        expected_status=403,
+        headers=auth_headers(landlord_token),
+        json={
+            "bill_id": unpaid_bill["id"],
+            "amount": 2600,
+            "payment_method": "mock",
+        },
+    )
+    assert landlord_pay["code"] == FORBIDDEN_CODE
+
+    admin_pay = request_payload(
+        http,
+        base_url,
+        "POST",
+        "/api/v1/payments",
+        step_name="admin cannot pay bill",
+        expected_status=403,
+        headers=auth_headers(admin_token),
+        json={
+            "bill_id": unpaid_bill["id"],
+            "amount": 2600,
+            "payment_method": "mock",
+        },
+    )
+    assert admin_pay["code"] == FORBIDDEN_CODE
 
     outsider_detail = request_payload(
         http,
@@ -460,6 +548,7 @@ def test_payment_validation_errors(
     base_url: str,
 ) -> None:
     landlord_token, tenant_token = create_authenticated_users(f"errors_{unique_suffix}", api_request)
+    outsider_token = create_outsider_token(f"errors_{unique_suffix}", api_request)
 
     mismatch_contract = create_active_contract(
         f"mismatch_{unique_suffix}",
@@ -493,13 +582,29 @@ def test_payment_validation_errors(
     )
     assert amount_mismatch["code"] == 2603
 
+    outsider_pay = request_payload(
+        http,
+        base_url,
+        "POST",
+        "/api/v1/payments",
+        step_name="outsider tenant cannot pay bill",
+        expected_status=403,
+        headers=auth_headers(outsider_token),
+        json={
+            "bill_id": mismatch_bill["id"],
+            "amount": 2600,
+            "payment_method": "mock",
+        },
+    )
+    assert outsider_pay["code"] == FORBIDDEN_CODE
+
     landlord_pay = request_payload(
         http,
         base_url,
         "POST",
         "/api/v1/payments",
-        step_name="landlord pay bill",
-        expected_status=404,
+        step_name="landlord cannot pay bill",
+        expected_status=403,
         headers=auth_headers(landlord_token),
         json={
             "bill_id": mismatch_bill["id"],
@@ -507,7 +612,23 @@ def test_payment_validation_errors(
             "payment_method": "mock",
         },
     )
-    assert landlord_pay["code"] == 2501
+    assert landlord_pay["code"] == FORBIDDEN_CODE
+
+    missing_bill = request_payload(
+        http,
+        base_url,
+        "POST",
+        "/api/v1/payments",
+        step_name="pay missing bill",
+        expected_status=404,
+        headers=auth_headers(tenant_token),
+        json={
+            "bill_id": 99999999,
+            "amount": 2600,
+            "payment_method": "mock",
+        },
+    )
+    assert missing_bill["code"] == 2501
 
     cancelled_contract = create_active_contract(
         f"cancelled_{unique_suffix}",
