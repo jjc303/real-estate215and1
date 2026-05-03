@@ -1,11 +1,14 @@
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import service from '@/utils/request';
-
+import { computed } from 'vue';
+import { menus } from '@/config/menus.js';
+import { useRouter } from 'vue-router';
 export const useUserStore = defineStore('user', () => {
-    const isLoggedIn = ref(false);
+    const router=useRouter()
+    const isLoggedIn = ref(true);
     const userName = ref('');
-
+    const userRole=ref('landlord')
     const showLogin = ref(false);//登录模态框显示状态
     const showRegister = ref(false);//注册模态框显示状态
 
@@ -28,7 +31,10 @@ export const useUserStore = defineStore('user', () => {
         password: '',//密码
         role: 'tenant', // 默认选择租客
     })
-
+    //根据角色返回对应表单
+    const currentMenus = computed(() => {
+        return menus[userRole.value] || menus.guest
+    })
     const closeAllModal = () => {
         showLogin.value = false;
         showRegister.value = false;
@@ -160,7 +166,7 @@ export const useUserStore = defineStore('user', () => {
             }
         }
 
-        // 这里可以添加实际的登录逻辑，例如调用后端接口等
+
         try {
             let res;
             if (type === 'password') {
@@ -183,9 +189,13 @@ export const useUserStore = defineStore('user', () => {
                 })
             }
             localStorage.setItem('token', res.data.token)
-            alert(`登录成功！角色：${loginForm.value.role}`);
+
             isLoggedIn.value = true;
-            userName.value = loginForm.value.phone;//或可使用加密的手机号
+            userRole.value = res.data.role || loginForm.value.role
+            userName.value = res.data.username || loginForm.value.phone;//或可使用加密的手机号
+
+
+            alert(`登录成功！角色：${loginForm.value.role}`);
             closeAllModal();
         } catch (e) {
             alert('登录失败' + e.message)
@@ -213,6 +223,7 @@ export const useUserStore = defineStore('user', () => {
             await service.post('/v1/users', {
                 username: registerForm.value.phone,
                 password: registerForm.value.password,
+                //role: registerForm.value.role, // ✅ 注册时传角色
             })
             alert('注册成功')
             goToLogin()
@@ -224,16 +235,20 @@ export const useUserStore = defineStore('user', () => {
     const logout = () => {
         isLoggedIn.value = false
         userName.value = ''
+        userRole.value = 'guest'
         // 清空表单
         loginForm.value = { phone: '', code: '', password: '', email: '', emailCode: '', role: 'tenant' }
         registerForm.value = { phone: '', code: '', password: '', role: 'tenant' }
         localStorage.removeItem('token')
+
+        router.push('/')
     }
 
     return {
         // 状态
         isLoggedIn,
         userName,
+        userRole,
         showLogin,
         showRegister,
         loginForm,
@@ -241,6 +256,8 @@ export const useUserStore = defineStore('user', () => {
         activeTab,
         countdown,
         emailCountdown,
+        currentMenus,
+
 
         // 方法
         closeAllModal,

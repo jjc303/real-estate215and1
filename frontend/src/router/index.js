@@ -5,11 +5,14 @@ import Admin from '../views/Admin/index.vue'
 import HouseDetail from '../views/HouseDetail/index.vue'
 import HouseList from '../views/HouseList/index.vue'
 import Reservation from'../views/Reservation/index.vue'
+import MyHouses from'../views/MyHouses/index.vue'
+import MyHousesPublish from '@/views/MyHouses/publish.vue'
+import MyHousesList from '../views/MyHouses/list.vue'
 const routes = [
   {
     path: '/',
     name:'home',
-    meta:{title:'中南找房'},
+    meta:{title:'中南找房',hideHeader:true},
     component: Home
   },
   {
@@ -32,6 +35,15 @@ const routes = [
     name:'houseList',
     meta:{title:'长沙租房'},
     component: HouseList
+  },
+  {
+    path:'/myhouses',
+    name:'myhouses',
+    component:MyHouses,
+    children: [
+      { path: 'publish', name: 'myhousesPublish', component: MyHousesPublish },
+      { path: 'list', name: 'myhousesList', component: MyHousesList }
+    ]
   },
   {
     path:'/reservation',
