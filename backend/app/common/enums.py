@@ -71,3 +71,12 @@ class NotificationStatus:
 class NewsStatus:
     DRAFT = "draft"
     PUBLISHED = "published"
+
+
+class OperationLogModule:
+    REPAIR = "repair"
+    COMPLAINT = "complaint"
+    CONTRACT = "contract"
+    BILL = "bill"
+    PAYMENT = "payment"
+    NEWS = "news"

@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.container.repositories import (
     get_admin_repository,
     get_appointment_repository,
+    get_email_verification_code_repository,
     get_bill_repository,
     get_complaint_repository,
     get_contract_repository,
@@ -12,6 +13,7 @@ from app.container.repositories import (
     get_message_repository,
     get_news_repository,
     get_notification_repository,
+    get_operation_log_repository,
     get_payment_repository,
     get_repair_repository,
     get_statistics_repository,
@@ -28,6 +30,7 @@ from app.modules.favorite.service import FavoriteService
 from app.modules.house.service import HouseService
 from app.modules.news.service import NewsService
 from app.modules.notification.service import NotificationService
+from app.modules.operation_log.service import OperationLogService
 from app.modules.payment.service import PaymentService
 from app.modules.repair.service import RepairService
 from app.modules.statistics.service import StatisticsService
@@ -35,7 +38,10 @@ from app.modules.user.service import UserService
 
 
 _user_service = UserService(get_user_repository())
-_auth_service = AuthService(get_user_repository())
+_auth_service = AuthService(
+    get_user_repository(),
+    get_email_verification_code_repository(),
+)
 _house_service = HouseService(get_house_repository())
 _favorite_service = FavoriteService(get_favorite_repository(), get_house_repository())
 _appointment_service = AppointmentService(get_appointment_repository(), get_house_repository())
@@ -48,38 +54,48 @@ _notification_service = NotificationService(
     get_notification_repository(),
     get_user_repository(),
 )
+_operation_log_service = OperationLogService(
+    get_operation_log_repository(),
+    get_user_repository(),
+)
 _news_service = NewsService(
     get_news_repository(),
     get_user_repository(),
     _notification_service,
+    _operation_log_service,
 )
 _contract_service = ContractService(
     get_contract_repository(),
     get_appointment_repository(),
     get_house_repository(),
     _notification_service,
+    _operation_log_service,
 )
 _bill_service = BillService(
     get_bill_repository(),
     get_contract_repository(),
     _notification_service,
+    _operation_log_service,
 )
 _payment_service = PaymentService(
     get_payment_repository(),
     get_bill_repository(),
     _notification_service,
+    _operation_log_service,
 )
 _repair_service = RepairService(
     get_repair_repository(),
     get_contract_repository(),
     get_user_repository(),
     _notification_service,
+    _operation_log_service,
 )
 _complaint_service = ComplaintService(
     get_complaint_repository(),
     get_contract_repository(),
     get_user_repository(),
     _notification_service,
+    _operation_log_service,
 )
 _statistics_service = StatisticsService(
     get_statistics_repository(),
@@ -91,6 +107,7 @@ _admin_service = AdminService(
     _repair_service,
     _complaint_service,
     _notification_service,
+    _operation_log_service,
 )
 
 
@@ -144,6 +161,10 @@ def get_complaint_service() -> ComplaintService:
 
 def get_notification_service() -> NotificationService:
     return _notification_service
+
+
+def get_operation_log_service() -> OperationLogService:
+    return _operation_log_service
 
 
 def get_statistics_service() -> StatisticsService:

@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.common.enums import AppointmentStatus, ContractStatus
+from app.common.enums import OperationLogModule
 from app.common.pagination import build_page_result, get_offset
 from app.core.exceptions import (
     AppointmentNotFoundException,
@@ -25,6 +26,7 @@ from app.modules.contract.schema import ContractHouseSummarySchema, ContractRead
 from app.modules.house.model import House
 from app.modules.house.repository import HouseRepository
 from app.modules.notification.service import NotificationService
+from app.modules.operation_log.service import OperationLogService
 
 
 class ContractService:
@@ -34,11 +36,13 @@ class ContractService:
         appointment_repository: AppointmentRepository,
         house_repository: HouseRepository,
         notification_service: NotificationService,
+        operation_log_service: OperationLogService,
     ) -> None:
         self.contract_repository = contract_repository
         self.appointment_repository = appointment_repository
         self.house_repository = house_repository
         self.notification_service = notification_service
+        self.operation_log_service = operation_log_service
 
     def create_contract(
         self,
@@ -94,6 +98,15 @@ class ContractService:
                 contract,
                 title="New contract created",
                 message=f"Contract #{contract.id} is waiting for your confirmation.",
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.CONTRACT,
+                record_id=contract.id,
+                action="create",
+                before_status=None,
+                after_status=contract.status,
             )
             db.commit()
             db.refresh(contract)
@@ -158,6 +171,7 @@ class ContractService:
         ) > 0:
             raise HouseActiveContractConflictException()
 
+        before_status = contract.status
         contract.status = ContractStatus.ACTIVE
         try:
             self._notify_landlord(
@@ -165,6 +179,15 @@ class ContractService:
                 contract,
                 title="Contract confirmed",
                 message=f"Contract #{contract.id} has been confirmed by the tenant.",
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.CONTRACT,
+                record_id=contract.id,
+                action="confirm",
+                before_status=before_status,
+                after_status=contract.status,
             )
             db.commit()
             db.refresh(contract)
@@ -187,6 +210,7 @@ class ContractService:
         if contract.status != ContractStatus.PENDING:
             raise InvalidContractStatusException()
 
+        before_status = contract.status
         contract.status = ContractStatus.REJECTED
         try:
             self._notify_landlord(
@@ -194,6 +218,15 @@ class ContractService:
                 contract,
                 title="Contract rejected",
                 message=f"Contract #{contract.id} has been rejected by the tenant.",
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.CONTRACT,
+                record_id=contract.id,
+                action="reject",
+                before_status=before_status,
+                after_status=contract.status,
             )
             db.commit()
             db.refresh(contract)
@@ -216,6 +249,7 @@ class ContractService:
         if contract.status != ContractStatus.PENDING:
             raise InvalidContractStatusException()
 
+        before_status = contract.status
         contract.status = ContractStatus.CANCELLED
         try:
             self._notify_tenant(
@@ -223,6 +257,15 @@ class ContractService:
                 contract,
                 title="Contract cancelled",
                 message=f"Contract #{contract.id} has been cancelled by the landlord.",
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.CONTRACT,
+                record_id=contract.id,
+                action="cancel",
+                before_status=before_status,
+                after_status=contract.status,
             )
             db.commit()
             db.refresh(contract)
@@ -245,6 +288,7 @@ class ContractService:
         if contract.status != ContractStatus.ACTIVE:
             raise InvalidContractStatusException()
 
+        before_status = contract.status
         contract.status = ContractStatus.TERMINATED
         try:
             self._notify_tenant(
@@ -252,6 +296,15 @@ class ContractService:
                 contract,
                 title="Contract terminated",
                 message=f"Contract #{contract.id} has been terminated by the landlord.",
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.CONTRACT,
+                record_id=contract.id,
+                action="terminate",
+                before_status=before_status,
+                after_status=contract.status,
             )
             db.commit()
             db.refresh(contract)
@@ -290,7 +343,7 @@ class ContractService:
     def _notify_tenant(self, db: Session, contract: Contract, *, title: str, message: str) -> None:
         self.notification_service.create_notification(
             db,
-            user_id=contract.tenant_id,
+            user_ids=[contract.tenant_id],
             source_type="contract",
             source_id=contract.id,
             title=title,
@@ -301,7 +354,7 @@ class ContractService:
     def _notify_landlord(self, db: Session, contract: Contract, *, title: str, message: str) -> None:
         self.notification_service.create_notification(
             db,
-            user_id=contract.landlord_id,
+            user_ids=[contract.landlord_id],
             source_type="contract",
             source_id=contract.id,
             title=title,

@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.common.enums import BillStatus, ContractStatus
+from app.common.enums import OperationLogModule
 from app.common.pagination import build_page_result, get_offset
 from app.core.exceptions import (
     BillNotFoundException,
@@ -20,6 +21,7 @@ from app.modules.bill.repository import BillRepository
 from app.modules.bill.schema import BillReadSchema
 from app.modules.contract.repository import ContractRepository
 from app.modules.notification.service import NotificationService
+from app.modules.operation_log.service import OperationLogService
 
 
 class BillService:
@@ -28,10 +30,12 @@ class BillService:
         bill_repository: BillRepository,
         contract_repository: ContractRepository,
         notification_service: NotificationService,
+        operation_log_service: OperationLogService,
     ) -> None:
         self.bill_repository = bill_repository
         self.contract_repository = contract_repository
         self.notification_service = notification_service
+        self.operation_log_service = operation_log_service
 
     def create_bill(
         self,
@@ -69,6 +73,15 @@ class BillService:
                 bill,
                 title="New bill created",
                 message=f"Bill #{bill.id} has been created for your contract.",
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.BILL,
+                record_id=bill.id,
+                action="create",
+                before_status=None,
+                after_status=bill.status,
             )
             db.commit()
             db.refresh(bill)
@@ -126,6 +139,7 @@ class BillService:
         if bill.status not in {BillStatus.UNPAID, BillStatus.OVERDUE}:
             raise InvalidBillStatusException()
 
+        before_status = bill.status
         bill.status = BillStatus.CANCELLED
         try:
             self._notify_tenant(
@@ -133,6 +147,15 @@ class BillService:
                 bill,
                 title="Bill cancelled",
                 message=f"Bill #{bill.id} has been cancelled by the landlord.",
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.BILL,
+                record_id=bill.id,
+                action="cancel",
+                before_status=before_status,
+                after_status=bill.status,
             )
             db.commit()
             db.refresh(bill)
@@ -156,6 +179,7 @@ class BillService:
         if date.today() <= bill.due_date:
             raise InvalidBillStatusException()
 
+        before_status = bill.status
         bill.status = BillStatus.OVERDUE
         try:
             self._notify_tenant(
@@ -163,6 +187,15 @@ class BillService:
                 bill,
                 title="Bill overdue",
                 message=f"Bill #{bill.id} is now overdue.",
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.BILL,
+                record_id=bill.id,
+                action="mark_overdue",
+                before_status=before_status,
+                after_status=bill.status,
             )
             db.commit()
             db.refresh(bill)
@@ -178,7 +211,7 @@ class BillService:
     def _notify_tenant(self, db: Session, bill: Bill, *, title: str, message: str) -> None:
         self.notification_service.create_notification(
             db,
-            user_id=bill.tenant_id,
+            user_ids=[bill.tenant_id],
             source_type="bill",
             source_id=bill.id,
             title=title,

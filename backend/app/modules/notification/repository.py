@@ -56,3 +56,7 @@ class NotificationRepository(BaseRepository[Notification]):
             .where(Notification.user_id == user_id, Notification.status == status)
         )
         return int(db.execute(stmt).scalar_one())
+
+    def bulk_create(self, db: Session, notifications: list[Notification]) -> list[Notification]:
+        db.bulk_save_objects(notifications, return_defaults=True)
+        return notifications

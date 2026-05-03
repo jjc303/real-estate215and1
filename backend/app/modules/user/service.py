@@ -3,8 +3,9 @@ from __future__ import annotations
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.common.email import normalize_email
 from app.common.pagination import build_page_result, get_offset
-from app.core.exceptions import ConflictException, UserNotFoundException
+from app.core.exceptions import UserAlreadyExistsException, UserNotFoundException
 from app.core.security import hash_password
 from app.modules.user.model import User
 from app.modules.user.repository import UserRepository
@@ -25,7 +26,11 @@ class UserService:
 
     def create_user(self, db: Session, data: UserCreateSchema) -> dict[str, object]:
         if self.user_repository.get_by_username(db, data.username) is not None:
-            raise ConflictException(message="username already exists")
+            raise UserAlreadyExistsException(message="username already exists")
+
+        normalized_email = normalize_email(data.email)
+        if normalized_email is not None and self.user_repository.get_by_email(db, normalized_email) is not None:
+            raise UserAlreadyExistsException(message="email already exists")
 
         user = User(
             username=data.username,
@@ -33,7 +38,7 @@ class UserService:
             role=data.role,
             real_name=data.real_name,
             phone=data.phone,
-            email=data.email,
+            email=normalized_email,
             avatar=data.avatar,
             status=data.status,
         )
@@ -44,7 +49,7 @@ class UserService:
             db.refresh(user)
         except IntegrityError as exc:
             db.rollback()
-            raise ConflictException(message="username already exists") from exc
+            raise UserAlreadyExistsException(message="user already exists") from exc
         except Exception:
             db.rollback()
             raise

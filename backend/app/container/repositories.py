@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.modules.admin.repository import AdminRepository
 from app.modules.appointment.repository import AppointmentRepository
+from app.modules.auth.repository import EmailVerificationCodeRepository
 from app.modules.bill.repository import BillRepository
 from app.modules.complaint.repository import ComplaintRepository
 from app.modules.contract.repository import ContractRepository
@@ -10,6 +11,7 @@ from app.modules.favorite.repository import FavoriteRepository
 from app.modules.house.repository import HouseRepository
 from app.modules.news.repository import NewsRepository
 from app.modules.notification.repository import NotificationRepository
+from app.modules.operation_log.repository import OperationLogRepository
 from app.modules.payment.repository import PaymentRepository
 from app.modules.repair.repository import RepairRepository
 from app.modules.statistics.repository import StatisticsRepository
@@ -20,6 +22,7 @@ _user_repository = UserRepository()
 _house_repository = HouseRepository()
 _favorite_repository = FavoriteRepository()
 _appointment_repository = AppointmentRepository()
+_email_verification_code_repository = EmailVerificationCodeRepository()
 _conversation_repository = ConversationRepository()
 _message_repository = MessageRepository()
 _news_repository = NewsRepository()
@@ -29,6 +32,7 @@ _payment_repository = PaymentRepository()
 _repair_repository = RepairRepository()
 _complaint_repository = ComplaintRepository()
 _notification_repository = NotificationRepository()
+_operation_log_repository = OperationLogRepository()
 _statistics_repository = StatisticsRepository()
 _admin_repository = AdminRepository()
 
@@ -47,6 +51,10 @@ def get_favorite_repository() -> FavoriteRepository:
 
 def get_appointment_repository() -> AppointmentRepository:
     return _appointment_repository
+
+
+def get_email_verification_code_repository() -> EmailVerificationCodeRepository:
+    return _email_verification_code_repository
 
 
 def get_conversation_repository() -> ConversationRepository:
@@ -83,6 +91,10 @@ def get_complaint_repository() -> ComplaintRepository:
 
 def get_notification_repository() -> NotificationRepository:
     return _notification_repository
+
+
+def get_operation_log_repository() -> OperationLogRepository:
+    return _operation_log_repository
 
 
 def get_statistics_repository() -> StatisticsRepository:

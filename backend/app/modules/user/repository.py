@@ -17,6 +17,10 @@ class UserRepository(BaseRepository[User]):
         stmt = select(User).where(User.username == username)
         return db.execute(stmt).scalar_one_or_none()
 
+    def get_by_email(self, db: Session, email: str) -> User | None:
+        stmt = select(User).where(User.email == email)
+        return db.execute(stmt).scalar_one_or_none()
+
     def list_users(self, db: Session, offset: int, limit: int) -> list[User]:
         stmt = select(User).order_by(User.id.desc()).offset(offset).limit(limit)
         return list(db.execute(stmt).scalars().all())
@@ -32,4 +36,11 @@ class UserRepository(BaseRepository[User]):
             .where(User.status == "active", User.role.in_(role_values))
             .order_by(User.id.asc())
         )
+        return list(db.execute(stmt).scalars().all())
+
+    def list_by_ids(self, db: Session, user_ids: Iterable[int]) -> list[User]:
+        values = tuple(user_ids)
+        if not values:
+            return []
+        stmt = select(User).where(User.id.in_(values))
         return list(db.execute(stmt).scalars().all())

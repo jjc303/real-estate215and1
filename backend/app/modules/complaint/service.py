@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.common.enums import ComplaintStatus, ContractStatus
+from app.common.enums import OperationLogModule
 from app.common.pagination import build_page_result, get_offset
 from app.core.exceptions import (
     ComplaintNotFoundException,
@@ -19,6 +20,7 @@ from app.modules.complaint.repository import ComplaintRepository
 from app.modules.complaint.schema import ComplaintReadSchema
 from app.modules.contract.repository import ContractRepository
 from app.modules.notification.service import NotificationService
+from app.modules.operation_log.service import OperationLogService
 from app.modules.user.model import User
 from app.modules.user.repository import UserRepository
 
@@ -30,11 +32,13 @@ class ComplaintService:
         contract_repository: ContractRepository,
         user_repository: UserRepository,
         notification_service: NotificationService,
+        operation_log_service: OperationLogService,
     ) -> None:
         self.complaint_repository = complaint_repository
         self.contract_repository = contract_repository
         self.user_repository = user_repository
         self.notification_service = notification_service
+        self.operation_log_service = operation_log_service
 
     def create_complaint(
         self,
@@ -69,6 +73,15 @@ class ComplaintService:
                 complaint,
                 title="New complaint submitted",
                 message=f"Complaint #{complaint.id} has been submitted by the tenant.",
+            )
+            self.operation_log_service.log_action(
+                db,
+                current_user_id=current_user_id,
+                module=OperationLogModule.COMPLAINT,
+                record_id=complaint.id,
+                action="create",
+                before_status=None,
+                after_status=complaint.status,
             )
             db.commit()
             db.refresh(complaint)
@@ -128,6 +141,7 @@ class ComplaintService:
         self._require_role(user, {"landlord", "admin"})
         complaint = self._get_operable_complaint(db, user, complaint_id)
         self._ensure_status(complaint, {ComplaintStatus.PENDING})
+        before_status = complaint.status
         complaint.status = ComplaintStatus.PROCESSING
         complaint.processed_at = self._now()
         self._notify_tenant(
@@ -136,6 +150,7 @@ class ComplaintService:
             title="Complaint is being processed",
             message=f"Complaint #{complaint.id} is now processing.",
         )
+        self._log_status_change(db, current_user_id, complaint.id, "process", before_status, complaint.status)
         return self._commit_and_serialize(db, complaint)
 
     def resolve_complaint(self, db: Session, current_user_id: int, complaint_id: int) -> dict[str, object]:
@@ -143,6 +158,7 @@ class ComplaintService:
         self._require_role(user, {"landlord", "admin"})
         complaint = self._get_operable_complaint(db, user, complaint_id)
         self._ensure_status(complaint, {ComplaintStatus.PROCESSING})
+        before_status = complaint.status
         complaint.status = ComplaintStatus.RESOLVED
         complaint.resolved_at = self._now()
         self._notify_tenant(
@@ -151,6 +167,7 @@ class ComplaintService:
             title="Complaint resolved",
             message=f"Complaint #{complaint.id} has been resolved.",
         )
+        self._log_status_change(db, current_user_id, complaint.id, "resolve", before_status, complaint.status)
         return self._commit_and_serialize(db, complaint)
 
     def reject_complaint(self, db: Session, current_user_id: int, complaint_id: int) -> dict[str, object]:
@@ -158,6 +175,7 @@ class ComplaintService:
         self._require_role(user, {"landlord", "admin"})
         complaint = self._get_operable_complaint(db, user, complaint_id)
         self._ensure_status(complaint, {ComplaintStatus.PENDING})
+        before_status = complaint.status
         complaint.status = ComplaintStatus.REJECTED
         complaint.rejected_at = self._now()
         self._notify_tenant(
@@ -166,6 +184,7 @@ class ComplaintService:
             title="Complaint rejected",
             message=f"Complaint #{complaint.id} has been rejected.",
         )
+        self._log_status_change(db, current_user_id, complaint.id, "reject", before_status, complaint.status)
         return self._commit_and_serialize(db, complaint)
 
     def close_complaint(self, db: Session, current_user_id: int, complaint_id: int) -> dict[str, object]:
@@ -173,6 +192,7 @@ class ComplaintService:
         self._require_role(user, {"tenant", "admin"})
         complaint = self._get_operable_complaint(db, user, complaint_id)
         self._ensure_status(complaint, {ComplaintStatus.RESOLVED})
+        before_status = complaint.status
         complaint.status = ComplaintStatus.CLOSED
         complaint.closed_at = self._now()
         self._notify_landlord(
@@ -181,6 +201,7 @@ class ComplaintService:
             title="Complaint closed",
             message=f"Complaint #{complaint.id} has been closed by the tenant.",
         )
+        self._log_status_change(db, current_user_id, complaint.id, "close", before_status, complaint.status)
         return self._commit_and_serialize(db, complaint)
 
     def _commit_and_serialize(self, db: Session, complaint: Complaint) -> dict[str, object]:
@@ -238,7 +259,7 @@ class ComplaintService:
     def _notify_tenant(self, db: Session, complaint: Complaint, *, title: str, message: str) -> None:
         self.notification_service.create_notification(
             db,
-            user_id=complaint.tenant_id,
+            user_ids=[complaint.tenant_id],
             source_type="complaint",
             source_id=complaint.id,
             title=title,
@@ -249,10 +270,29 @@ class ComplaintService:
     def _notify_landlord(self, db: Session, complaint: Complaint, *, title: str, message: str) -> None:
         self.notification_service.create_notification(
             db,
-            user_id=complaint.landlord_id,
+            user_ids=[complaint.landlord_id],
             source_type="complaint",
             source_id=complaint.id,
             title=title,
             message=message,
             auto_commit=False,
+        )
+
+    def _log_status_change(
+        self,
+        db: Session,
+        current_user_id: int,
+        complaint_id: int,
+        action: str,
+        before_status: str | None,
+        after_status: str | None,
+    ) -> None:
+        self.operation_log_service.log_action(
+            db,
+            current_user_id=current_user_id,
+            module=OperationLogModule.COMPLAINT,
+            record_id=complaint_id,
+            action=action,
+            before_status=before_status,
+            after_status=after_status,
         )
