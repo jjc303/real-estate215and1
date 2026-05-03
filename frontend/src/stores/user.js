@@ -13,6 +13,7 @@ export const useUserStore = defineStore('user', () => {
     const showRegister = ref(false);//注册模态框显示状态
 
     const activeTab = ref('password'); //记录验证方式
+    const registerType= ref('password');//记录注册方式
     const countdown = ref(0);//短信验证码倒计时
     const emailCountdown = ref(0);//邮箱验证码倒计时
     //登录表单数据
@@ -29,6 +30,8 @@ export const useUserStore = defineStore('user', () => {
         id: '',//账号
         phone: '',//手机号
         password: '',//密码
+        email:'',//邮箱
+        emailCode:'',//邮箱验证码
         role: 'tenant', // 默认选择租客
     })
     //根据角色返回对应表单
@@ -204,18 +207,36 @@ export const useUserStore = defineStore('user', () => {
     }
     //注册提交函数
     const submitRegister = async () => {
-        if (!registerForm.value.phone) {
-            alert('请输入手机号');
-            return;
+        const type=registerType.value
+        if(type==='password'){
+            if (!registerForm.value.phone) {
+                alert('请输入手机号');
+                return;
+            }
+            if (!checkPhone(registerForm.value.phone)) {
+                alert('请输入正确的手机号');
+                return;
+            }
+            if (!registerForm.value.password) {
+                alert('请输入密码');
+                return;
+            }
         }
-        if (!checkPhone(registerForm.value.phone)) {
-            alert('请输入正确的手机号');
-            return;
+        else if(type==='email'){
+            if (!registerForm.value.email) {
+                alert('请输入邮箱');
+                return;
+            }
+            if (!checkEmail(registerForm.value.email)) {
+                alert('请输入正确的邮箱地址');
+                return;
+            }
+            if (!registerForm.value.emailCode) {
+                alert('请输入邮箱验证码');
+                return;
+            }
         }
-        if (!registerForm.value.password) {
-            alert('请输入密码');
-            return;
-        }
+        
 
         // 这里可以添加实际的注册逻辑，例如调用后端接口等
 
