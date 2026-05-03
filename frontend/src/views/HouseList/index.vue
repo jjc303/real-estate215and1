@@ -250,7 +250,6 @@
     <LoginModal/>
 </template>
 <script setup>
-
 import HouseBar from '@/components/HouseBar.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import { ref,reactive } from 'vue';
@@ -259,7 +258,6 @@ import { useUserStore } from '@/stores/user.js';
 import { useRoute,useRouter} from 'vue-router';
 import { watch } from 'vue';
 import { onMounted } from 'vue';
-
 
 const userStore = useUserStore();
 const route=useRoute();
@@ -537,7 +535,6 @@ onMounted(() => {
 }
 </style>
 <style scoped>
-
 .title{
     background: linear-gradient(to right, rgba(140,140,140,0.4), rgba(180,180,180,0.15));
     display: flex;

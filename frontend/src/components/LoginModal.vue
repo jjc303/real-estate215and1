@@ -47,7 +47,7 @@
              <input v-model="userStore.loginForm.email" type="text" placeholder="请输入邮箱" />
              <div class="code-row">
                 <input v-model="userStore.loginForm.emailCode" type="text" placeholder="请输入验证码" />
-                <button class="get-code-btn" @click="userStore.getEmailCode" :disabled="userStore.emailCountdown>0">
+                <button class="get-code-btn" @click="userStore.getEmailCode('login')" :disabled="userStore.emailCountdown>0">
                   {{ userStore.emailCountdown>0?`${userStore.emailCountdown}s后重试`:'获取验证码' }}
                 </button>
              </div>
@@ -122,7 +122,7 @@
               <input v-model="userStore.registerForm.email" type="text" placeholder="请输入邮箱" />
               <div class="code-row">
                 <input v-model="userStore.registerForm.emailCode" type="text" placeholder="请输入验证码" />
-                <button class="get-code-btn" @click="userStore.getEmailCode" :disabled="userStore.emailCountdown>0">
+                <button class="get-code-btn" @click="userStore.getEmailCode('register')" :disabled="userStore.emailCountdown>0">
                   {{ userStore.emailCountdown>0?`${userStore.emailCountdown}s后重试`:'获取验证码' }}
                 </button>
               </div>

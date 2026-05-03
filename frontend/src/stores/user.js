@@ -94,8 +94,8 @@ export const useUserStore = defineStore('user', () => {
 
         }
     }
-    //邮箱获取验证码函数//邮箱获取验证码函数
-    const getEmailCode = async () => {
+    //邮箱获取验证码函数
+    const getEmailCode = async (type) => {
         if (!loginForm.value.email) {
             alert('请输入邮箱');
             return;
@@ -106,9 +106,19 @@ export const useUserStore = defineStore('user', () => {
         }
         // 这里可以添加实际的获取验证码逻辑，例如调用后端接口等
         try {
-            await service.post('/v1/auth/send-email', {
-                email: loginForm.value.email
-            })
+            if(type==='login'){
+                await service.post('/v1/auth/email/code', {
+                    email: loginForm.value.email,
+                    biz_type:'login'
+                })
+            }
+            
+            else if(type==='register'){
+                await service.post('/v1/auth/email/code', {
+                    email: registerForm.value.email,
+                    biz_type:'register'
+                })
+            }
             alert('验证码已发送！');
             emailCountdown.value = 60;
             const timer = setInterval(() => {
@@ -182,13 +192,13 @@ export const useUserStore = defineStore('user', () => {
                 res = await service.post('/v1/auth/login-sms', {
                     username: loginForm.value.phone,
                     code: loginForm.value.code,
-                    //role: loginForm.value.role
+                    role: loginForm.value.role
                 })
             } else if (type === 'email') {
-                res = await service.post('/v1/auth/login-email', {
+                res = await service.post('/v1/auth/email/login', {
                     email: loginForm.value.email,
                     code: loginForm.value.emailCode,
-                    //role: loginForm.value.role
+                    role: loginForm.value.role
                 })
             }
             localStorage.setItem('token', res.data.token)
@@ -236,16 +246,23 @@ export const useUserStore = defineStore('user', () => {
                 return;
             }
         }
-        
-
-        // 这里可以添加实际的注册逻辑，例如调用后端接口等
-
+    
         try {
-            await service.post('/v1/users', {
-                username: registerForm.value.phone,
-                password: registerForm.value.password,
-                //role: registerForm.value.role, // ✅ 注册时传角色
-            })
+            let res;
+            if(type==='password'){
+                res = await service.post('/v1/users', {
+                    username: registerForm.value.phone,
+                    password: registerForm.value.password,
+                    role: registerForm.value.role, 
+                })
+            }else if(type==='email'){
+                res = await service.post('/v1/auth/email/register',{
+                    email:registerForm.value.email,
+                    code:registerForm.value.emailCode,
+                    role:registerForm.value.role
+                })
+            }
+            
             alert('注册成功')
             goToLogin()
         } catch (e) {
