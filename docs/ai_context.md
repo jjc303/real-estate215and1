@@ -212,6 +212,30 @@ repository 不允许：
 - 统一使用 UTC
 - 返回给前端时为 ISO 8601 字符串
 
+### 4.5 邮箱验证码运行配置
+
+邮箱验证码能力依赖 SMTP 配置，当前读取链路是：
+- 配置读取代码：[backend/app/core/config.py](/D:/a.python/real-estate215and1/backend/app/core/config.py)
+- 邮件发送工具：[backend/app/common/email.py](/D:/a.python/real-estate215and1/backend/app/common/email.py)
+- Docker 启动配置：[deploy/docker-compose.yml](/D:/a.python/real-estate215and1/deploy/docker-compose.yml)
+- Docker 环境变量文件：[deploy/.env](/D:/a.python/real-estate215and1/deploy/.env)
+
+当前需要的变量：
+- `SMTP_SERVER`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_USE_SSL`
+- `SMTP_USE_TLS`
+- `EMAIL_CODE_EXPIRE_MINUTES`
+- `EMAIL_CODE_RESEND_SECONDS`
+
+重要规则：
+- `SMTP_USE_SSL` 和 `SMTP_USE_TLS` 不能同时为 `true`
+- QQ 邮箱常见配置是 `smtp.qq.com + 465 + SSL`
+- `SMTP_PASS` 一般应填写 SMTP 授权码，而不是邮箱登录密码
+- 修改 `deploy/.env` 后，至少要重启后端容器；如果 Python 依赖也变化，则要重建镜像
+
 ---
 
 ## 5. 全局规则
@@ -307,7 +331,12 @@ Auth v1.15.0 额外事实：
   - 空字符串转 `None`
 - 邮箱验证码注册时 username 固定生成 `user_<random_hex>`
 - `users.email` 已进入唯一约束路线；migration 会先把历史空字符串 email 清洗为 `NULL`
+- 给 `users.email` 加唯一索引前，会先执行 `UPDATE users SET email = NULL WHERE email = ''`
+- 如果历史数据里存在重复的非空 email，migration 允许失败，不做静默合并，需人工清理后再继续
 - 当前继续使用 MySQL 保存验证码，不引入 Redis、Celery、APScheduler 或异步任务
+- `send_email_code`、`email_register`、`email_login` 都使用统一 `try/except + commit/rollback` 模板
+- 邮件发送异常不是单独局部捕获；任何中间步骤异常都要整体回滚
+- `send_verification_email` 的测试 patch 目标是 `app.modules.auth.service.send_verification_email`
 
 ### 6.2 House
 
@@ -721,10 +750,12 @@ Factory 当前注册的 blueprint 前缀为：
 - `tests/api/test_repair_flow.py`
 - `tests/api/test_complaint_flow.py`
 - `tests/api/test_admin_flow.py`
+- `tests/service/test_auth_service.py`
 - `tests/service/test_notification_service.py`
 
 覆盖重点包括：
 - 主要 HTTP 业务流
+- Auth 邮箱验证码发送 / 注册 / 登录、邮件失败回滚、验证码复用与过期校验
 - News CRUD 与通知
 - Payment 支付闭环与通知
 - Repair / Complaint 状态流
