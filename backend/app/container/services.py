@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.container.repositories import (
     get_admin_repository,
     get_appointment_repository,
+    get_email_verification_code_repository,
     get_bill_repository,
     get_complaint_repository,
     get_contract_repository,
@@ -37,7 +38,10 @@ from app.modules.user.service import UserService
 
 
 _user_service = UserService(get_user_repository())
-_auth_service = AuthService(get_user_repository())
+_auth_service = AuthService(
+    get_user_repository(),
+    get_email_verification_code_repository(),
+)
 _house_service = HouseService(get_house_repository())
 _favorite_service = FavoriteService(get_favorite_repository(), get_house_repository())
 _appointment_service = AppointmentService(get_appointment_repository(), get_house_repository())

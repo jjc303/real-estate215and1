@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from app.modules.admin.repository import AdminRepository
 from app.modules.appointment.repository import AppointmentRepository
+from app.modules.auth.repository import EmailVerificationCodeRepository
 from app.modules.bill.repository import BillRepository
 from app.modules.complaint.repository import ComplaintRepository
 from app.modules.contract.repository import ContractRepository
@@ -21,6 +22,7 @@ _user_repository = UserRepository()
 _house_repository = HouseRepository()
 _favorite_repository = FavoriteRepository()
 _appointment_repository = AppointmentRepository()
+_email_verification_code_repository = EmailVerificationCodeRepository()
 _conversation_repository = ConversationRepository()
 _message_repository = MessageRepository()
 _news_repository = NewsRepository()
@@ -49,6 +51,10 @@ def get_favorite_repository() -> FavoriteRepository:
 
 def get_appointment_repository() -> AppointmentRepository:
     return _appointment_repository
+
+
+def get_email_verification_code_repository() -> EmailVerificationCodeRepository:
+    return _email_verification_code_repository
 
 
 def get_conversation_repository() -> ConversationRepository:

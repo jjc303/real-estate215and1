@@ -1,6 +1,6 @@
-# API 文档（当前实现）
+﻿# API 文档（当前实现）
 
-Version: v1.14.2  
+Version: v1.15.0  
 Base URL: `http://127.0.0.1:8000`  
 统一前缀：`/api/v1`
 
@@ -115,9 +115,9 @@ Content-Type: application/json
 
 ### 3.2 用户与认证
 
-- `2001`：用户不存在
-- `2002`：用户名已存在
-- `2003`：密码错误
+- `1001`：用户不存在
+- `1002`：用户名或密码错误
+- `2002`：用户名或邮箱已存在
 
 ### 3.3 房源 / 收藏 / 预约
 
@@ -170,13 +170,13 @@ User 模块负责普通注册、个人资料查询与修改。
 
 ### 4.2 接口列表
 
-- `POST /api/v1/users/register`
+- `POST /api/v1/users`
 - `GET /api/v1/users/me`
 - `PUT /api/v1/users/me`
 
 ### 4.3 注册
 
-`POST /api/v1/users/register`
+`POST /api/v1/users`
 
 请求体：
 
@@ -236,9 +236,12 @@ User 模块负责普通注册、个人资料查询与修改。
 ### 5.1 接口列表
 
 - `POST /api/v1/auth/login`
+- `POST /api/v1/auth/email/code`
+- `POST /api/v1/auth/email/register`
+- `POST /api/v1/auth/email/login`
 - `GET /api/v1/auth/me`
 
-### 5.2 登录
+### 5.2 用户名密码登录
 
 `POST /api/v1/auth/login`
 
@@ -260,13 +263,172 @@ User 模块负责普通注册、个人资料查询与修改。
 }
 ```
 
-### 5.3 登录态信息
+### 5.3 发送邮箱验证码
+
+`POST /api/v1/auth/email/code`
+
+请求体：
+
+```json
+{
+  "email": "alice@example.com",
+  "biz_type": "register"
+}
+```
+
+字段说明：
+- `email`：合法邮箱地址
+- `biz_type`：`register` 或 `login`
+
+业务规则：
+- email 在 service 中统一先做 `strip() -> lower() -> 空串转 None`
+- 验证码固定 6 位数字，默认有效期 5 分钟
+- 同一 `email + biz_type` 60 秒内不允许重复发送
+- 验证码只保存哈希，接口不会返回验证码明文
+- `register`：邮箱未注册时允许发送，已注册返回 `2002`
+- `login`：邮箱已注册且用户状态为 `active` 时允许发送；未注册返回 `1001`；非 `active` 返回 `1004`
+
+成功响应：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "message": "email code sent"
+  }
+}
+```
+
+常见错误：
+- `2002`：邮箱已注册（发送 register 验证码）
+- `1001`：用户不存在（发送 login 验证码）
+- `1004`：用户状态不允许登录
+- `3001`：验证码发送过快、参数错误、业务类型非法
+- `5000`：邮件发送失败或 SMTP 配置错误
+
+### 5.4 邮箱验证码注册
+
+`POST /api/v1/auth/email/register`
+
+请求体：
+
+```json
+{
+  "email": "alice@example.com",
+  "code": "123456",
+  "role": "tenant",
+  "password": "12345678",
+  "real_name": "Alice",
+  "phone": "13800000000",
+  "avatar": "https://example.com/avatar.png"
+}
+```
+
+字段说明：
+- `email`：必填邮箱
+- `code`：6 位数字验证码
+- `role`：`tenant` 或 `landlord`，默认 `tenant`
+- `password`：可选；不传时后端会生成随机不可记忆密码哈希，仅用于满足旧用户表非空约束
+- `real_name / phone / avatar`：可选
+
+业务规则：
+- 只接受 `register` 类型、未过期、未使用的最新验证码
+- 同一验证码只能使用一次
+- 注册成功后验证码会被标记为已使用
+- 前端不需要传 `username`
+- 后端自动生成 `user_<random_hex>` 风格用户名
+- 旧普通注册接口仍然是 `POST /api/v1/users`，不会被本接口替代
+
+成功响应：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "token": "jwt-token",
+    "token_type": "Bearer",
+    "user": {
+      "id": 1,
+      "username": "user_a1b2c3d4",
+      "email": "alice@example.com",
+      "role": "tenant",
+      "status": "active"
+    }
+  }
+}
+```
+
+常见错误：
+- `2002`：邮箱已注册，或 username 极端冲突兜底
+- `3001`：验证码错误、验证码过期、验证码已使用、参数错误
+- `5000`：服务器内部错误
+
+### 5.5 邮箱验证码登录
+
+`POST /api/v1/auth/email/login`
+
+请求体：
+
+```json
+{
+  "email": "alice@example.com",
+  "code": "123456"
+}
+```
+
+业务规则：
+- 只接受 `login` 类型、未过期、未使用的最新验证码
+- 用户必须已注册
+- 用户状态必须为 `active`
+- 登录成功后验证码会被标记为已使用
+
+成功响应：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "token": "jwt-token",
+    "token_type": "Bearer",
+    "user": {
+      "id": 1,
+      "username": "user_a1b2c3d4",
+      "email": "alice@example.com",
+      "role": "tenant",
+      "status": "active"
+    }
+  }
+}
+```
+
+常见错误：
+- `1001`：用户不存在
+- `1004`：用户状态不允许登录
+- `3001`：验证码错误、验证码过期、验证码已使用、参数错误
+
+### 5.6 登录态信息
 
 `GET /api/v1/auth/me`
 
 说明：
 - 需要登录
 - 返回当前 token 对应用户信息
+
+### 5.7 SMTP 配置示例
+
+```env
+SMTP_SERVER=smtp.qq.com
+SMTP_PORT=465
+SMTP_USER=your_email@qq.com
+SMTP_PASS=your_authorization_code
+SMTP_USE_SSL=true
+SMTP_USE_TLS=false
+EMAIL_CODE_EXPIRE_MINUTES=5
+EMAIL_CODE_RESEND_SECONDS=60
+```
 
 ---
 

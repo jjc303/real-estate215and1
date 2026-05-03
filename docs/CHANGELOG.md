@@ -1,5 +1,59 @@
 # Changelog
 
+## v1.15.0 - 2026-05-03
+
+### Added
+
+#### Auth 邮箱验证码注册与登录
+
+- 新增 `email_verification_codes` 表，用于保存邮箱验证码哈希、业务类型、过期时间和使用状态
+- 新增 Auth 接口：
+  - `POST /api/v1/auth/email/code`
+  - `POST /api/v1/auth/email/register`
+  - `POST /api/v1/auth/email/login`
+- 新增 `app/common/email.py`，使用标准库 `smtplib` 发送验证码邮件
+- 新增 `backend/tests/service/test_auth_service.py`，覆盖邮箱验证码发送、注册、登录和回滚场景
+- 新增 `backend/.env.example` 中的 SMTP 和验证码配置示例
+
+### Changed
+
+#### AuthService 主导邮箱验证码流程
+
+- 邮箱验证码发送、邮箱验证码注册、邮箱验证码登录全部收口到 `AuthService`
+- `AuthService.send_email_code(...)`、`email_register(...)`、`email_login(...)` 统一使用 service 层 `try / commit / rollback` 模板
+- 验证码只保存哈希，不明文入库
+- 发送邮件失败时整笔事务回滚，不在数据库里残留验证码记录
+- 邮箱验证码注册由 `AuthService` 直接构造 `User` ORM，并调用 `UserRepository.create(...)` 落库
+- `UserService` 不参与邮箱验证码注册 / 登录流程
+
+#### email 规范化与唯一约束
+
+- 所有通过 email 查询或入库的位置统一先执行：
+  - `strip()`
+  - `lower()`
+  - 空字符串转 `None`
+- `users.email` 增加唯一索引
+- migration 在加唯一索引前会先把历史 `users.email = ''` 清洗为 `NULL`
+- 如果存在重复的非空 email，migration 允许失败并提示人工清理
+- 旧 `/api/v1/users` 注册流程补充 email normalize 和重复 email 校验，以兼容唯一约束
+
+#### username 自动生成
+
+- 邮箱验证码注册不再要求前端传 `username`
+- 后端统一生成 `user_<random_hex>` 风格用户名
+- 优先使用 `secrets.token_hex(4)`，最多重试 5 次
+- 极端冲突时使用更长随机串兜底
+
+### Added Migration
+
+- `c1e2f3a4b5c6_add_email_verification_codes_table.py`
+
+### Notes
+
+- 本次继续使用 MySQL 保存验证码，不引入 Redis、Celery、APScheduler 或异步队列
+- 当前不做过期验证码定时清理；后续可增加 admin-only 清理接口或独立脚本
+- 当前仓库原有用户名密码注册接口仍为 `POST /api/v1/users`
+
 ## v1.14.2 - 2026-05-02
 
 ### Changed

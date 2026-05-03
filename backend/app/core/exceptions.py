@@ -20,6 +20,7 @@ CONFLICT_CODE = 4009
 INTERNAL_SERVER_ERROR_CODE = 5000
 USER_NOT_FOUND_CODE = 1001
 INVALID_CREDENTIALS_CODE = 1002
+USER_ALREADY_EXISTS_CODE = 2002
 HOUSE_NOT_FOUND_CODE = 2001
 FAVORITE_NOT_FOUND_CODE = 2101
 APPOINTMENT_NOT_FOUND_CODE = 2201
@@ -140,6 +141,16 @@ class UserNotFoundException(AppException):
             message=message,
             code=USER_NOT_FOUND_CODE,
             status_code=404,
+            data=data,
+        )
+
+
+class UserAlreadyExistsException(AppException):
+    def __init__(self, message: str = "user already exists", data: Any | None = None) -> None:
+        super().__init__(
+            message=message,
+            code=USER_ALREADY_EXISTS_CODE,
+            status_code=409,
             data=data,
         )
 

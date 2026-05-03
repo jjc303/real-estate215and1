@@ -53,6 +53,14 @@ class BaseConfig:
     JSON_AS_ASCII = False
     LOG_LEVEL = "INFO"
     LOG_FILE_PATH = str(DEFAULT_LOG_FILE_PATH)
+    SMTP_SERVER = ""
+    SMTP_PORT = 465
+    SMTP_USER = ""
+    SMTP_PASS = ""
+    SMTP_USE_SSL = False
+    SMTP_USE_TLS = False
+    EMAIL_CODE_EXPIRE_MINUTES = 5
+    EMAIL_CODE_RESEND_SECONDS = 60
 
     @classmethod
     def to_mapping(cls) -> dict[str, object]:
@@ -72,6 +80,18 @@ class BaseConfig:
             "JSON_AS_ASCII": _get_bool("JSON_AS_ASCII", cls.JSON_AS_ASCII),
             "LOG_LEVEL": _get_log_level("LOG_LEVEL", cls.LOG_LEVEL),
             "LOG_FILE_PATH": _get_path("LOG_FILE_PATH", Path(cls.LOG_FILE_PATH)),
+            "SMTP_SERVER": os.getenv("SMTP_SERVER", cls.SMTP_SERVER),
+            "SMTP_PORT": int(os.getenv("SMTP_PORT", str(cls.SMTP_PORT))),
+            "SMTP_USER": os.getenv("SMTP_USER", cls.SMTP_USER),
+            "SMTP_PASS": os.getenv("SMTP_PASS", cls.SMTP_PASS),
+            "SMTP_USE_SSL": _get_bool("SMTP_USE_SSL", cls.SMTP_USE_SSL),
+            "SMTP_USE_TLS": _get_bool("SMTP_USE_TLS", cls.SMTP_USE_TLS),
+            "EMAIL_CODE_EXPIRE_MINUTES": int(
+                os.getenv("EMAIL_CODE_EXPIRE_MINUTES", str(cls.EMAIL_CODE_EXPIRE_MINUTES))
+            ),
+            "EMAIL_CODE_RESEND_SECONDS": int(
+                os.getenv("EMAIL_CODE_RESEND_SECONDS", str(cls.EMAIL_CODE_RESEND_SECONDS))
+            ),
         }
 
 

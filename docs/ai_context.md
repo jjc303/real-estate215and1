@@ -1,7 +1,7 @@
-# AI Context（Backend Project）
+﻿# AI Context（Backend Project）
 
-Version: v1.14.2  
-Last Updated: 2026-05-02
+Version: v1.15.0  
+Last Updated: 2026-05-03
 
 Status:
 - 当前项目已经形成完整的课程项目后端骨架，并完成 `User / Auth / House / Favorite / Appointment / Conversation / Contract / Bill / Payment / Repair / Complaint / News / Notification / Statistics / Admin` 的最小业务闭环
@@ -9,6 +9,7 @@ Status:
 - `Notification` 已经彻底收口为统一批量创建接口
 - `Operation Log` 审计能力已经落库并接入后台查询
 - 现有主要业务流都已有 HTTP 风格测试覆盖
+- `Auth` 已新增邮箱验证码发送、邮箱验证码注册、邮箱验证码登录能力
 
 ---
 
@@ -269,6 +270,9 @@ admin-only 接口不在 router 里写复杂判断，而是在 service 里统一�
 - 登录态查询
 - 当前用户资料查询
 - 当前用户资料更新
+- 邮箱验证码发送
+- 邮箱验证码注册
+- 邮箱验证码登录
 
 角色：
 - `tenant`
@@ -282,7 +286,28 @@ admin-only 接口不在 router 里写复杂判断，而是在 service 里统一�
 当前没有做：
 - 忘记密码
 - 短信验证码
-- 邮件验证
+- 邮件找回密码
+
+Auth v1.15.0 额外事实：
+- 新增接口：
+  - `POST /api/v1/auth/email/code`
+  - `POST /api/v1/auth/email/register`
+  - `POST /api/v1/auth/email/login`
+- `AuthService` 主导邮箱验证码发送、校验、注册、登录、JWT 签发和事务控制
+- `UserRepository` 只做用户表数据访问
+- `UserService` 不参与邮箱验证码注册 / 登录流程
+- 允许 `UserService` 为旧 `POST /api/v1/users` 增加 email normalize 和重复 email 校验，但仅限兼容 `users.email` 唯一约束
+- 新增表：`email_verification_codes`
+- 验证码固定 6 位数字，默认有效期 5 分钟
+- 同一 `email + biz_type` 60 秒内不能重复发送
+- 验证码只保存 `code_hash`，不明文入库
+- email 在所有查询和入库前统一先做：
+  - `strip()`
+  - `lower()`
+  - 空字符串转 `None`
+- 邮箱验证码注册时 username 固定生成 `user_<random_hex>`
+- `users.email` 已进入唯一约束路线；migration 会先把历史空字符串 email 清洗为 `NULL`
+- 当前继续使用 MySQL 保存验证码，不引入 Redis、Celery、APScheduler 或异步任务
 
 ### 6.2 House
 
