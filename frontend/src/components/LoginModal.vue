@@ -47,7 +47,7 @@
              <input v-model="userStore.loginForm.email" type="text" placeholder="请输入邮箱" />
              <div class="code-row">
                 <input v-model="userStore.loginForm.emailCode" type="text" placeholder="请输入验证码" />
-                <button class="get-code-btn" @click="userStore.getEmailCode" :disabled="userStore.emailCountdown>0">
+                <button class="get-code-btn" @click="userStore.getEmailCode('login')" :disabled="userStore.emailCountdown>0">
                   {{ userStore.emailCountdown>0?`${userStore.emailCountdown}s后重试`:'获取验证码' }}
                 </button>
              </div>
@@ -100,15 +100,35 @@
       </div>
       <div class="modal-content-wrap">
         <div class="modal-header">
-          <span>
-            注册账号
+          <span
+            @click="userStore.registerType='password'"
+            :class="{'active-tab': userStore.registerType === 'password'}"
+          >
+            账号注册
+          </span>
+          <span
+            @click="userStore.registerType='email'"
+            :class="{'active-tab': userStore.registerType === 'email'}"
+          >
+            邮箱注册
           </span>
         </div>
         <div class="modal-content">
-          <input v-model="userStore.registerForm.phone" type="text" placeholder="请输入手机号" />
-          <input v-model="userStore.registerForm.password" type="password" placeholder="请输入密码" />
-          <button type="button" class="modal-btn" @click="userStore.submitRegister">注册</button>
+          <div v-if="userStore.registerType==='password'">
+            <input v-model="userStore.registerForm.phone" type="text" placeholder="请输入手机号" />
+            <input v-model="userStore.registerForm.password" type="password" placeholder="请输入密码" />
+          </div>
+          <div v-if="userStore.registerType==='email'">
+              <input v-model="userStore.registerForm.email" type="text" placeholder="请输入邮箱" />
+              <div class="code-row">
+                <input v-model="userStore.registerForm.emailCode" type="text" placeholder="请输入验证码" />
+                <button class="get-code-btn" @click="userStore.getEmailCode('register')" :disabled="userStore.emailCountdown>0">
+                  {{ userStore.emailCountdown>0?`${userStore.emailCountdown}s后重试`:'获取验证码' }}
+                </button>
+              </div>
+          </div>
         </div>
+        <button type="button" class="modal-btn" @click="userStore.submitRegister">注册</button>
         <div class="to-register">
           <span>已有账号？</span>
           <span class="to-other" @click="userStore.openLoginModal">前往登录</span>

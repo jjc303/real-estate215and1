@@ -33,7 +33,7 @@ button {
 }
 /* 登录按钮 */
 .btn-login {
-  padding: 10px 20px;
+  padding: 10px 15px;
   font-size: 18px;
   color: #fff;
   background: transparent;
@@ -52,7 +52,7 @@ button {
 /* 注册按钮（主按钮） */
 
 .btn-register{
-  padding: 10px 20px;
+  padding: 10px 15px;
   font-size: 18px;
   color: #fff;
   background: transparent;

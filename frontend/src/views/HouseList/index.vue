@@ -1,14 +1,4 @@
 <template>
-    <div class="header">
-        <div class="header-wrap">
-            <div class="nav-wrap">
-                <NavBar />
-            </div>
-            <div class="btn-wrap">
-                <UserButton />
-            </div>
-        </div>
-    </div>
     <div class="title">
         <div class="img-wrap">
             <img src="@/assets/images/csu-logo.png" alt="中南大学logo" class="csu-logo" />
@@ -260,11 +250,9 @@
     <LoginModal/>
 </template>
 <script setup>
-import NavBar from '@/components/NavBar.vue'
 import HouseBar from '@/components/HouseBar.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import { ref,reactive } from 'vue';
-import UserButton from '@/components/UserButton.vue';
 import LoginModal from '@/components/LoginModal.vue';
 import { useUserStore } from '@/stores/user.js';
 import { useRoute,useRouter} from 'vue-router';
@@ -547,25 +535,6 @@ onMounted(() => {
 }
 </style>
 <style scoped>
-.header {
-    width: 100%;
-    height: 60px;
-    background-color:rgb(186,194,203);
-    display: flex;
-    align-items: center;
-}
-.header-wrap {
-    display: flex;
-    width: 1200px;
-    margin: 0 auto;
-}
-.nav-wrap {
-    flex: 1;
-}
-.btn-wrap {
-    display: flex;
-    gap: 10px;
-}
 .title{
     background: linear-gradient(to right, rgba(140,140,140,0.4), rgba(180,180,180,0.15));
     display: flex;
