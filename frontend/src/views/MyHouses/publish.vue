@@ -1,7 +1,7 @@
 <template>
   <div class="publish-page">
     <div class="publish-title">
-      <h1>发布出租房源</h1>
+      <h1>创建出租房源</h1>
       <p>清风雅居 · 城隅美宅 · 恬静闲舍</p>
     </div>
 

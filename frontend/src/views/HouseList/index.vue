@@ -44,20 +44,7 @@
                 </div>
                 
             </div>
-            <!--方式筛选-->
-            <div class="filter-row">
-                <span class="filter-label">方式</span>
-                <div class="filter-option">
-                    <span
-                        v-for="type in rentTypes"
-                        :key="type"
-                        :class="{active:filter.type===type}"
-                        @click="setFilter('type',type)"
-                    >
-                        {{ type }}
-                    </span>
-                </div>
-            </div>
+            
             <!--租金筛选-->
              <div class="filter-row">
                 <span class="filter-label">租金</span>
@@ -213,39 +200,12 @@
             />
         </div>
         <!-- 分页控件 -->
-        <div class="pagination">
-            <button 
-                @click="changePage(1)" 
-                :disabled="pageNum === 1"
-                class="page-btn"
-            >
-                首页
-            </button>
-            <button 
-                @click="changePage(pageNum-1)" 
-                :disabled="pageNum === 1"
-                class="page-btn"
-            >
-                上一页
-            </button>
-            <span class="page-info">
-                第 {{ pageNum }} 页 / 共 {{ Math.ceil(total/pageSize) }} 页
-            </span>
-            <button 
-                @click="changePage(pageNum+1)" 
-                :disabled="pageNum >= Math.ceil(total/pageSize)"
-                class="page-btn"
-            >
-                下一页
-            </button>
-            <button 
-                @click="changePage(Math.ceil(total/pageSize))" 
-                :disabled="pageNum >= Math.ceil(total/pageSize)"
-                class="page-btn"
-            >
-                尾页
-            </button>
-        </div>
+        <Pagination
+            :pageNum="pageNum"
+            :pageSize="pageSize"
+            :total="total"
+            @change="handlePageChange"
+        />
     </div>
     <LoginModal/>
 </template>
@@ -258,7 +218,8 @@ import { useUserStore } from '@/stores/user.js';
 import { useRoute,useRouter} from 'vue-router';
 import { watch } from 'vue';
 import { onMounted } from 'vue';
-
+import Pagination from '@/components/Pagination.vue';
+import mockData from'@/mock/houseList'
 const userStore = useUserStore();
 const route=useRoute();
 
@@ -272,8 +233,7 @@ const pageSize=ref(10)//每页条数
 const houseList = ref([])//房源信息
 const districts=['不限','雨花','岳麓','天心','开福','芙蓉','望城','宁乡市','浏阳','长沙县'];
 const selectedDistrict=ref('');
-// 租赁方式
-const rentTypes = ['不限', '整租', '合租']
+
 const prices = ref([
   { label: '1000以下', value: '1000' },
   { label: '1000-2000', value: '1000-2000' },
@@ -318,7 +278,6 @@ const sortList=ref([
 ])
 const filterConfig = {
   district: 'single',       // 区域 单选
-  type: 'single',       // 方式 单选
   price: 'multiple',    // 租金 多选
   area: 'multiple',     // 面积 多选
   room: 'multiple',     // 户型 多选
@@ -330,7 +289,6 @@ const filterConfig = {
 }
 const filter = reactive({
   district: '',
-  type: '',
   elevator:'',
   price: [],
   area: [],
@@ -344,23 +302,7 @@ const filter = reactive({
   min_area: null,
   max_area: null
 })
-const mockData = [
-  { id: 1, title: "中南大学旁精致单间 拎包入住", district: "岳麓", businessArea: "麓谷", area: 35, room: "一室", orientation: "南北", price: 1800, images: ["https://picsum.photos/id/101/800/600"], tags: ["近地铁"], updateTime: "2026-04-25", isCollect: false },
-  { id: 2, title: "岳麓山脚下两室一厅", district: "岳麓", businessArea: "大学城", area: 68, room: "二室", orientation: "南", price: 2600, images: ["https://picsum.photos/id/104/800/600"], tags: ["南北通透"], updateTime: "2026-04-23", isCollect: true },
-  { id: 3, title: "雨花区精装合租次卧", district: "雨花", businessArea: "红星", area: 28, room: "一室", orientation: "东", price: 1200, images: ["https://picsum.photos/id/106/800/600"], tags: ["合租"], updateTime: "2026-04-20", isCollect: false },
-  { id: 4, title: "天心区大三居 适合整租", district: "天心", businessArea: "省政府", area: 95, room: "三室", orientation: "南北", price: 3800, images: ["https://picsum.photos/id/107/800/600"], tags: ["整租"], updateTime: "2026-04-18", isCollect: false },
-  { id: 5, title: "开福区单间公寓 独立卫浴", district: "开福", businessArea: "五一广场", area: 32, room: "一室", orientation: "西", price: 1500, images: ["https://picsum.photos/id/109/800/600"], tags: ["近商圈"], updateTime: "2026-04-15", isCollect: true },
-  { id: 6, title: "芙蓉区老式两居 性价比高", district: "芙蓉", businessArea: "芙蓉广场", area: 72, room: "二室", orientation: "北", price: 1900, images: ["https://picsum.photos/id/110/800/600"], tags: ["低楼层"], updateTime: "2026-04-12", isCollect: false },
-  { id: 7, title: "望城区湖景单间", district: "望城", businessArea: "滨水新城", area: 40, room: "一室", orientation: "南", price: 1000, images: ["https://picsum.photos/id/111/800/600"], tags: ["安静"], updateTime: "2026-04-10", isCollect: false },
-  { id: 8, title: "长沙县精装四室", district: "长沙县", businessArea: "星沙", area: 120, room: "四室以上", orientation: "南北", price: 4800, images: ["https://picsum.photos/id/112/800/600"], tags: ["大户型"], updateTime: "2026-04-08", isCollect: false },
-  { id: 9, title: "浏阳市温馨小单间", district: "浏阳", businessArea: "经开区", area: 25, room: "一室", orientation: "东", price: 900, images: ["https://picsum.photos/id/114/800/600"], tags: ["低价"], updateTime: "2026-04-05", isCollect: false },
-  { id: 10, title: "宁乡市两室一厅 居家装修", district: "宁乡市", businessArea: "市中心", area: 65, room: "二室", orientation: "西", price: 1700, images: ["https://picsum.photos/id/115/800/600"], tags: ["居家"], updateTime: "2026-04-02", isCollect: true },
-  { id: 11, title: "岳麓区高校旁合租单间", district: "岳麓", businessArea: "大学城", area: 30, room: "一室", orientation: "南", price: 1350, images: ["https://picsum.photos/id/116/800/600"], tags: ["近学校"], updateTime: "2026-03-30", isCollect: false },
-  { id: 12, title: "雨花区高端公寓", district: "雨花", businessArea: "德思勤", area: 45, room: "一室", orientation: "北", price: 2200, images: ["https://picsum.photos/id/117/800/600"], tags: ["高端"], updateTime: "2026-03-28", isCollect: false },
-  { id: 13, title: "开福区江景大三室", district: "开福", businessArea: "滨江路", area: 110, room: "三室", orientation: "南北", price: 5200, images: ["https://picsum.photos/id/118/800/600"], tags: ["江景"], updateTime: "2026-03-25", isCollect: false },
-  { id: 14, title: "芙蓉区平价单间", district: "芙蓉", businessArea: "火车站", area: 26, room: "一室", orientation: "东", price: 950, images: ["https://picsum.photos/id/119/800/600"], tags: ["便利"], updateTime: "2026-03-22", isCollect: false },
-  { id: 15, title: "望城区刚需两居", district: "望城", businessArea: "金星北", area: 62, room: "二室", orientation: "西", price: 1650, images: ["https://picsum.photos/id/120/800/600"], tags: ["实惠"], updateTime: "2026-03-20", isCollect: false },
-];
+
 const setFilter=(key,value)=>{
     if(key=='sort'){
         if(value === 'price'){
@@ -438,7 +380,6 @@ const confirmAreaRange = () => {
 // 清空所有筛选
 const clearAllFilter = () => {
   filter.district = ''
-  filter.type = ''
   filter.elevator = ''
   filter.price = []
   filter.area = []
@@ -509,11 +450,12 @@ const fetchHouseList=async()=>{
     houseList.value = res.data.list
     total.value = res.data.total
 }
-// 页码改变触发
-const changePage = (num) => {
-  pageNum.value = num
+// 翻页
+const handlePageChange = (page) => {
+  pageNum.value = page
   fetchHouseList()
 }
+
 watch(()=>filter.district,(val)=>{
     selectedDistrict.value=val||'不限'
 },{immediate:true})
@@ -729,34 +671,5 @@ onMounted(() => {
   font-weight: bold;
   border-bottom: 2px solid #006cd8;
 }
-.pagination {
-  text-align: center;
-  margin: 40px 0;
-}
-.page-btn {
-  padding: 6px 16px;
-  margin: 0 5px;
-  border: 1px solid #ccc;
-  background: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 14px;
-  color: #333;
-}
-.page-btn:hover:not(:disabled) {
-  border-color: #006cd8;
-  color: #006cd8;
-}
-.page-btn:disabled {
-  background: #f5f5f5;
-  color: #bbb;
-  cursor: not-allowed;
-  border-color: #eee;
-}
-.page-info {
-  margin: 0 12px;
-  font-size: 14px;
-  color: #666;
-}
+
 </style>

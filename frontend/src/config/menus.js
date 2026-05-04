@@ -49,7 +49,7 @@ export const menus = {
       path: '/myhouses', 
       icon: 'Home',
       children: [
-        { name: '发布房源', path: '/myhouses/publish' },
+        { name: '创建房源', path: '/myhouses/publish' },
         { name: '房源列表', path: '/myhouses/list' }
       ]
     },
