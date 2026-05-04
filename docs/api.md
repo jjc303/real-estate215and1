@@ -1,6 +1,6 @@
 ﻿# API 文档（当前实现）
 
-Version: v1.15.0  
+Version: v1.16.0  
 Base URL: `http://127.0.0.1:8000`  
 统一前缀：`/api/v1`
 
@@ -99,6 +99,15 @@ Content-Type: application/json
 - `GET /api/v1/houses/{id}`
 - `GET /api/v1/news`
 - `GET /api/v1/news/{id}`
+
+### 2.7 字段序列化约定
+
+- `datetime` 字段统一返回 UTC ISO 8601 字符串，例如：`2026-05-03T12:30:00`
+- `date` 字段统一返回 `YYYY-MM-DD`
+- 金额、面积等 `Decimal` 字段当前通常按字符串返回，例如：`"3000.00"`
+- 可空字段返回 `null`
+- 分页接口最外层固定为 `code / message / data`
+- 分页结果固定放在 `data` 中，结构为 `list / total / page / page_size`
 
 其余接口默认需要登录。
 
@@ -205,20 +214,60 @@ User 模块负责普通注册、个人资料查询与修改。
 - 创建成功返回用户基础信息
 - 不返回密码
 
+成功响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "username": "alice",
+    "role": "tenant",
+    "real_name": "Alice",
+    "phone": "13800000000",
+    "email": "alice@example.com",
+    "avatar": "https://example.com/avatar.png",
+    "status": "active",
+    "created_at": "2026-05-03T12:00:00"
+  }
+}
+```
+
 ### 4.4 获取当前用户
 
 `GET /api/v1/users/me`
 
-返回字段核心包括：
+返回字段：
 - `id`
 - `username`
 - `role`
-- `status`
 - `real_name`
 - `phone`
 - `email`
 - `avatar`
+- `status`
 - `created_at`
+
+成功响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "username": "alice",
+    "role": "tenant",
+    "real_name": "Alice",
+    "phone": "13800000000",
+    "email": "alice@example.com",
+    "avatar": "https://example.com/avatar.png",
+    "status": "active",
+    "created_at": "2026-05-03T12:00:00"
+  }
+}
+```
 
 ### 4.5 更新个人资料
 
@@ -228,6 +277,19 @@ User 模块负责普通注册、个人资料查询与修改。
 - 只能修改自己的资料
 - 允许更新基础展示信息
 - 不能通过该接口改角色
+
+请求体示例：
+
+```json
+{
+  "real_name": "Alice Zhang",
+  "phone": "13900000000",
+  "email": "alice_new@example.com",
+  "avatar": "https://example.com/new-avatar.png"
+}
+```
+
+返回字段与 `GET /api/v1/users/me` 一致。
 
 ---
 
@@ -262,6 +324,10 @@ User 模块负责普通注册、个人资料查询与修改。
   "token_type": "Bearer"
 }
 ```
+
+返回字段：
+- `token`：JWT 字符串
+- `token_type`：固定为 `Bearer`
 
 ### 5.3 发送邮箱验证码
 
@@ -307,7 +373,25 @@ User 模块负责普通注册、个人资料查询与修改。
 - `3001`：验证码发送过快、参数错误、业务类型非法
 - `5000`：邮件发送失败或 SMTP 配置错误
 
-### 5.4 邮箱验证码注册
+### 5.4 认证返回对象
+
+邮箱验证码注册、邮箱验证码登录都返回同一套认证响应结构。
+
+`AuthUserSummary` 字段：
+- `id`
+- `username`
+- `email`
+- `role`
+- `status`
+
+`AuthTokenResponse` 字段：
+- `token`
+- `token_type`
+- `user`
+
+其中 `user` 使用上面的 `AuthUserSummary`。
+
+### 5.5 邮箱验证码注册
 
 `POST /api/v1/auth/email/register`
 
@@ -365,7 +449,7 @@ User 模块负责普通注册、个人资料查询与修改。
 - `3001`：验证码错误、验证码过期、验证码已使用、参数错误
 - `5000`：服务器内部错误
 
-### 5.5 邮箱验证码登录
+### 5.6 邮箱验证码登录
 
 `POST /api/v1/auth/email/login`
 
@@ -409,7 +493,7 @@ User 模块负责普通注册、个人资料查询与修改。
 - `1004`：用户状态不允许登录
 - `3001`：验证码错误、验证码过期、验证码已使用、参数错误
 
-### 5.6 登录态信息
+### 5.7 登录态信息
 
 `GET /api/v1/auth/me`
 
@@ -417,7 +501,38 @@ User 模块负责普通注册、个人资料查询与修改。
 - 需要登录
 - 返回当前 token 对应用户信息
 
-### 5.7 SMTP 配置示例
+返回字段与 `GET /api/v1/users/me` 一致：
+- `id`
+- `username`
+- `role`
+- `real_name`
+- `phone`
+- `email`
+- `avatar`
+- `status`
+- `created_at`
+
+成功响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "username": "user_a1b2c3d4",
+    "role": "tenant",
+    "real_name": "Alice",
+    "phone": "13800000000",
+    "email": "alice@example.com",
+    "avatar": "https://example.com/avatar.png",
+    "status": "active",
+    "created_at": "2026-05-03T12:00:00"
+  }
+}
+```
+
+### 5.8 SMTP 配置示例
 
 ```env
 SMTP_SERVER=smtp.qq.com
@@ -797,6 +912,41 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `deposit`
 - `status`
 
+合同详情响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 3,
+    "house_id": 12,
+    "tenant_id": 21,
+    "landlord_id": 9,
+    "appointment_id": 5,
+    "start_date": "2026-06-01",
+    "end_date": "2027-05-31",
+    "monthly_rent": "3000.00",
+    "deposit": "3000.00",
+    "status": "active",
+    "remark": "一年整租",
+    "created_at": "2026-05-03T09:00:00",
+    "updated_at": "2026-05-03T09:30:00",
+    "house": {
+      "id": 12,
+      "title": "近地铁一室一厅",
+      "region": "浦东新区",
+      "address": "xx路88号",
+      "house_type": "1室1厅1卫",
+      "area": "58.00",
+      "rent": "3200.00",
+      "deposit": "3200.00",
+      "status": "listed"
+    }
+  }
+}
+```
+
 ---
 
 ## 11. Bill 模块
@@ -865,6 +1015,29 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `remark`
 - `created_at`
 - `updated_at`
+
+账单详情响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 8,
+    "contract_id": 3,
+    "house_id": 12,
+    "tenant_id": 21,
+    "landlord_id": 9,
+    "bill_type": "rent",
+    "amount": "3000.00",
+    "due_date": "2026-06-05",
+    "status": "unpaid",
+    "remark": "2026年6月房租",
+    "created_at": "2026-05-03T10:00:00",
+    "updated_at": "2026-05-03T10:00:00"
+  }
+}
+```
 
 ---
 
@@ -947,6 +1120,10 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `created_at`
 - `updated_at`
 
+字段说明：
+- `status`：当前实现固定为 `success`
+- `paid_at`：支付成功时间
+
 ---
 
 ## 13. Repair 模块
@@ -1024,6 +1201,32 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `created_at`
 - `updated_at`
 
+报修详情响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 6,
+    "contract_id": 3,
+    "house_id": 12,
+    "tenant_id": 21,
+    "landlord_id": 9,
+    "description": "厨房水龙头漏水",
+    "status": "processing",
+    "processed_at": "2026-05-03T11:00:00",
+    "completed_at": null,
+    "closed_at": null,
+    "rejected_at": null,
+    "cancelled_at": null,
+    "reopened_at": null,
+    "created_at": "2026-05-03T10:30:00",
+    "updated_at": "2026-05-03T11:00:00"
+  }
+}
+```
+
 ---
 
 ## 14. Complaint 模块
@@ -1088,6 +1291,31 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `cancelled_at`
 - `created_at`
 - `updated_at`
+
+投诉详情响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 4,
+    "contract_id": 3,
+    "house_id": 12,
+    "tenant_id": 21,
+    "landlord_id": 9,
+    "description": "房东长期不处理漏水问题",
+    "status": "pending",
+    "processed_at": null,
+    "resolved_at": null,
+    "closed_at": null,
+    "rejected_at": null,
+    "cancelled_at": null,
+    "created_at": "2026-05-03T12:00:00",
+    "updated_at": "2026-05-03T12:00:00"
+  }
+}
+```
 
 ---
 
@@ -1263,26 +1491,178 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `created_at`
 - `updated_at`
 
+字段说明：
+- `source_type`：通知来源模块，例如 `payment`、`news`、`repair`
+- `source_id`：来源业务记录 ID
+- `status`：`unread` 或 `read`
+
 ---
 
-## 17. Statistics 模块
+## 17. AI 模块
 
 ### 17.1 模块说明
 
-统计模块面向登录用户和管理员返回看板类数据。
+AI 模块是当前房地产平台的智能问答入口。
+
+第一版只提供两类能力：
+- 围绕某个房源的 AI 问答
+- 通用租房助手对话
+
+后端职责：
+- 校验登录态
+- 校验房源可见性
+- 组装 `user_context / house_context / platform_context`
+- 通过 HTTP 调用独立 `ai-engine`
+
+当前不做：
+- 不在 Flask 数据库保存 AI 对话记录
+- 不在 Flask 后端实现 RAG / Memory / OCR
+- 不直接调用大模型 API
 
 ### 17.2 接口列表
+
+- `POST /api/v1/ai/house-chat`
+- `POST /api/v1/ai/chat`
+
+### 17.3 房源 AI 问答
+
+`POST /api/v1/ai/house-chat`
+
+权限：
+- 需要登录
+
+请求体：
+
+```json
+{
+  "house_id": 1,
+  "message": "这套房押金多少？",
+  "session_id": "rental:house:1:user:12"
+}
+```
+
+字段规则：
+- `house_id >= 1`
+- `message`：必填，`strip()` 后长度 `1-2000`
+- `session_id`：可选，最长 `100`
+
+房源可见性规则：
+- `listed`：任意登录用户可问
+- `draft / offline`：仅房东本人或 `admin` 可问
+- 房源不存在或已删除：返回房源不存在错误
+
+如果前端不传 `session_id`，后端自动生成：
+
+```text
+rental:house:{house_id}:user:{current_user_id}
+```
+
+成功响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "answer": "这套房月租 3200 元，押金 3200 元，面积 58㎡，一室一厅，适合预算在 3200 元左右的独居或情侣租客。",
+    "session_id": "rental:house:1:user:12",
+    "sources": [],
+    "suggestions": [],
+    "metadata": {
+      "mode": "house-chat"
+    }
+  }
+}
+```
+
+### 17.4 通用租房助手对话
+
+`POST /api/v1/ai/chat`
+
+权限：
+- 需要登录
+
+请求体：
+
+```json
+{
+  "message": "租房签合同要注意什么？",
+  "session_id": "rental:general:user:12"
+}
+```
+
+字段规则：
+- `message`：必填，`strip()` 后长度 `1-2000`
+- `session_id`：可选，最长 `100`
+
+如果前端不传 `session_id`，后端自动生成：
+
+```text
+rental:general:user:{current_user_id}
+```
+
+成功响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "answer": "签租房合同时建议重点确认租金、押金、租期、付款方式、维修责任、违约责任以及退租规则。",
+    "session_id": "rental:general:user:12",
+    "sources": [],
+    "suggestions": [],
+    "metadata": {
+      "mode": "general-chat"
+    }
+  }
+}
+```
+
+### 17.5 返回字段
+
+AI 对话响应对象字段：
+- `answer`
+- `session_id`
+- `sources`
+- `suggestions`
+- `metadata`
+
+字段说明：
+- `answer`：AI 主回答文本
+- `session_id`：当前会话标识，前端可缓存并在后续继续传回
+- `sources`：可选知识来源列表，当前第一版可能为空
+- `suggestions`：可选建议追问列表，当前第一版通常为空
+- `metadata`：AI 引擎额外返回的结构化信息，当前主要用于区分 `house-chat / general-chat`
+
+### 17.6 常见错误
+
+- `1003`：未登录
+- `1004`：无权限访问 `draft / offline` 房源
+- `2101`：房源不存在或已删除
+- `3001`：请求参数错误
+- `5000`：AI 引擎超时、连接失败、返回非法响应或内部错误
+
+---
+
+## 18. Statistics 模块
+
+### 18.1 模块说明
+
+统计模块面向登录用户和管理员返回看板类数据。
+
+### 18.2 接口列表
 
 - `GET /api/v1/statistics/house-utilization`
 - `GET /api/v1/statistics/rent-income`
 - `GET /api/v1/statistics/active-users`
 - `GET /api/v1/statistics/complaint-repair-count`
 
-### 17.3 权限说明
+### 18.3 权限说明
 
 - 当前统计接口均为 `admin-only`
 
-### 17.4 返回字段
+### 18.4 返回字段
 
 `GET /api/v1/statistics/house-utilization` 返回：
 - `total_houses`
@@ -1306,13 +1686,13 @@ EMAIL_CODE_RESEND_SECONDS=60
 
 ---
 
-## 18. Admin 模块
+## 19. Admin 模块
 
-### 18.1 模块说明
+### 19.1 模块说明
 
 Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
-### 18.2 接口列表
+### 19.2 接口列表
 
 用户管理：
 - `GET /api/v1/admin/users`
@@ -1349,7 +1729,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 操作日志：
 - `GET /api/v1/admin/logs`
 
-### 18.3 用户管理说明
+### 19.3 用户管理说明
 
 管理员可以：
 - 创建用户
@@ -1369,7 +1749,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `created_at`
 - `updated_at`
 
-### 18.4 房源管理说明
+### 19.4 房源管理说明
 
 管理员房源列表支持：
 - `page`
@@ -1401,7 +1781,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `created_at`
 - `updated_at`
 
-### 18.5 合同管理说明
+### 19.5 合同管理说明
 
 管理员可修改合同状态，允许的状态值：
 - `active`
@@ -1410,7 +1790,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
 后台合同对象字段与普通合同详情一致。
 
-### 18.6 操作日志查询
+### 19.6 操作日志查询
 
 `GET /api/v1/admin/logs`
 
@@ -1439,11 +1819,16 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `created_at`
 - `updated_at`
 
+字段说明：
+- `module`：当前支持 `repair / complaint / contract / bill / payment / news`
+- `action`：动作名，例如 `create / update / delete / pay / resolve`
+- `before_status` / `after_status`：用于做后台审计展示，可为 `null`
+
 ---
 
-## 19. 操作日志说明
+## 20. 操作日志说明
 
-### 19.1 当前记录范围
+### 20.1 当前记录范围
 
 系统当前会对以下关键写操作记录操作日志：
 - `Repair`
@@ -1453,7 +1838,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `Payment`
 - `News`
 
-### 19.2 日志字段含义
+### 20.2 日志字段含义
 
 - `user_id`：谁触发了该操作
 - `module`：所属业务模块
@@ -1462,7 +1847,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `before_status`：操作前状态，可为空
 - `after_status`：操作后状态，可为空
 
-### 19.3 前端使用建议
+### 20.3 前端使用建议
 
 - 后台审计页可直接使用 `GET /api/v1/admin/logs`
 - 可按模块筛选，也可按操作用户筛选
@@ -1470,11 +1855,12 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
 ---
 
-## 20. 前端对接建议
+## 21. 前端对接建议
 
 - 登录后统一保存 JWT，所有受保护接口带 `Authorization`
 - 对所有分页接口，统一适配 `list / total / page / page_size`
 - 对公告、房源、统计、通知等首页内容，建议按模块分别封装 API client
+- 对 AI 对话接口，建议前端按页面或会话缓存 `session_id`，后续追问继续传回
 - 对状态按钮类操作，优先根据当前状态决定是否展示，而不是依赖后端报错后再回退
 - 对 `1004` 应直接提示“无权限”
 - 对 `3001` 应提示“参数错误或表单不完整”
@@ -1482,9 +1868,9 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
 ---
 
-## 21. 常见响应示例
+## 22. 常见响应示例
 
-### 21.1 分页列表示例
+### 22.1 分页列表示例
 
 以 `GET /api/v1/news?page=1&page_size=10` 为例：
 
@@ -1511,7 +1897,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
-### 21.2 房源详情示例
+### 22.2 房源详情示例
 
 `GET /api/v1/houses/{id}`
 
@@ -1541,7 +1927,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
-### 21.3 支付成功响应示例
+### 22.3 支付成功响应示例
 
 `POST /api/v1/payments`
 
@@ -1567,7 +1953,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
-### 21.4 通知列表示例
+### 22.4 通知列表示例
 
 `GET /api/v1/notifications`
 
@@ -1596,7 +1982,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
-### 21.5 后台日志列表示例
+### 22.5 后台日志列表示例
 
 `GET /api/v1/admin/logs`
 
@@ -1625,13 +2011,33 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
+### 22.6 AI 对话响应示例
+
+`POST /api/v1/ai/house-chat`
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "answer": "这套房月租 3200 元，押金 3200 元，装修为精装，朝向南，适合预算在 3200 元左右、希望近地铁居住的租客。",
+    "session_id": "rental:house:1:user:12",
+    "sources": [],
+    "suggestions": [],
+    "metadata": {
+      "mode": "house-chat"
+    }
+  }
+}
+```
+
 ---
 
-## 22. 前端类型定义建议
+## 23. 前端类型定义建议
 
 如果前端要先建 TypeScript 类型，可以按下面这几个核心对象优先落类型。
 
-### 22.1 User
+### 23.1 User
 
 ```ts
 type User = {
@@ -1647,7 +2053,29 @@ type User = {
 };
 ```
 
-### 22.2 House
+### 23.1.1 AuthUserSummary
+
+```ts
+type AuthUserSummary = {
+  id: number;
+  username: string;
+  email: string | null;
+  role: "tenant" | "landlord" | "admin";
+  status: "active" | "disabled";
+};
+```
+
+### 23.1.2 AuthTokenResponse
+
+```ts
+type AuthTokenResponse = {
+  token: string;
+  token_type: "Bearer";
+  user: AuthUserSummary;
+};
+```
+
+### 23.2 House
 
 ```ts
 type House = {
@@ -1671,7 +2099,7 @@ type House = {
 };
 ```
 
-### 22.3 News
+### 23.3 News
 
 ```ts
 type News = {
@@ -1685,7 +2113,7 @@ type News = {
 };
 ```
 
-### 22.4 Payment
+### 23.4 Payment
 
 ```ts
 type Payment = {
@@ -1705,7 +2133,104 @@ type Payment = {
 };
 ```
 
-### 22.5 Notification
+### 23.5 Contract
+
+```ts
+type ContractHouseSummary = {
+  id: number;
+  title: string;
+  region: string;
+  address: string;
+  house_type: string;
+  area: string;
+  rent: string;
+  deposit: string;
+  status: "draft" | "listed" | "offline";
+};
+```
+
+```ts
+type Contract = {
+  id: number;
+  house_id: number;
+  tenant_id: number;
+  landlord_id: number;
+  appointment_id: number;
+  start_date: string;
+  end_date: string;
+  monthly_rent: string;
+  deposit: string;
+  status: "pending" | "active" | "rejected" | "cancelled" | "terminated";
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+  house: ContractHouseSummary;
+};
+```
+
+### 23.6 Bill
+
+```ts
+type Bill = {
+  id: number;
+  contract_id: number;
+  house_id: number;
+  tenant_id: number;
+  landlord_id: number;
+  bill_type: "rent" | "deposit" | "other";
+  amount: string;
+  due_date: string;
+  status: "unpaid" | "paid" | "cancelled" | "overdue";
+  remark: string | null;
+  created_at: string;
+  updated_at: string;
+};
+```
+
+### 23.7 Repair
+
+```ts
+type Repair = {
+  id: number;
+  contract_id: number;
+  house_id: number;
+  tenant_id: number;
+  landlord_id: number;
+  description: string;
+  status: "pending" | "processing" | "completed" | "closed" | "rejected" | "cancelled" | "reopened";
+  processed_at: string | null;
+  completed_at: string | null;
+  closed_at: string | null;
+  rejected_at: string | null;
+  cancelled_at: string | null;
+  reopened_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+```
+
+### 23.8 Complaint
+
+```ts
+type Complaint = {
+  id: number;
+  contract_id: number;
+  house_id: number;
+  tenant_id: number;
+  landlord_id: number;
+  description: string;
+  status: "pending" | "processing" | "resolved" | "closed" | "rejected";
+  processed_at: string | null;
+  resolved_at: string | null;
+  closed_at: string | null;
+  rejected_at: string | null;
+  cancelled_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+```
+
+### 23.9 Notification
 
 ```ts
 type Notification = {
@@ -1721,7 +2246,19 @@ type Notification = {
 };
 ```
 
-### 22.6 OperationLog
+### 23.10 AIChatResponse
+
+```ts
+type AIChatResponse = {
+  answer: string;
+  session_id: string;
+  sources: Array<Record<string, unknown>>;
+  suggestions: string[];
+  metadata: Record<string, unknown>;
+};
+```
+
+### 23.11 OperationLog
 
 ```ts
 type OperationLog = {
@@ -1737,7 +2274,7 @@ type OperationLog = {
 };
 ```
 
-### 22.7 通用分页类型
+### 23.12 通用分页类型
 
 ```ts
 type PageResult<T> = {
@@ -1750,7 +2287,7 @@ type PageResult<T> = {
 
 ---
 
-## 23. 当前已验证测试
+## 24. 当前已验证测试
 
 已经覆盖并验证过的主要测试流包括：
 - `tests/api/test_smoke_flow.py`
@@ -1759,6 +2296,11 @@ type PageResult<T> = {
 - `tests/api/test_repair_flow.py`
 - `tests/api/test_complaint_flow.py`
 - `tests/api/test_admin_flow.py`
+- `tests/service/test_ai_service.py`
 - `tests/service/test_notification_service.py`
+
+独立 `ai-engine` 当前也已经补了 rental 侧测试：
+- `ai-engine/tests/test_rental_service.py`
+- `ai-engine/tests/test_rental_routes.py`
 
 如果前端联调时出现与本文档不一致的行为，应优先检查当前代码和最近一次测试结果。

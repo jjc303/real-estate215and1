@@ -1,0 +1,45 @@
+version: "3.9"
+
+# 与 deploy/docker-compose.yml 共用固定网络名 rental_ai_net（容器内才能用主机名 mysql）
+networks:
+  rental_ai_net:
+    name: rental_ai_net
+    driver: bridge
+
+services:
+  ai-engine:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-engine
+    restart: unless-stopped
+    networks:
+      - rental_ai_net
+    ports:
+      - "9000:9000"
+    volumes:
+      - .:/app
+      - chroma_db:/data/chroma_db
+    env_file:
+      - config/local.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    command:
+      [
+        "uvicorn",
+        "api.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "9000",
+        "--workers",
+        "1",
+      ]
+
+volumes:
+  chroma_db:
+    driver: local

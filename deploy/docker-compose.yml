@@ -1,8 +1,17 @@
+# 与 ai-engine 分属两个 compose 工程时：使用固定名称的 bridge 网络，
+# 与 ../ai-engine/docker-compose.yml 中的 rental_ai_net 为同一张网（先起任意一方会先建网）。
+networks:
+  rental_ai_net:
+    name: rental_ai_net
+    driver: bridge
+
 services:
   mysql:
     image: mysql:8.0
     container_name: rent_mysql
     restart: always
+    networks:
+      - rental_ai_net
     environment:
       MYSQL_ROOT_PASSWORD: 123456
       MYSQL_DATABASE: rent_db
@@ -29,6 +38,8 @@ services:
       dockerfile: backend/Dockerfile
     container_name: rent_backend
     restart: always
+    networks:
+      - rental_ai_net
     depends_on:
       mysql:
         condition: service_healthy
@@ -38,6 +49,17 @@ services:
       LOG_FILE_PATH: logs/app.log
       FLASK_RUN_HOST: 0.0.0.0
       FLASK_RUN_PORT: 8000
+      SMTP_SERVER: ${SMTP_SERVER:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_USE_SSL: ${SMTP_USE_SSL:-false}
+      SMTP_USE_TLS: ${SMTP_USE_TLS:-false}
+      EMAIL_CODE_EXPIRE_MINUTES: ${EMAIL_CODE_EXPIRE_MINUTES:-5}
+      EMAIL_CODE_RESEND_SECONDS: ${EMAIL_CODE_RESEND_SECONDS:-60}
+      AI_ENGINE_BASE_URL: ${AI_ENGINE_BASE_URL:-http://ai-engine:9000}
+      AI_ENGINE_API_KEY: ${AI_ENGINE_API_KEY:-change-me}
+      AI_ENGINE_TIMEOUT_SECONDS: ${AI_ENGINE_TIMEOUT_SECONDS:-30}
     ports:
       - "8000:8000"
     volumes:

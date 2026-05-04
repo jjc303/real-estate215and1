@@ -61,6 +61,9 @@ class BaseConfig:
     SMTP_USE_TLS = False
     EMAIL_CODE_EXPIRE_MINUTES = 5
     EMAIL_CODE_RESEND_SECONDS = 60
+    AI_ENGINE_BASE_URL = ""
+    AI_ENGINE_API_KEY = ""
+    AI_ENGINE_TIMEOUT_SECONDS = 20
 
     @classmethod
     def to_mapping(cls) -> dict[str, object]:
@@ -91,6 +94,11 @@ class BaseConfig:
             ),
             "EMAIL_CODE_RESEND_SECONDS": int(
                 os.getenv("EMAIL_CODE_RESEND_SECONDS", str(cls.EMAIL_CODE_RESEND_SECONDS))
+            ),
+            "AI_ENGINE_BASE_URL": os.getenv("AI_ENGINE_BASE_URL", cls.AI_ENGINE_BASE_URL),
+            "AI_ENGINE_API_KEY": os.getenv("AI_ENGINE_API_KEY", cls.AI_ENGINE_API_KEY),
+            "AI_ENGINE_TIMEOUT_SECONDS": int(
+                os.getenv("AI_ENGINE_TIMEOUT_SECONDS", str(cls.AI_ENGINE_TIMEOUT_SECONDS))
             ),
         }
 

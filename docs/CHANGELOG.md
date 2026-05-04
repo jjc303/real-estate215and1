@@ -1,5 +1,117 @@
 # Changelog
 
+## v1.16.1 - 2026-05-04
+
+### Changed
+
+- AI 对话链路继续收口：
+  - `ai-engine` 默认只读取 `config/local.env`
+  - 运行时 OS env / 容器注入变量允许覆盖 `local.env`
+  - `ai-engine` 配置字段只保留 `AI_ENGINE_API_KEY`
+  - 鉴权请求头只保留 `X-API-Key`
+- Flask `AIEngineClient` 收紧上游解包规则：
+  - 成功响应要求为 `{code, msg, data}` 且 `code == 200`
+  - `data` 必须是对象
+  - 上游非 2xx、非法 JSON、非法 payload 统一映射后端 `5000`
+- Flask AI 返回字段固定为：
+  - `answer`
+  - `session_id`
+  - `sources`
+  - `suggestions`
+  - `metadata`
+- `platform_context` 已正式接入 rental prompt 输入变量，不再只是透传字段
+
+### Verified
+
+- `pytest backend/tests/service/test_ai_service.py -q`
+- `pytest backend/tests/api/test_ai_flow.py -q`
+- `pytest ai-engine/tests/test_rental_service.py -q`
+- `pytest ai-engine/tests/test_rental_routes.py -q`
+- `pytest ai-engine/tests/test_config.py -q`
+
+## v1.16.0 - 2026-05-04
+
+### Added
+
+#### Flask AI 模块接入
+
+- 新增 Flask AI 模块：
+  - `POST /api/v1/ai/house-chat`
+  - `POST /api/v1/ai/chat`
+- 新增 `backend/app/common/ai_engine_client.py`，通过 HTTP 调用独立 `ai-engine`
+- 新增 `backend/tests/service/test_ai_service.py`
+- 新增后端配置：
+  - `AI_ENGINE_BASE_URL`
+  - `AI_ENGINE_API_KEY`
+  - `AI_ENGINE_TIMEOUT_SECONDS`
+
+#### ai-engine 租房主链路
+
+- 新增 rental 路由：
+  - `POST /api/v1/rental/house-chat`
+  - `POST /api/v1/rental/chat`
+- 新增 rental schema / service：
+  - `ai-engine/api/schemas/rental.py`
+  - `ai-engine/services/rental_service.py`
+- 新增 rental prompt Python 类：
+  - `RentalHouseChatPrompt`
+  - `RentalGeneralChatPrompt`
+  - `RentalMemoryExtractPrompt`
+  - `RentalRAGAnswerPrompt`
+- 新增 rental 知识库示例：
+  - `ai-engine/data/rental_knowledge.md`
+- 新增 `ai-engine/tests/test_rental_service.py`
+- 新增 `ai-engine/tests/test_rental_routes.py`
+
+### Changed
+
+#### Flask AI 接入边界
+
+- Flask backend 不新增 AI 数据表
+- Flask backend 不新增 AI Alembic migration
+- Flask backend 不保存 AI 对话记录
+- Flask backend 不直接实现 RAG / Memory / OCR / LLM 调用
+- Flask backend 只负责鉴权、房源可见性校验、上下文组装、调用 `ai-engine`、统一响应
+
+#### ai-engine 改造成房地产租赁平台专用引擎
+
+- `ai-engine` 保持与 `backend` 平级的独立 FastAPI 服务
+- 不再对外提供教育业务正式接口
+- 从公开入口移除教育路由：
+  - `chat`
+  - `grading`
+  - `difficulty`
+- 删除或停用教育 prompt / service / workflow / 测试
+- 保留通用底座：
+  - FastAPI 入口
+  - 配置系统
+  - 日志系统
+  - 统一异常处理
+  - API key 鉴权
+  - LLM client
+  - Prompt 注入机制
+  - Memory / SessionHistory 基础设施
+  - RAG 框架
+  - OCR 基础实现
+  - Dockerfile / requirements / 启动脚本
+- 状态接口保留
+- OCR 能力保留，但第一版不公开业务路由
+- `ai-engine` 默认端口调整为 `9000`
+- AI 引擎鉴权统一使用 `X-API-Key`，移除旧 `api-key` 兼容头
+
+### Verified
+
+- `pytest backend/tests/service/test_ai_service.py -q` 通过
+- 结果：`9 passed`
+- `pytest backend/tests/service/test_auth_service.py backend/tests/service/test_notification_service.py -q` 通过
+- 结果：`18 passed`
+- `pytest backend/tests/service/test_ai_service.py backend/tests/service/test_auth_service.py backend/tests/service/test_notification_service.py -q` 通过
+- 结果：`27 passed`
+- `pytest ai-engine/tests/test_rental_service.py ai-engine/tests/test_rental_routes.py ai-engine/tests/test_service_manager.py ai-engine/tests/test_config.py -q` 通过
+- 结果：`12 passed`
+- `pytest ai-engine/tests/test_exceptions.py ai-engine/tests/test_ocr_service.py -q` 通过
+- 结果：`8 passed`
+
 ## v1.15.0 - 2026-05-03
 
 ### Added

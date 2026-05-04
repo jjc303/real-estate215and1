@@ -1,15 +1,17 @@
 ﻿# AI Context（Backend Project）
 
-Version: v1.15.0  
-Last Updated: 2026-05-03
+Version: v1.16.0  
+Last Updated: 2026-05-04
 
 Status:
 - 当前项目已经形成完整的课程项目后端骨架，并完成 `User / Auth / House / Favorite / Appointment / Conversation / Contract / Bill / Payment / Repair / Complaint / News / Notification / Statistics / Admin` 的最小业务闭环
+- 当前 Flask 后端已新增 `AI` 模块，并通过 HTTP 接入独立 `ai-engine`
 - 数据库迁移已经全面切换到 Alembic 管理
 - `Notification` 已经彻底收口为统一批量创建接口
 - `Operation Log` 审计能力已经落库并接入后台查询
 - 现有主要业务流都已有 HTTP 风格测试覆盖
 - `Auth` 已新增邮箱验证码发送、邮箱验证码注册、邮箱验证码登录能力
+- 项目根目录下的 `ai-engine` 已改造成房地产租赁平台专用 AI 引擎，不再对外提供教育业务能力
 
 ---
 
@@ -42,6 +44,7 @@ Status:
 ### 1.2 当前技术栈
 
 - Flask（App Factory）
+- 独立 `ai-engine`（FastAPI）
 - SQLAlchemy 2.0 ORM
 - MySQL 8.0
 - PyMySQL
@@ -57,6 +60,7 @@ Status:
 
 系统已经不只是“用户 + 登录 + 房源”演示，而是一个覆盖租赁核心流程的后端：
 - 用户注册与登录
+- AI 租房助手接入
 - 房源管理与公开浏览
 - 收藏与预约
 - 站内会话消息
@@ -70,6 +74,24 @@ Status:
 - 统计
 - 后台管理
 - 操作日志审计
+
+### 1.4 当前仓库结构关键点
+
+当前仓库不是“单一 Flask 项目”了，而是两个平级服务：
+
+```text
+real-estate215and1/
+  backend/
+  ai-engine/
+  deploy/
+  docs/
+```
+
+重要约束：
+- `backend/` 是房地产平台 Flask 后端
+- `ai-engine/` 是独立 FastAPI 服务
+- Flask backend 不允许 import `ai-engine` 内部代码
+- 两者只通过 HTTP 集成
 
 ---
 
@@ -212,6 +234,71 @@ repository 不允许：
 - 统一使用 UTC
 - 返回给前端时为 ISO 8601 字符串
 
+### 4.5 邮箱验证码运行配置
+
+邮箱验证码能力依赖 SMTP 配置，当前读取链路是：
+- 配置读取代码：[backend/app/core/config.py](/D:/a.python/real-estate215and1/backend/app/core/config.py)
+- 邮件发送工具：[backend/app/common/email.py](/D:/a.python/real-estate215and1/backend/app/common/email.py)
+- Docker 启动配置：[deploy/docker-compose.yml](/D:/a.python/real-estate215and1/deploy/docker-compose.yml)
+- Docker 环境变量文件：[deploy/.env](/D:/a.python/real-estate215and1/deploy/.env)
+
+当前需要的变量：
+- `SMTP_SERVER`
+- `SMTP_PORT`
+- `SMTP_USER`
+- `SMTP_PASS`
+- `SMTP_USE_SSL`
+- `SMTP_USE_TLS`
+- `EMAIL_CODE_EXPIRE_MINUTES`
+- `EMAIL_CODE_RESEND_SECONDS`
+
+重要规则：
+- `SMTP_USE_SSL` 和 `SMTP_USE_TLS` 不能同时为 `true`
+- QQ 邮箱常见配置是 `smtp.qq.com + 465 + SSL`
+- `SMTP_PASS` 一般应填写 SMTP 授权码，而不是邮箱登录密码
+- 修改 `deploy/.env` 后，至少要重启后端容器；如果 Python 依赖也变化，则要重建镜像
+
+### 4.6 AI Engine 运行配置
+
+Flask 后端当前通过 HTTP 调独立 `ai-engine`，不直接 import `ai-engine` 内部代码。
+
+Flask 配置读取位置：
+- [backend/app/core/config.py](/D:/a.python/real-estate215and1/backend/app/core/config.py)
+- [backend/.env.example](/D:/a.python/real-estate215and1/backend/.env.example)
+
+关键变量：
+- `AI_ENGINE_BASE_URL`
+- `AI_ENGINE_API_KEY`
+- `AI_ENGINE_TIMEOUT_SECONDS`
+
+当前约束：
+- `AI_ENGINE_BASE_URL` 必须支持本地、Docker、云端 IP 和 HTTPS 域名
+- 不能假设 Flask 和 `ai-engine` 一定在同一台机器或同一个 Docker 网络
+- Flask 只能通过 HTTP 调用 `ai-engine`
+- `ai-engine` 自身的默认配置源是 `ai-engine/config/local.env`
+- 运行时 OS 环境变量或容器 `environment` 注入变量可以覆盖 `local.env`
+- 如果容器里显式传了同名变量，修改 `local.env` 可能不会生效
+
+本地联调常见配置：
+
+```env
+AI_ENGINE_BASE_URL=http://127.0.0.1:9000
+AI_ENGINE_API_KEY=change-me
+AI_ENGINE_TIMEOUT_SECONDS=20
+```
+
+云端部署示例：
+
+```env
+AI_ENGINE_BASE_URL=http://<cloud-server-ip>:9000
+```
+
+或：
+
+```env
+AI_ENGINE_BASE_URL=https://ai.example.com
+```
+
 ---
 
 ## 5. 全局规则
@@ -307,7 +394,12 @@ Auth v1.15.0 额外事实：
   - 空字符串转 `None`
 - 邮箱验证码注册时 username 固定生成 `user_<random_hex>`
 - `users.email` 已进入唯一约束路线；migration 会先把历史空字符串 email 清洗为 `NULL`
+- 给 `users.email` 加唯一索引前，会先执行 `UPDATE users SET email = NULL WHERE email = ''`
+- 如果历史数据里存在重复的非空 email，migration 允许失败，不做静默合并，需人工清理后再继续
 - 当前继续使用 MySQL 保存验证码，不引入 Redis、Celery、APScheduler 或异步任务
+- `send_email_code`、`email_register`、`email_login` 都使用统一 `try/except + commit/rollback` 模板
+- 邮件发送异常不是单独局部捕获；任何中间步骤异常都要整体回滚
+- `send_verification_email` 的测试 patch 目标是 `app.modules.auth.service.send_verification_email`
 
 ### 6.2 House
 
@@ -615,7 +707,108 @@ HTTP 层兼容策略：
 说明：
 - admin 模块本身不追求“独立后台系统”，而是后端管理接口集合
 
-### 6.15 Operation Log
+### 6.15 AI
+
+已实现：
+- `POST /api/v1/ai/house-chat`
+- `POST /api/v1/ai/chat`
+
+定位：
+- 这是 Flask 后端到独立 `ai-engine` 的业务接入层
+- Flask 只负责鉴权、房源可见性校验、上下文组装和统一异常转换
+- 真实的 LLM / RAG / Memory / OCR 能力都在项目根目录下独立的 `ai-engine/` 服务里
+
+当前后端实现事实：
+- 新增模块：
+  - `backend/app/modules/ai/schema.py`
+  - `backend/app/modules/ai/service.py`
+  - `backend/app/modules/ai/router.py`
+- 新增 HTTP 客户端：
+  - `backend/app/common/ai_engine_client.py`
+- 没有新增 Flask AI 相关表
+- 没有新增 Alembic migration
+- 没有把 AI 对话记录保存到 Flask 数据库
+
+`house-chat` 当前规则：
+- 需要登录
+- `listed` 房源：任意登录用户可问
+- `draft / offline`：仅房东本人或 `admin` 可问
+- 房源不存在或已删除：按现有房源不存在错误处理
+- 默认 `session_id`：
+  - `rental:house:{house_id}:user:{current_user_id}`
+- 发给 AI 引擎的 `user_id`：
+  - `rental_user_{current_user_id}`
+
+`chat` 当前规则：
+- 需要登录
+- 用户必须存在且 `active`
+- 默认 `session_id`：
+  - `rental:general:user:{current_user_id}`
+
+AI 引擎调用规则：
+- 当前后端只通过 HTTP 调用 `ai-engine`
+- 不允许 Flask import `ai-engine` 内部 Python 代码
+- 客户端请求头使用：
+  - `X-API-Key`
+- `ai-engine` 当前只接受 `X-API-Key`，不再保留旧 `api-key` 兼容头
+- `ai-engine` 配置字段只保留 `AI_ENGINE_API_KEY`，不再保留旧 `API_KEY` 环境变量兼容
+- 默认目标路径：
+  - `/api/v1/rental/house-chat`
+  - `/api/v1/rental/chat`
+- AI 引擎超时、连接失败、非 2xx、非法响应统一转后端 `5000`
+- 后端解包 `ai-engine` 响应时，要求成功外壳固定为 `{code, msg, data}` 且 `code == 200`
+- 后端记录 AI 引擎错误日志时会保留上游 HTTP status、上游 `code/msg` 和调用路径，前端仍统一返回 `5000`
+
+`house_context` 当前组装字段：
+- `id`
+- `title`
+- `region`
+- `address`
+- `community`
+- `house_type`
+- `area`
+- `rent`
+- `deposit`
+- `decoration`
+- `floor`
+- `orientation`
+- `description`
+- `status`
+
+`ai-engine` 当前改造事实：
+- 当前目录中的 `ai-engine` 已经是房地产租赁平台专用副本
+- 不再对外提供教育 chat / grading / difficulty 正式接口
+- 保留通用底座：
+  - FastAPI 入口
+  - 配置系统
+  - 日志系统
+  - 统一异常处理
+  - API key 鉴权
+  - LLM client
+  - Prompt 注入机制
+  - Memory / SessionHistory 基础设施
+  - RAG 框架
+  - OCR 基础实现
+  - Dockerfile / requirements / 启动脚本
+- 当前公开主接口：
+  - `POST /api/v1/rental/house-chat`
+  - `POST /api/v1/rental/chat`
+  - `GET /api/v1/status`
+- OCR 能力保留，但第一版不公开业务路由
+- 状态接口保留
+
+当前 rental prompt 已切到 Python prompt 类：
+- `RentalHouseChatPrompt`
+- `RentalGeneralChatPrompt`
+- `RentalMemoryExtractPrompt`
+- `RentalRAGAnswerPrompt`
+
+当前 Memory / RAG 语义：
+- Memory 只提取租房偏好，不记录身份证、手机号、银行卡、精确住址、真实姓名等敏感信息
+- RAG 已切到 rental 知识源
+- 如果第一版没有检索结果，仍允许基于房源上下文和一般租房常识回答
+
+### 6.16 Operation Log
 
 这是最近新增的重要审计能力。
 
@@ -666,6 +859,7 @@ Factory 当前注册的 blueprint 前缀为：
 
 - `/api/v1/users`
 - `/api/v1/auth`
+- `/api/v1/ai`
 - `/api/v1/houses`
 - `/api/v1/news`
 - `/api/v1/favorites`
@@ -721,15 +915,26 @@ Factory 当前注册的 blueprint 前缀为：
 - `tests/api/test_repair_flow.py`
 - `tests/api/test_complaint_flow.py`
 - `tests/api/test_admin_flow.py`
+- `tests/service/test_ai_service.py`
+- `tests/service/test_auth_service.py`
 - `tests/service/test_notification_service.py`
+- `ai-engine/tests/test_rental_service.py`
+- `ai-engine/tests/test_rental_routes.py`
+- `ai-engine/tests/test_service_manager.py`
+- `ai-engine/tests/test_config.py`
+- `ai-engine/tests/test_exceptions.py`
+- `ai-engine/tests/test_ocr_service.py`
 
 覆盖重点包括：
 - 主要 HTTP 业务流
+- AI 后端 service 层房源可见性、默认 session_id、AI 引擎异常转换
+- Auth 邮箱验证码发送 / 注册 / 登录、邮件失败回滚、验证码复用与过期校验
 - News CRUD 与通知
 - Payment 支付闭环与通知
 - Repair / Complaint 状态流
 - Admin 查询
 - Notification 统一批量接口的参数校验与回滚
+- `ai-engine` rental route / service、状态接口、鉴权、敏感记忆过滤和 OCR 基础能力
 
 ---
 

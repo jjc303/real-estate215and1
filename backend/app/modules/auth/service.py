@@ -78,7 +78,9 @@ class AuthService:
             )
             if latest_record is not None:
                 delta_seconds = (now - latest_record.created_at).total_seconds()
-                if delta_seconds < resend_seconds:
+                # MySQL server_default(now()) may use a different timezone than app runtime.
+                # Only apply resend throttling when the delta is non-negative and within window.
+                if 0 <= delta_seconds < resend_seconds:
                     raise BadRequestException(message="email code sent too frequently")
 
             code = self._generate_email_code()

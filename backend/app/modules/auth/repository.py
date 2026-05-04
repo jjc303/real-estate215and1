@@ -29,8 +29,9 @@ class EmailVerificationCodeRepository(BaseRepository[EmailVerificationCode]):
                 EmailVerificationCode.expires_at > now,
             )
             .order_by(desc(EmailVerificationCode.created_at), desc(EmailVerificationCode.id))
+            .limit(1)
         )
-        return db.execute(stmt).scalar_one_or_none()
+        return db.execute(stmt).scalars().first()
 
     def get_latest_by_email_and_biz_type(
         self,
@@ -45,8 +46,9 @@ class EmailVerificationCodeRepository(BaseRepository[EmailVerificationCode]):
                 EmailVerificationCode.biz_type == biz_type,
             )
             .order_by(desc(EmailVerificationCode.created_at), desc(EmailVerificationCode.id))
+            .limit(1)
         )
-        return db.execute(stmt).scalar_one_or_none()
+        return db.execute(stmt).scalars().first()
 
     def mark_used(self, record: EmailVerificationCode) -> None:
         record.is_used = True
