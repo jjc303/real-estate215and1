@@ -20,6 +20,7 @@ from app.container.repositories import (
     get_user_repository,
 )
 from app.modules.admin.service import AdminService
+from app.modules.ai.service import AIService
 from app.modules.appointment.service import AppointmentService
 from app.modules.auth.service import AuthService
 from app.modules.bill.service import BillService
@@ -35,6 +36,7 @@ from app.modules.payment.service import PaymentService
 from app.modules.repair.service import RepairService
 from app.modules.statistics.service import StatisticsService
 from app.modules.user.service import UserService
+from app.common.ai_engine_client import AIEngineClient
 
 
 _user_service = UserService(get_user_repository())
@@ -109,6 +111,11 @@ _admin_service = AdminService(
     _notification_service,
     _operation_log_service,
 )
+_ai_service = AIService(
+    get_user_repository(),
+    get_house_repository(),
+    AIEngineClient(),
+)
 
 
 def get_user_service() -> UserService:
@@ -173,3 +180,7 @@ def get_statistics_service() -> StatisticsService:
 
 def get_admin_service() -> AdminService:
     return _admin_service
+
+
+def get_ai_service() -> AIService:
+    return _ai_service
