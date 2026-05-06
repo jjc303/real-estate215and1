@@ -219,7 +219,7 @@ import { useRoute,useRouter} from 'vue-router';
 import { watch } from 'vue';
 import { onMounted } from 'vue';
 import Pagination from '@/components/Pagination.vue';
-import mockData from'@/mock/houseList'
+import { mockHouses } from'@/mock/houseList'
 const userStore = useUserStore();
 const route=useRoute();
 
@@ -442,8 +442,8 @@ const fetchHouseList=async()=>{
     const res = {
         code: 200,
         data: {
-            list: mockData.slice(start, end),
-            total: mockData.length
+            list: mockHouses.slice(start, end),
+            total: mockHouses.length
         }
     }
 

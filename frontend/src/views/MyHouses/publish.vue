@@ -1,7 +1,7 @@
 <template>
   <div class="publish-page">
     <div class="publish-title">
-      <h1>创建出租房源</h1>
+      <h1>{{ pageTitle }}</h1>
       <p>清风雅居 · 城隅美宅 · 恬静闲舍</p>
     </div>
 
@@ -51,18 +51,23 @@
     </div>
 
     <div class="submit-section">
-      <button class="submit-btn" @click="handleSubmit">提交委托</button>
+      <button class="submit-btn" @click="handleSubmit">{{ isEdit ? '保存修改' : '提交委托' }}</button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, nextTick } from 'vue'
+import { reactive, ref, nextTick, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import service from '@/utils/request'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
+
+const isEdit = computed(() => !!route.params.id)
+const houseId = computed(() => route.params.id)
+const pageTitle = computed(() => isEdit.value ? '编辑出租房源' : '创建出租房源')
 
 // 表单字段配置
 const formFields = [
@@ -111,6 +116,31 @@ const clearError = (key) => {
   errors[key] = false
 }
 
+const fetchHouseDetail = async () => {
+  try {
+    const res = await service.get(`/v1/houses/${houseId.value}`)
+    if (res.code === 0) {
+      const data = res.data
+      Object.assign(form, {
+        title: data.title || '',
+        region: data.region || '',
+        address: data.address || '',
+        community: data.community || '',
+        house_type: data.house_type || '',
+        area: data.area || '',
+        rent: data.rent || '',
+        deposit: data.deposit || '',
+        orientation: data.orientation || '',
+        decoration: data.decoration || '',
+        floor: data.floor || '',
+        description: data.description || ''
+      })
+    }
+  } catch (e) {
+    ElMessage.error('加载房源详情失败')
+  }
+}
+
 // 验证并提交
 const handleSubmit = async () => {
   // 清空错误
@@ -153,24 +183,26 @@ const handleSubmit = async () => {
       deposit: parseFloat(form.deposit) || 0
     }
 
-    const res = await service.post('/v1/houses', houseData)
-
-    if (res.code === 0) {
+    if (isEdit.value) {
+      await service.patch(`/v1/houses/${houseId.value}`, houseData)
+      ElMessage.success('房源修改成功！')
+    } else {
+      await service.post('/v1/houses', houseData)
       ElMessage.success('房源创建成功！')
-      
-      // 3. 可选：自动发布房源
-      // await service.patch(`/v1/houses/${res.data.id}/publish`)
-      // ElMessage.success('房源已发布！')
-      
-      // 4. 跳转到我的房源列表
-      router.push('/myhouses/list')
     }
+    
+    router.push('/myhouses/list')
   } catch (e) {
-    const msg = e.response?.data?.message || '创建失败，请重试'
+    const msg = e.response?.data?.message || (isEdit.value ? '修改失败，请重试' : '创建失败，请重试')
     ElMessage.error(msg)
-    console.error('发布房源错误详情：', e.response?.data)
   }
 }
+
+onMounted(() => {
+  if (isEdit.value) {
+    fetchHouseDetail()
+  }
+})
 </script>
 <style scoped>
 * {

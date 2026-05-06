@@ -81,24 +81,26 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import service from '@/utils/request'
-import mockData from'@/mock/myhouseList'
-// 开发时备用
-const USE_MOCK = true
+// import { mockMyHouses } from '@/mock/myhouseList'
+
+// 调试开关：true=用mock，false=用真实接口
+const USE_MOCK = false
 
 const router = useRouter()
 const loading = ref(false)
 const currentTab = ref('all')
 const searchKeyword = ref('')
 
-//分页数据
-const pageNum=ref(0)
-const pageSize=ref(10)
-const total=ref(6)
-
+// 分页数据
+const pageNum = ref(1)
+const pageSize = ref(10)
+const total = ref(0)
+const houses = ref([])
 
 const tabs = [
   { label: '全部', value: 'all' },
@@ -107,31 +109,56 @@ const tabs = [
   { label: '已下架', value: 'offline' }
 ]
 
-// 筛选后的列表（状态 + 搜索）
-const filteredHouses = computed(() => {
-  if(USE_MOCK){
-    let result = houses.value
+// 加载我的房源列表
+const fetchHouseList = async () => {
+  loading.value = true
   
-    // 状态筛选
-    if (currentTab.value !== 'all') {
-        result = result.filter(h => h.status === currentTab.value)
-    }
-  
-    // 搜索筛选
-    if (searchKeyword.value.trim()) {
-        const keyword = searchKeyword.value.toLowerCase()
-        result = result.filter(h => 
-            h.title?.toLowerCase().includes(keyword) ||
-            h.address?.toLowerCase().includes(keyword) ||
-            h.community?.toLowerCase().includes(keyword) ||
-            h.house_type?.toLowerCase().includes(keyword)
-        )
-    }
-  
-    return result
+  if (USE_MOCK) {
+    // 用本地 mock 数据
+    setTimeout(() => {
+      // houses.value = mockMyHouses
+      // total.value = mockMyHouses.length
+      loading.value = false
+    }, 500)
+    return
   }
-  //真实接口
-  
+
+  try {
+    const params = {
+      mine: true,
+      page: pageNum.value,
+      page_size: pageSize.value
+    }
+    
+    // 关键字搜索
+    if (searchKeyword.value.trim()) {
+      params.keyword = searchKeyword.value.trim()
+    }
+
+    const res = await service.get('/v1/houses', { params })
+    
+    if (res.code === 0) {
+      houses.value = res.data.list
+      total.value = res.data.total
+    }
+  } catch (e) {
+    ElMessage.error('加载房源列表失败')
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
+}
+
+// 筛选后的列表（前端状态筛选）
+const filteredHouses = computed(() => {
+  let result = houses.value
+
+  // 状态筛选
+  if (currentTab.value !== 'all') {
+    result = result.filter(h => h.status === currentTab.value)
+  }
+
+  return result
 })
 
 const statusText = (status) => {
@@ -141,44 +168,91 @@ const statusText = (status) => {
 
 // 搜索
 const handleSearch = () => {
-  // 前端筛选，已自动响应
+  pageNum.value = 1
+  fetchHouseList()
 }
 
 // 清空搜索
 const clearSearch = () => {
   searchKeyword.value = ''
+  pageNum.value = 1
+  fetchHouseList()
 }
 
 // 上架
-const publishHouse = (id) => {
-  const house = houses.value.find(h => h.id === id)
-  if (house) house.status = 'listed'
+const publishHouse = async (id) => {
+  try {
+    const res = await service.patch(`/v1/houses/${id}/publish`)
+    if (res.code === 0) {
+      ElMessage.success('上架成功！')
+      fetchHouseList()
+    }
+  } catch (e) {
+    ElMessage.error('上架失败')
+    console.error(e)
+  }
 }
 
 // 下架
-const offlineHouse = (id) => {
-  const house = houses.value.find(h => h.id === id)
-  if (house) house.status = 'offline'
+const offlineHouse = async (id) => {
+  try {
+    const res = await service.patch(`/v1/houses/${id}/offline`)
+    if (res.code === 0) {
+      ElMessage.success('已下架！')
+      fetchHouseList()
+    }
+  } catch (e) {
+    ElMessage.error('下架失败')
+    console.error(e)
+  }
 }
 
 // 编辑
 const editHouse = (id) => {
-  router.push({ name: 'editHouse', params: { id } })
+  // 跳转到编辑页，id通过路由传参
+  router.push(`/myhouses/edit/${id}`)
 }
 
 // 删除
-const deleteHouse = (id) => {
-  if (!confirm('确定删除该房源？')) return
-  const index = houses.value.findIndex(h => h.id === id)
-  if (index > -1) houses.value.splice(index, 1)
+const deleteHouse = async (id) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要删除该房源吗？删除后无法恢复！',
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    const res = await service.delete(`/v1/houses/${id}`)
+    if (res.code === 0) {
+      ElMessage.success('删除成功！')
+      fetchHouseList()
+    }
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('删除失败')
+      console.error(e)
+    }
+  }
 }
 
+// 分页变化
+const handlePageChange = (newPage) => {
+  pageNum.value = newPage
+  fetchHouseList()
+}
+
+// 筛选tab变化时重新加载
+watch(currentTab, () => {
+  pageNum.value = 1
+  // 状态筛选前端做，接口只给 mine=true
+})
+
 onMounted(() => {
-  // 模拟加载
-  loading.value = true
-  setTimeout(() => {
-    loading.value = false
-  }, 500)
+  fetchHouseList()
 })
 </script>
 

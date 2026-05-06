@@ -9,7 +9,10 @@
 </template>
 <template v-else>
   <div class="username">
-    <span>{{ userStore.userName }}</span>
+    <router-link to="/profile" class="profile-link">
+      <i class="fa-solid fa-circle-user"></i>
+      <span>{{ userStore.userName }}</span>
+    </router-link>
   </div>
   
   <button class="btn-logout" @click="userStore.logout">
@@ -86,10 +89,31 @@ button {
   align-items: center;
 }
 /* 用户名 */
-.username span{
-  font-size: 20px;
+.username .profile-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
   color: #fff;
   font-weight: 500;
-  margin-right: 6px;
+  margin-right: 8px;
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+.username .profile-link:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.username .profile-link i {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: rgb(28, 173, 226);
+  border-radius: 50%;
+  font-size: 16px;
 }
 </style>

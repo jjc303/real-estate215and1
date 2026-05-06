@@ -1,4 +1,5 @@
-export const houses=[
+
+export  const mockHouses=[
   { id: 1, title: "中南大学旁精致单间 拎包入住", district: "岳麓", businessArea: "麓谷", area: 35, room: "一室", orientation: "南北", price: 1800, images: ["https://picsum.photos/id/101/800/600"], tags: ["近地铁"], updateTime: "2026-04-25", isCollect: false },
   { id: 2, title: "岳麓山脚下两室一厅", district: "岳麓", businessArea: "大学城", area: 68, room: "二室", orientation: "南", price: 2600, images: ["https://picsum.photos/id/104/800/600"], tags: ["南北通透"], updateTime: "2026-04-23", isCollect: true },
   { id: 3, title: "雨花区精装合租次卧", district: "雨花", businessArea: "红星", area: 28, room: "一室", orientation: "东", price: 1200, images: ["https://picsum.photos/id/106/800/600"], tags: ["合租"], updateTime: "2026-04-20", isCollect: false },
