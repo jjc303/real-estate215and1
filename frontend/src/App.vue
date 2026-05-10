@@ -13,6 +13,42 @@ const route=useRoute()
 
 </script>
 
-<style scoped>
+<style>
+/* 美化 Element Plus 消息提示 */
+:root {
+  --el-message-success-bg-color: #f0fdf4;
+  --el-message-success-border-color: #86efac;
+  --el-message-warning-bg-color: #fffbeb;
+  --el-message-warning-border-color: #fcd34d;
+  --el-message-error-bg-color: #fef2f2;
+  --el-message-error-border-color: #fca5a5;
+}
 
+.el-message {
+  border-radius: 12px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
+  border: 1px solid;
+  padding: 16px 24px !important;
+  backdrop-filter: blur(10px);
+}
+
+.el-message--success {
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%) !important;
+  border-color: #86efac !important;
+}
+
+.el-message--warning {
+  background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%) !important;
+  border-color: #fcd34d !important;
+}
+
+.el-message--error {
+  background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%) !important;
+  border-color: #fca5a5 !important;
+}
+
+.el-message .el-message__content {
+  font-weight: 500;
+  font-size: 14px;
+}
 </style>
