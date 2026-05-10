@@ -6,10 +6,12 @@ import { menus } from '@/config/menus.js';
 import { useRouter } from 'vue-router';
 export const useUserStore = defineStore('user', () => {
     const router = useRouter()
-    // 从 localStorage 恢复状态
-    const isLoggedIn = ref(!!localStorage.getItem('token'));
-    const userName = ref(localStorage.getItem('userName') || '');
-    const userRole = ref(localStorage.getItem('userRole') || 'tenant')
+    const isLoggedIn = ref(false);
+    const userName = ref('');
+    const userRole = ref('guest')
+    const userId = ref(null);
+    const userInfo = ref(null);
+    const userAvatar = ref('');
     const showLogin = ref(false);//登录模态框显示状态
     const showRegister = ref(false);//注册模态框显示状态
 
@@ -296,14 +298,17 @@ export const useUserStore = defineStore('user', () => {
                     code: loginForm.value.emailCode
                 })
             }
-            isLoggedIn.value = true;
-            userRole.value = res.data.role || 'tenant'
-            userName.value = res.data.username || loginForm.value.username;
-
-            // 保存到 localStorage
             localStorage.setItem('token', res.data.token)
-            localStorage.setItem('userName', userName.value)
-            localStorage.setItem('userRole', userRole.value)
+
+            isLoggedIn.value = true;
+            if (res.data.user) {
+                userInfo.value = res.data.user
+                userId.value = res.data.user.id
+                userName.value = res.data.user.username
+                userRole.value = res.data.user.role
+            } else {
+                await fetchCurrentUser()
+            }
 
             ElMessage.success(`登录成功！欢迎 ${userName.value}`);
             closeAllModal();
@@ -357,26 +362,105 @@ export const useUserStore = defineStore('user', () => {
                     password: registerForm.value.password,
                     role: registerForm.value.role,
                 })
+
+                const loginRes = await service.post('/v1/auth/login', {
+                    username: registerForm.value.username,
+                    password: registerForm.value.password
+                })
+
+                localStorage.setItem('token', loginRes.data.token)
+                isLoggedIn.value = true
+                if (loginRes.data.user) {
+                    userInfo.value = loginRes.data.user
+                    userId.value = loginRes.data.user.id
+                    userName.value = loginRes.data.user.username
+                    userRole.value = loginRes.data.user.role
+                } else {
+                    await fetchCurrentUser()
+                }
             } else if (type === 'email') {
                 res = await service.post('/v1/auth/email/register', {
                     email: registerForm.value.email,
                     code: registerForm.value.emailCode,
                     role: registerForm.value.role
                 })
+                ElMessage.success('注册成功！请登录')
+                goToLogin()
+                return
             }
 
-            ElMessage.success('注册成功！请登录')
-            goToLogin()
+            ElMessage.success('注册成功！欢迎加入中南找房')
+            closeAllModal()
+            router.push('/')
         } catch (e) {
             // 优先显示后端返回的message，如"用户名已存在"、"验证码错误"等
             handleError(e, '注册失败')
         }
     }
+    // 获取当前登录用户信息
+    const fetchCurrentUser = async () => {
+        try {
+            const res = await service.get('/v1/auth/me')
+            userInfo.value = res.data
+            userId.value = res.data.id
+            userName.value = res.data.username
+            userRole.value = res.data.role
+            userAvatar.value = res.data.avatar || ''
+            isLoggedIn.value = true
+            return res.data
+        } catch (e) {
+            handleError(e, '获取用户信息失败')
+            isLoggedIn.value = false
+            localStorage.removeItem('token')
+            throw e
+        }
+    }
+
+    // 更新当前用户信息
+    const updateCurrentUser = async (data) => {
+        try {
+            console.log('======== 更新用户信息调试 ========')
+            console.log('原始输入数据:', data)
+
+            const allowedFields = ['real_name', 'phone', 'email', 'avatar']
+            const filteredData = {}
+
+            for (const key of allowedFields) {
+                if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+                    filteredData[key] = data[key]
+                }
+            }
+
+            console.log('过滤后最终请求体:', filteredData)
+            console.log('请求URL:', '/v1/users/me')
+            console.log('Authorization:', localStorage.getItem('token') ? 'Bearer ' + localStorage.getItem('token').substring(0, 20) + '...' : '无token')
+
+            const res = await service.put('/v1/users/me', filteredData)
+
+            console.log('后端返回完整响应:', res)
+
+            userInfo.value = res.data
+            userName.value = res.data.username
+            userAvatar.value = res.data.avatar || ''
+            ElMessage.success('资料更新成功')
+            return res.data
+        } catch (e) {
+            console.error('======== 更新用户信息失败 ========')
+            console.error('错误对象:', e)
+            console.error('错误响应:', e.response?.data)
+            handleError(e, '更新资料失败')
+            throw e
+        }
+    }
+
     // 退出登录
     const logout = () => {
         isLoggedIn.value = false
         userName.value = ''
         userRole.value = 'guest'
+        userId.value = null
+        userInfo.value = null
+        userAvatar.value = ''
         // 清理登录定时器
         if (loginSmsTimer.value) {
             clearInterval(loginSmsTimer.value);
@@ -403,10 +487,7 @@ export const useUserStore = defineStore('user', () => {
         // 清空表单
         loginForm.value = { username: '', phone: '', code: '', password: '', email: '', emailCode: '' }
         registerForm.value = { username: '', password: '', email: '', emailCode: '', role: 'tenant' }
-        // 清除 localStorage
         localStorage.removeItem('token')
-        localStorage.removeItem('userName')
-        localStorage.removeItem('userRole')
 
         router.push('/')
     }
@@ -416,6 +497,9 @@ export const useUserStore = defineStore('user', () => {
         isLoggedIn,
         userName,
         userRole,
+        userId,
+        userInfo,
+        userAvatar,
         showLogin,
         showRegister,
         loginForm,
@@ -430,7 +514,6 @@ export const useUserStore = defineStore('user', () => {
         registerEmailCountdown,
         currentMenus,
 
-
         // 方法
         closeAllModal,
         openLoginModal,
@@ -439,6 +522,8 @@ export const useUserStore = defineStore('user', () => {
         getEmailCode,
         submitLogin,
         submitRegister,
+        fetchCurrentUser,
+        updateCurrentUser,
         logout
     }
 });

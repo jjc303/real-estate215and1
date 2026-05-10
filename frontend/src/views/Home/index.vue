@@ -162,7 +162,7 @@ const houseEstates = ref([
 .csu-logo {
   position: absolute;
   top: 32px;
-  left: 270px;
+  left: 230px;
   height: 80px;
   object-fit: contain;
 }
@@ -170,7 +170,7 @@ const houseEstates = ref([
 .csu-name {
   position: absolute;
   top: 44px;
-  left: 350px;
+  left: 310px;
   height: 50px;
   background: transparent;
   object-fit: contain;
@@ -182,16 +182,16 @@ const houseEstates = ref([
 .home-nav-wrap {
   position: absolute;
   top: 40px;       /* 上下位置 */
-  left: 500px;     /* 左右位置 */
+  left: 460px;     /* 左右位置 */
   z-index: 100;    /* 保证在最上面 */
 
 }
 .home-user {
   position: absolute;
-  top: 42px;
+  top: 45px;
   right: 40px;
   display: flex;
-  gap: 10px;
+  gap: 0px;
   align-items: center;
 }
 .home-content {

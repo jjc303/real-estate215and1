@@ -1,5 +1,6 @@
 <template>
   <div class="profile-container">
+    <div class="profile-inner">
     <div class="profile-sidebar">
       <div class="user-avatar-section">
         <div class="avatar-wrapper">
@@ -33,31 +34,16 @@
         <h2 class="card-title">基本信息</h2>
         <el-form :model="basicForm" label-width="100px" class="profile-form">
           <el-form-item label="用户名">
-            <el-input v-model="basicForm.username" placeholder="请输入用户名" />
+            <el-input v-model="basicForm.username" placeholder="用户名不可修改" disabled />
           </el-form-item>
-          <el-form-item label="昵称">
-            <el-input v-model="basicForm.nickname" placeholder="请输入昵称" />
-          </el-form-item>
-          <el-form-item label="性别">
-            <el-radio-group v-model="basicForm.gender">
-              <el-radio label="male">男</el-radio>
-              <el-radio label="female">女</el-radio>
-              <el-radio label="other">保密</el-radio>
-            </el-radio-group>
+          <el-form-item label="真实姓名">
+            <el-input v-model="basicForm.nickname" placeholder="请输入真实姓名" />
           </el-form-item>
           <el-form-item label="手机号">
             <el-input v-model="basicForm.phone" placeholder="请输入手机号" />
           </el-form-item>
           <el-form-item label="邮箱">
             <el-input v-model="basicForm.email" placeholder="请输入邮箱" />
-          </el-form-item>
-          <el-form-item label="个人简介">
-            <el-input 
-              v-model="basicForm.bio" 
-              type="textarea" 
-              :rows="4" 
-              placeholder="介绍一下自己吧..."
-            />
           </el-form-item>
           <el-form-item>
             <el-button type="primary" @click="saveBasicInfo">保存修改</el-button>
@@ -135,17 +121,19 @@
         </el-form>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user.js'
 import { ElMessage } from 'element-plus'
 
 const userStore = useUserStore()
 const avatarInput = ref(null)
 const activeMenu = ref('basic')
+const loading = ref(false)
 
 const roleLabels = {
   tenant: '租客',
@@ -162,7 +150,7 @@ const menuItems = [
 const avatarUrl = ref('https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png')
 
 const basicForm = reactive({
-  username: userStore.userName || '',
+  username: '',
   nickname: '',
   gender: 'other',
   phone: '',
@@ -182,6 +170,24 @@ const preferences = reactive({
   smsAlert: false
 })
 
+const loadUserInfo = async () => {
+  loading.value = true
+  try {
+    await userStore.fetchCurrentUser()
+    if (userStore.userInfo) {
+      basicForm.username = userStore.userInfo.username || ''
+      basicForm.nickname = userStore.userInfo.real_name || ''
+      basicForm.phone = userStore.userInfo.phone || ''
+      basicForm.email = userStore.userInfo.email || ''
+      avatarUrl.value = userStore.userAvatar || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
+    }
+  } catch (e) {
+    console.error('加载用户信息失败', e)
+  } finally {
+    loading.value = false
+  }
+}
+
 const handleAvatarUpload = () => {
   avatarInput.value.click()
 }
@@ -190,30 +196,87 @@ const handleAvatarChange = (e) => {
   const file = e.target.files[0]
   if (file) {
     const reader = new FileReader()
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       avatarUrl.value = event.target.result
-      ElMessage.success('头像上传成功')
+      
+      const avatarBase64 = event.target.result
+      if (avatarBase64.length > 255) {
+        ElMessage.warning('头像链接超过255字符限制，请使用短链接头像')
+        console.warn('头像base64长度超过限制:', avatarBase64.length, '字符')
+        return
+      }
+      
+      try {
+        await userStore.updateCurrentUser({ avatar: avatarBase64 })
+        await loadUserInfo()
+      } catch (err) {
+        console.error('头像更新失败', err)
+      }
     }
     reader.readAsDataURL(file)
   }
 }
 
-const saveBasicInfo = () => {
-  if (!basicForm.username) {
-    ElMessage.warning('请输入用户名')
-    return
-  }
-  userStore.userName = basicForm.username
-  ElMessage.success('基本信息保存成功')
+const validatePhone = (phone) => {
+  if (!phone) return true
+  const phoneRegex = /^1[3-9]\d{9}$/
+  return phoneRegex.test(phone)
 }
 
-const resetBasicForm = () => {
-  basicForm.username = userStore.userName || ''
-  basicForm.nickname = ''
-  basicForm.gender = 'other'
-  basicForm.phone = ''
-  basicForm.email = ''
-  basicForm.bio = ''
+const validateEmail = (email) => {
+  if (!email) return true
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  return emailRegex.test(email)
+}
+
+const saveBasicInfo = async () => {
+  try {
+    console.log('======== 保存基本信息调试 ========')
+    
+    if (basicForm.phone && !validatePhone(basicForm.phone)) {
+      ElMessage.warning('请输入正确的手机号')
+      return
+    }
+    
+    if (basicForm.email && !validateEmail(basicForm.email)) {
+      ElMessage.warning('请输入正确的邮箱地址')
+      return
+    }
+    
+    const payload = {}
+    
+    const trimmedRealName = basicForm.nickname?.trim()
+    const trimmedPhone = basicForm.phone?.trim()
+    const trimmedEmail = basicForm.email?.trim()
+    
+    if (trimmedRealName) {
+      payload.real_name = trimmedRealName
+    }
+    
+    if (trimmedPhone) {
+      payload.phone = trimmedPhone
+    }
+    
+    if (trimmedEmail) {
+      payload.email = trimmedEmail
+    }
+    
+    console.log('准备发送的表单数据:', payload)
+    
+    if (Object.keys(payload).length === 0) {
+      ElMessage.info('没有需要修改的信息')
+      return
+    }
+    
+    await userStore.updateCurrentUser(payload)
+    await loadUserInfo()
+  } catch (err) {
+    console.error('保存失败', err)
+  }
+}
+
+const resetBasicForm = async () => {
+  await loadUserInfo()
   ElMessage.info('已重置')
 }
 
@@ -244,31 +307,46 @@ const changePassword = () => {
 const savePreferences = () => {
   ElMessage.success('偏好设置保存成功')
 }
+
+onMounted(() => {
+  loadUserInfo()
+})
 </script>
 
 <style scoped>
 .profile-container {
-  display: flex;
+  width: 100vw;
   min-height: calc(100vh - 140px);
-  background: #f5f7fa;
+  background: linear-gradient(180deg, #eceef1 0%, #f5f7fa 100%);
+  position: relative;
+  left: 50%;
+  right: 50%;
+  margin-left: -50vw;
+  margin-right: -50vw;
+}
+
+.profile-inner {
+  display: flex;
   padding: 40px 20px;
-  gap: 24px;
-  max-width: 1200px;
+  gap: 32px;
+  max-width: 1300px;
   margin: 0 auto;
   justify-content: center;
+  flex-wrap: nowrap;
 }
 
 .profile-sidebar {
-  width: 280px;
+  width: 300px;
   flex-shrink: 0;
 }
 
 .user-avatar-section {
-  background: #fff;
-  border-radius: 12px;
-  padding: 30px 20px;
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 36px 24px;
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 20px rgba(28, 173, 226, 0.08);
 }
 
 .avatar-wrapper {
@@ -328,8 +406,9 @@ const savePreferences = () => {
 
 .menu-list {
   background: #fff;
-  border-radius: 12px;
-  padding: 8px 0;
+  border-radius: 20px;
+  padding: 12px 0;
+  box-shadow: 0 4px 20px rgba(28, 173, 226, 0.08);
 }
 
 .menu-item {
@@ -360,14 +439,16 @@ const savePreferences = () => {
 }
 
 .profile-content {
-  flex: 0 1 700px;
-  min-width: 500px;
+  flex: 1;
+  min-width: 600px;
+  max-width: 900px;
 }
 
 .content-card {
   background: #fff;
-  border-radius: 12px;
-  padding: 30px;
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 4px 20px rgba(28, 173, 226, 0.08);
 }
 
 .card-title {
@@ -407,13 +488,14 @@ const savePreferences = () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 20px;
-  background: #f9fafb;
-  border-radius: 8px;
-  margin-bottom: 12px;
+  padding: 18px 24px;
+  background: #f8fbff;
+  border-radius: 14px;
+  margin-bottom: 16px;
   max-width: 500px;
   margin-left: auto;
   margin-right: auto;
+  border: 1px solid #e8f3ff;
 }
 
 .bind-info {
