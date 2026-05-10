@@ -64,7 +64,7 @@ services:
       - "8000:8000"
     volumes:
       - ../backend:/app/backend
-    command: gunicorn -w 1 --reload -b 0.0.0.0:8000 app.main:app
+    command: gunicorn -w 4 --reload -b 0.0.0.0:8000 app.main:app
 
 volumes:
   mysql_data:
