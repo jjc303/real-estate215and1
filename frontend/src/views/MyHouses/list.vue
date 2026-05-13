@@ -452,7 +452,7 @@ onMounted(() => {
 .house-card {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: 16px;
   background: #fff;
   margin-bottom: 12px;

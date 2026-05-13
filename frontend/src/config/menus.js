@@ -4,7 +4,7 @@ export const menus = {
     { name: '中南找房', path: '/', icon: 'Home' },
     { name: '房源搜索', path: '/houseList', icon: 'Search' },
     { name: '新闻通知', path: '/news' },
-    { name: '关于我们', path: '/about' },
+    { name: '帮助手册', path: '/help' },
     { name: '特别鸣谢', path: '/thanks' },
   ],
 

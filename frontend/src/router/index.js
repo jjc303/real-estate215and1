@@ -13,6 +13,8 @@ const MyHouses = () => import('../views/MyHouses/index.vue')
 const MyHousesPublish = () => import('@/views/MyHouses/publish.vue')
 const MyHousesList = () => import('../views/MyHouses/list.vue')
 const Profile = () => import('../views/Profile/index.vue')
+const Thanks = () => import('../views/Thanks/index.vue')
+const Help = () => import('../views/Help/index.vue')
 
 const routes = [
   {
@@ -72,6 +74,18 @@ const routes = [
     path: '/profile',
     name: 'profile',
     component: Profile
+  },
+  {
+    path: '/thanks',
+    name: 'thanks',
+    meta: { title: '特别鸣谢' },
+    component: Thanks
+  },
+  {
+    path: '/help',
+    name: 'help',
+    meta: { title: '帮助手册' },
+    component: Help
   }
 ]
 const router = createRouter({
