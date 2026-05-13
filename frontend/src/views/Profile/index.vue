@@ -1,126 +1,263 @@
 <template>
   <div class="profile-container">
     <div class="profile-inner">
-    <div class="profile-sidebar">
-      <div class="user-avatar-section">
-        <div class="avatar-wrapper">
-          <img :src="avatarUrl" alt="头像" class="user-avatar" />
-          <div class="avatar-overlay" @click="handleAvatarUpload">
-            <i class="fa-solid fa-camera"></i>
-            <span>更换头像</span>
-          </div>
-        </div>
-        <input type="file" ref="avatarInput" accept="image/*" @change="handleAvatarChange" hidden />
-        <h3 class="user-name">{{ userStore.userName || '用户' }}</h3>
-        <p class="user-role">{{ roleLabels[userStore.userRole] }}</p>
-      </div>
-      
-      <div class="menu-list">
-        <div 
-          v-for="item in menuItems" 
-          :key="item.key"
-          class="menu-item"
-          :class="{ active: activeMenu === item.key }"
-          @click="activeMenu = item.key"
-        >
-          <i :class="item.icon"></i>
-          <span>{{ item.label }}</span>
+      <div class="welcome-banner">
+        <div class="welcome-content">
+          <h1 class="welcome-title">欢迎回来，{{ userStore.userRole === 'landlord' ? '房东' : '租客' }}先生/女士</h1>
+          <p class="welcome-desc">管理您的账户信息</p>
         </div>
       </div>
-    </div>
 
-    <div class="profile-content">
-      <div class="content-card" v-if="activeMenu === 'basic'">
-        <h2 class="card-title">基本信息</h2>
-        <el-form :model="basicForm" label-width="100px" class="profile-form">
-          <el-form-item label="用户名">
-            <el-input v-model="basicForm.username" placeholder="用户名不可修改" disabled />
-          </el-form-item>
-          <el-form-item label="真实姓名">
-            <el-input v-model="basicForm.nickname" placeholder="请输入真实姓名" />
-          </el-form-item>
-          <el-form-item label="手机号">
-            <el-input v-model="basicForm.phone" placeholder="请输入手机号" />
-          </el-form-item>
-          <el-form-item label="邮箱">
-            <el-input v-model="basicForm.email" placeholder="请输入邮箱" />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="saveBasicInfo">保存修改</el-button>
-            <el-button @click="resetBasicForm">重置</el-button>
-          </el-form-item>
-        </el-form>
-      </div>
-
-      <div class="content-card" v-if="activeMenu === 'security'">
-        <h2 class="card-title">账号安全</h2>
-        <el-form :model="passwordForm" label-width="120px" class="profile-form">
-          <el-form-item label="原密码">
-            <el-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码" show-password />
-          </el-form-item>
-          <el-form-item label="新密码">
-            <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码" show-password />
-          </el-form-item>
-          <el-form-item label="确认新密码">
-            <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" show-password />
-          </el-form-item>
-          <el-form-item>
-            <el-button type="primary" @click="changePassword">修改密码</el-button>
-          </el-form-item>
-        </el-form>
-
-        <div class="divider"></div>
-
-        <h3 class="sub-title">绑定设置</h3>
-        <div class="bind-item">
-          <div class="bind-info">
-            <i class="fa-solid fa-mobile-screen-button"></i>
-            <div class="bind-text">
-              <span class="bind-label">手机号绑定</span>
-              <span class="bind-status" :class="basicForm.phone ? 'bound' : 'unbound'">
-                {{ basicForm.phone ? '已绑定' : '未绑定' }}
-              </span>
+      <div class="profile-main">
+        <div class="profile-sidebar">
+          <div class="user-card">
+          <div class="user-avatar-section">
+            <div class="avatar-wrapper">
+              <img :src="avatarUrl" alt="头像" class="user-avatar" />
+              <div class="avatar-overlay" @click="handleAvatarUpload">
+                <i class="fa-solid fa-camera"></i>
+              </div>
+            </div>
+            <input type="file" ref="avatarInput" accept="image/*" @change="handleAvatarChange" hidden />
+            
+            <div class="user-info">
+              <div class="user-name-row">
+                <h3 class="user-name">{{ userStore.userName || '用户' }}</h3>
+                <div v-if="userStore.userRole === 'landlord'" class="landlord-badge">
+                  <i class="fa-solid fa-home"></i>
+                  <span>房东</span>
+                </div>
+              </div>
+              <p class="user-role">{{ roleLabels[userStore.userRole] }}</p>
             </div>
           </div>
-          <el-button size="small" :type="basicForm.phone ? '' : 'primary'">
-            {{ basicForm.phone ? '更换' : '绑定' }}
-          </el-button>
-        </div>
 
-        <div class="bind-item">
-          <div class="bind-info">
-            <i class="fa-solid fa-envelope"></i>
-            <div class="bind-text">
-              <span class="bind-label">邮箱绑定</span>
-              <span class="bind-status" :class="basicForm.email ? 'bound' : 'unbound'">
-                {{ basicForm.email ? '已绑定' : '未绑定' }}
-              </span>
+          <div class="stats-row">
+            <div class="stat-item">
+              <span class="stat-value">{{ stats.houses }}</span>
+              <span class="stat-label">已发布房源</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-value">{{ stats.inquiries }}</span>
+              <span class="stat-label">本月咨询</span>
+            </div>
+            <div class="stat-divider"></div>
+            <div class="stat-item">
+              <span class="stat-value">{{ stats.contracts }}</span>
+              <span class="stat-label">已签合同</span>
             </div>
           </div>
-          <el-button size="small" :type="basicForm.email ? '' : 'primary'">
-            {{ basicForm.email ? '更换' : '绑定' }}
-          </el-button>
         </div>
-      </div>
 
-      <div class="content-card" v-if="activeMenu === 'preferences'">
-        <h2 class="card-title">偏好设置</h2>
-        <el-form label-width="100px" class="profile-form">
-          <el-form-item label="消息通知">
-            <el-switch v-model="preferences.notification" active-text="开启" inactive-text="关闭" />
-          </el-form-item>
-          <el-form-item label="邮件提醒">
-            <el-switch v-model="preferences.emailAlert" active-text="开启" inactive-text="关闭" />
-          </el-form-item>
-          <el-form-item label="短信提醒">
-            <el-switch v-model="preferences.smsAlert" active-text="开启" inactive-text="关闭" />
-          </el-form-item>
-          <el-form-item>
+        <div class="menu-list">
+          <div 
+            v-for="item in menuItems" 
+            :key="item.key"
+            class="menu-item"
+            :class="{ active: activeMenu === item.key }"
+            @click="activeMenu = item.key"
+          >
+            <i :class="item.icon"></i>
+            <span>{{ item.label }}</span>
+          </div>
+        </div>
+        </div>
+
+        <div class="profile-content">
+        <div class="content-card" v-if="activeMenu === 'basic'">
+          <div class="card-header">
+            <div class="card-icon basic-icon">
+              <i class="fa-solid fa-user"></i>
+            </div>
+            <div class="card-title-wrap">
+              <h2 class="card-title">账户信息</h2>
+              <p class="card-desc">管理您的基本个人信息</p>
+            </div>
+          </div>
+          
+          <div class="form-section">
+            <div class="form-group">
+              <div class="form-item">
+                <label class="form-label">
+                  <i class="fa-solid fa-user"></i>
+                  <span>用户名</span>
+                </label>
+                <el-input v-model="basicForm.username" placeholder="用户名不可修改" disabled />
+              </div>
+              <div class="form-item">
+                <label class="form-label">
+                  <i class="fa-solid fa-user-check"></i>
+                  <span>真实姓名</span>
+                </label>
+                <el-input v-model="basicForm.nickname" placeholder="请输入真实姓名" />
+              </div>
+            </div>
+          </div>
+
+          <div class="card-divider"></div>
+
+          <div class="form-section">
+            <h3 class="section-title">联系方式</h3>
+            <div class="form-group">
+              <div class="form-item">
+                <label class="form-label">
+                  <i class="fa-solid fa-phone"></i>
+                  <span>手机号</span>
+                </label>
+                <el-input v-model="basicForm.phone" placeholder="请输入手机号" />
+              </div>
+              <div class="form-item">
+                <label class="form-label">
+                  <i class="fa-solid fa-envelope"></i>
+                  <span>邮箱</span>
+                </label>
+                <el-input v-model="basicForm.email" placeholder="请输入邮箱" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <el-button type="primary" @click="saveBasicInfo">保存更改</el-button>
+            <el-button @click="resetBasicForm">取消</el-button>
+          </div>
+        </div>
+
+        <div class="content-card" v-if="activeMenu === 'security'">
+          <div class="card-header">
+            <div class="card-icon security-icon">
+              <i class="fa-solid fa-shield-halved"></i>
+            </div>
+            <div class="card-title-wrap">
+              <h2 class="card-title">安全设置</h2>
+              <p class="card-desc">保护您的账户安全</p>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <h3 class="section-title">修改密码</h3>
+            <div class="form-group">
+              <div class="form-item">
+                <label class="form-label">
+                  <i class="fa-solid fa-key"></i>
+                  <span>原密码</span>
+                </label>
+                <el-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码" show-password />
+              </div>
+              <div class="form-item">
+                <label class="form-label">
+                  <i class="fa-solid fa-lock"></i>
+                  <span>新密码</span>
+                </label>
+                <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码" show-password />
+              </div>
+              <div class="form-item">
+                <label class="form-label">
+                  <i class="fa-solid fa-lock-open"></i>
+                  <span>确认新密码</span>
+                </label>
+                <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" show-password />
+              </div>
+            </div>
+            <div class="form-actions">
+              <el-button type="primary" @click="changePassword">修改密码</el-button>
+            </div>
+          </div>
+
+          <div class="card-divider"></div>
+
+          <div class="form-section">
+            <h3 class="section-title">绑定设置</h3>
+            <div class="bind-list">
+              <div class="bind-item">
+                <div class="bind-info">
+                  <div class="bind-icon phone-icon">
+                    <i class="fa-solid fa-mobile-screen-button"></i>
+                  </div>
+                  <div class="bind-text">
+                    <span class="bind-label">手机号绑定</span>
+                    <span class="bind-status" :class="basicForm.phone ? 'bound' : 'unbound'">
+                      {{ basicForm.phone ? '已绑定' : '未绑定' }}
+                    </span>
+                  </div>
+                </div>
+                <el-button size="small" :type="basicForm.phone ? '' : 'primary'">
+                  {{ basicForm.phone ? '更换' : '绑定' }}
+                </el-button>
+              </div>
+
+              <div class="bind-item">
+                <div class="bind-info">
+                  <div class="bind-icon email-icon">
+                    <i class="fa-solid fa-envelope"></i>
+                  </div>
+                  <div class="bind-text">
+                    <span class="bind-label">邮箱绑定</span>
+                    <span class="bind-status" :class="basicForm.email ? 'bound' : 'unbound'">
+                      {{ basicForm.email ? '已绑定' : '未绑定' }}
+                    </span>
+                  </div>
+                </div>
+                <el-button size="small" :type="basicForm.email ? '' : 'primary'">
+                  {{ basicForm.email ? '更换' : '绑定' }}
+                </el-button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="content-card" v-if="activeMenu === 'preferences'">
+          <div class="card-header">
+            <div class="card-icon preferences-icon">
+              <i class="fa-solid fa-gear"></i>
+            </div>
+            <div class="card-title-wrap">
+              <h2 class="card-title">偏好设置</h2>
+              <p class="card-desc">自定义您的通知偏好</p>
+            </div>
+          </div>
+
+          <div class="form-section">
+            <div class="switch-list">
+              <div class="switch-item">
+                <div class="switch-info">
+                  <i class="fa-solid fa-bell"></i>
+                  <div class="switch-text">
+                    <span class="switch-label">消息通知</span>
+                    <span class="switch-desc">接收站内消息提醒</span>
+                  </div>
+                </div>
+                <el-switch v-model="preferences.notification" active-text="开启" inactive-text="关闭" />
+              </div>
+              <div class="switch-item">
+                <div class="switch-info">
+                  <i class="fa-solid fa-envelope"></i>
+                  <div class="switch-text">
+                    <span class="switch-label">邮件提醒</span>
+                    <span class="switch-desc">接收邮件通知</span>
+                  </div>
+                </div>
+                <el-switch v-model="preferences.emailAlert" active-text="开启" inactive-text="关闭" />
+              </div>
+              <div class="switch-item">
+                <div class="switch-info">
+                  <i class="fa-solid fa-sms"></i>
+                  <div class="switch-text">
+                    <span class="switch-label">短信提醒</span>
+                    <span class="switch-desc">接收重要短信通知</span>
+                  </div>
+                </div>
+                <el-switch v-model="preferences.smsAlert" active-text="开启" inactive-text="关闭" />
+              </div>
+            </div>
+          </div>
+
+          <div class="form-actions">
             <el-button type="primary" @click="savePreferences">保存设置</el-button>
-          </el-form-item>
-        </el-form>
+          </div>
+        </div>
+        </div>
       </div>
-    </div>
     </div>
   </div>
 </template>
@@ -148,6 +285,12 @@ const menuItems = [
 ]
 
 const avatarUrl = ref('https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png')
+
+const stats = reactive({
+  houses: 3,
+  inquiries: 12,
+  contracts: 1
+})
 
 const basicForm = reactive({
   username: '',
@@ -231,8 +374,6 @@ const validateEmail = (email) => {
 
 const saveBasicInfo = async () => {
   try {
-    console.log('======== 保存基本信息调试 ========')
-    
     if (basicForm.phone && !validatePhone(basicForm.phone)) {
       ElMessage.warning('请输入正确的手机号')
       return
@@ -261,8 +402,6 @@ const saveBasicInfo = async () => {
       payload.email = trimmedEmail
     }
     
-    console.log('准备发送的表单数据:', payload)
-    
     if (Object.keys(payload).length === 0) {
       ElMessage.info('没有需要修改的信息')
       return
@@ -270,14 +409,16 @@ const saveBasicInfo = async () => {
     
     await userStore.updateCurrentUser(payload)
     await loadUserInfo()
+    ElMessage.success('信息保存成功')
   } catch (err) {
     console.error('保存失败', err)
+    ElMessage.error('保存失败，请稍后重试')
   }
 }
 
 const resetBasicForm = async () => {
   await loadUserInfo()
-  ElMessage.info('已重置')
+  ElMessage.info('已取消修改')
 }
 
 const changePassword = () => {
@@ -317,7 +458,7 @@ onMounted(() => {
 .profile-container {
   width: 100vw;
   min-height: calc(100vh - 140px);
-  background: linear-gradient(180deg, #eceef1 0%, #f5f7fa 100%);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
   position: relative;
   left: 50%;
   right: 50%;
@@ -327,33 +468,69 @@ onMounted(() => {
 
 .profile-inner {
   display: flex;
-  padding: 40px 20px;
-  gap: 32px;
+  flex-direction: column;
+  padding: 0 20px;
+  gap: 24px;
   max-width: 1300px;
   margin: 0 auto;
+}
+
+.welcome-banner {
+  padding: 32px 40px;
+  background: linear-gradient(135deg, #64748b 0%, #94a3b8 50%, #64748b 100%);
+  border-radius: 20px;
+  margin-top: 24px;
+  box-shadow: 0 8px 32px rgba(100, 116, 139, 0.25);
+}
+
+.welcome-content {
+  color: white;
+}
+
+.welcome-title {
+  font-size: 26px;
+  font-weight: 600;
+  margin: 0 0 8px;
+}
+
+.welcome-desc {
+  font-size: 15px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.profile-main {
+  display: flex;
+  gap: 32px;
   justify-content: center;
-  flex-wrap: nowrap;
 }
 
 .profile-sidebar {
-  width: 300px;
+  width: 280px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.user-card {
+  background: #ffffff;
+  border-radius: 20px;
+  padding: 32px 24px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .user-avatar-section {
-  background: #ffffff;
-  border-radius: 20px;
-  padding: 36px 24px;
   text-align: center;
-  margin-bottom: 20px;
-  box-shadow: 0 4px 20px rgba(28, 173, 226, 0.08);
+  padding-bottom: 28px;
+  border-bottom: 1px solid #f1f5f9;
 }
 
 .avatar-wrapper {
   position: relative;
   width: 100px;
   height: 100px;
-  margin: 0 auto 16px;
+  margin: 0 auto 20px;
 }
 
 .user-avatar {
@@ -361,7 +538,8 @@ onMounted(() => {
   height: 100px;
   border-radius: 50%;
   object-fit: cover;
-  border: 3px solid #e8f3ff;
+  border: 4px solid #fff;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .avatar-overlay {
@@ -371,44 +549,102 @@ onMounted(() => {
   width: 100%;
   height: 100%;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.55);
   color: #fff;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.3s;
+  transition: all 0.3s ease;
   cursor: pointer;
-  font-size: 12px;
-  gap: 4px;
+  font-size: 20px;
 }
 
 .avatar-wrapper:hover .avatar-overlay {
   opacity: 1;
 }
 
+.avatar-wrapper:hover .user-avatar {
+  transform: scale(1.02);
+}
+
+.avatar-tip {
+  font-size: 12px;
+  color: #999;
+  margin-top: 8px;
+}
+
+.user-info {
+  margin-top: 24px;
+}
+
+.user-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
 .user-name {
   font-size: 20px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 8px;
+  color: #1e293b;
+  margin: 0;
+}
+
+.landlord-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #92400e;
 }
 
 .user-role {
   font-size: 14px;
-  color: rgb(28, 173, 226);
-  background: rgba(28, 173, 226, 0.1);
-  padding: 4px 12px;
-  border-radius: 12px;
-  display: inline-block;
+  color: #64748b;
+  margin: 12px 0 0;
+}
+
+.stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 28px 0 8px;
+}
+
+.stat-item {
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 24px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.stat-label {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 4px;
+}
+
+.stat-divider {
+  width: 1px;
+  height: 40px;
+  background: #e2e8f0;
 }
 
 .menu-list {
-  background: #fff;
+  background: #ffffff;
   border-radius: 20px;
-  padding: 12px 0;
-  box-shadow: 0 4px 20px rgba(28, 173, 226, 0.08);
+  padding: 8px 0;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
 }
 
 .menu-item {
@@ -417,20 +653,20 @@ onMounted(() => {
   gap: 12px;
   padding: 14px 24px;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   font-size: 15px;
-  color: #666;
+  color: #64748b;
 }
 
 .menu-item:hover {
-  background: #f5f7fa;
-  color: rgb(28, 173, 226);
+  background: #e2e8f0;
+  color: #64748b;
 }
 
 .menu-item.active {
-  background: rgba(28, 173, 226, 0.1);
-  color: rgb(28, 173, 226);
-  border-right: 3px solid rgb(28, 173, 226);
+  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 100%);
+  color: #475569;
+  border-right: 3px solid #64748b;
 }
 
 .menu-item i {
@@ -440,80 +676,243 @@ onMounted(() => {
 
 .profile-content {
   flex: 1;
-  min-width: 600px;
-  max-width: 900px;
+  min-width: 500px;
+  max-width: 800px;
 }
 
 .content-card {
-  background: #fff;
+  background: #ffffff;
   border-radius: 20px;
-  padding: 40px;
-  box-shadow: 0 4px 20px rgba(28, 173, 226, 0.08);
+  padding: 0;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 24px 32px;
+  border-bottom: 1px solid #f5f5f5;
+}
+
+.card-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  color: white;
+}
+
+.basic-icon {
+  background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+}
+
+.security-icon {
+  background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+}
+
+.preferences-icon {
+  background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+}
+
+.card-title-wrap {
+  display: flex;
+  flex-direction: column;
 }
 
 .card-title {
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 24px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #eee;
-  text-align: center;
+  color: #1e293b;
+  margin: 0;
 }
 
-.sub-title {
-  font-size: 16px;
+.card-desc {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 4px 0 0;
+}
+
+.card-divider {
+  height: 8px;
+  background: #f8fafc;
+}
+
+.form-section {
+  padding: 24px 32px;
+}
+
+.section-title {
+  font-size: 15px;
   font-weight: 600;
-  color: #333;
-  margin-bottom: 20px;
-  text-align: center;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
+  color: #475569;
+  margin: 0 0 20px;
 }
 
-.profile-form {
-  max-width: 500px;
-  margin: 0 auto;
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-.divider {
-  height: 1px;
-  background: #eee;
-  margin: 30px auto;
-  max-width: 500px;
+.form-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #475569;
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.form-label i {
+  color: #94a3b8;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 24px 32px;
+}
+
+.form-actions .el-button {
+  padding: 10px 24px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+
+.form-actions .el-button--primary {
+  background: linear-gradient(135deg, #64748b 0%, #94a3b8 100%);
+  border: none;
+  box-shadow: 0 4px 12px rgba(100, 116, 139, 0.3);
+}
+
+.form-actions .el-button--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(100, 116, 139, 0.4);
+}
+
+.form-item :deep(.el-input__wrapper) {
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.3s ease;
+}
+
+.form-item :deep(.el-input__wrapper:hover) {
+  border-color: #cbd5e1;
+}
+
+.form-item :deep(.el-input__wrapper.is-focus) {
+  border-color: #94a3b8;
+  box-shadow: 0 0 0 3px rgba(148, 163, 184, 0.2);
+}
+
+.form-item :deep(.el-input__inner) {
+  padding: 12px 16px;
+  font-size: 15px;
+}
+
+.switch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.switch-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.switch-info {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.switch-info i {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 18px;
+}
+
+.switch-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.switch-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: #334155;
+}
+
+.switch-desc {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.bind-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 .bind-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 24px;
-  background: #f8fbff;
+  padding: 20px;
+  background: #fafbfc;
   border-radius: 14px;
-  margin-bottom: 16px;
-  max-width: 500px;
-  margin-left: auto;
-  margin-right: auto;
-  border: 1px solid #e8f3ff;
+  border: 1px solid #f1f5f9;
 }
 
 .bind-info {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
 }
 
-.bind-info i {
-  width: 40px;
-  height: 40px;
+.bind-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #e8f3ff;
-  border-radius: 8px;
-  color: rgb(28, 173, 226);
   font-size: 18px;
+}
+
+.phone-icon {
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #2563eb;
+}
+
+.email-icon {
+  background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+  color: #059669;
 }
 
 .bind-text {
@@ -524,7 +923,7 @@ onMounted(() => {
 
 .bind-label {
   font-size: 15px;
-  color: #333;
+  color: #1e293b;
   font-weight: 500;
 }
 
@@ -533,10 +932,10 @@ onMounted(() => {
 }
 
 .bind-status.bound {
-  color: #52c41a;
+  color: #10b981;
 }
 
 .bind-status.unbound {
-  color: #fa8c16;
+  color: #f59e0b;
 }
 </style>

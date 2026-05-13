@@ -2,7 +2,7 @@
   <div class="publish-page">
     <div class="publish-title">
       <h1>{{ pageTitle }}</h1>
-      <p>清风雅居 · 城隅美宅 · 恬静闲舍</p>
+      <p class="subtitle">{{ pageTitle === '发布新房源' ? '发布您的优质房源' : '编辑房源信息' }}</p>
     </div>
 
     <div class="publish-form">

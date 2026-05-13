@@ -8,6 +8,11 @@
   </button>
 </template>
 <template v-else>
+  <button class="btn-notification" @click="showChatPopup = true">
+    <i class="fa-solid fa-bell"></i>
+    <span class="notification-badge" v-if="unreadCount > 0">{{ unreadCount }}</span>
+  </button>
+  
   <div class="username">
     <router-link to="/profile" class="profile-link">
       <i class="fa-solid fa-circle-user"></i>
@@ -18,13 +23,20 @@
   <button class="btn-logout" @click="userStore.logout">
     <i class="fa-solid fa-right-from-bracket"></i> 退出
   </button>
+  
+  <ChatPopup v-model:visible="showChatPopup" />
 </template>
 </template>
 
 
 <script setup>
+import { ref } from 'vue';
 import { useUserStore } from '@/stores/user.js';
+import ChatPopup from '@/components/ChatPopup.vue';
+
 const userStore = useUserStore();
+const showChatPopup = ref(false);
+const unreadCount = ref(3);
 </script>
 <style scoped>
 
@@ -33,6 +45,43 @@ button {
   outline: none;
   cursor: pointer;
   font-family: inherit;
+}
+
+.btn-notification {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 20px;
+  transition: all 0.2s ease;
+  padding: 0;
+  margin: 0;
+  line-height: 1;
+}
+
+.btn-notification:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  min-width: 18px;
+  height: 18px;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 12px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 5px;
 }
 /* 登录按钮 */
 .btn-login {

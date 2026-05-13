@@ -40,6 +40,7 @@ import UserButton from '@/components/UserButton.vue';
 }
 .btn-wrap {
     display: flex;
+    align-items: center;
     gap: 10px;
 }
 </style>

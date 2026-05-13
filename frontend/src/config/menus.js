@@ -30,15 +30,7 @@ export const menus = {
         { name: '投诉管理', path: '/service/complaint' }
       ]
     },
-    {
-      name: '消息中心',
-      path: '/message',
-      icon: 'Message',
-      children: [
-        { name: '留言管理', path: '/message/chat' },
-        { name: '新闻查看', path: '/message/news' }
-      ]
-    },
+    { name: '新闻通知', path: '/news', icon: 'Message' },
     { name: '个人中心', path: '/profile', icon: 'User' }
   ],
 
@@ -59,20 +51,12 @@ export const menus = {
       path: '/manage',
       icon: 'FileText',
       children: [
-        { name: '预约确认', path: '/manage/appointment' },
-        { name: '合同管理', path: '/manage/contract' },
+        { name: '预约确认', path: '/reservation' },
+        { name: '合同管理', path: '/contracts' },
         { name: '租金监控', path: '/manage/rent' }
       ]
     },
-    {
-      name: '消息中心',
-      path: '/message',
-      icon: 'Message',
-      children: [
-        { name: '留言管理', path: '/message/chat' },
-        { name: '新闻管理', path: '/message/news' }
-      ]
-    },
+    { name: '新闻通知', path: '/news', icon: 'Message' },
     { name: '个人中心', path: '/profile', icon: 'User' }
   ],
 

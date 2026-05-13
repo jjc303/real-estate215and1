@@ -1,7 +1,10 @@
 <template>
   <div class="my-houses">
     <div class="page-header">
-      <h2>我的房源</h2>
+      <div class="header-left">
+        <h2>我的房源</h2>
+        <p class="subtitle">管理您发布的房源</p>
+      </div>
       <el-button type="primary" class="publish-btn" @click="$router.push('/myhouses/publish')">
         <i class="fa-solid fa-plus"></i> 发布新房源
       </el-button>
@@ -341,11 +344,22 @@ onMounted(() => {
   padding-bottom: 16px;
 }
 
+.header-left {
+  display: flex;
+  flex-direction: column;
+}
+
 .page-header h2 {
   font-size: 24px;
   font-weight: 600;
   color: #262626;
   margin: 0;
+}
+
+.page-header .subtitle {
+  font-size: 14px;
+  color: #8c8c8c;
+  margin: 8px 0 0;
 }
 
 .publish-btn {

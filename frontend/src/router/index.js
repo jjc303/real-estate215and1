@@ -1,20 +1,22 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
 const Home = () => import('../views/Home/index.vue')
-const Message = () => import('../views/Message/index.vue')
-const MessageChat = () => import('../views/Message/chat.vue')
-const MessageNews = () => import('../views/Message/news.vue')
 const PublicNews = () => import('../views/PublicNews/index.vue')
 const Admin = () => import('../views/Admin/index.vue')
 const HouseDetail = () => import('../views/HouseDetail/index.vue')
 const HouseList = () => import('../views/HouseList/index.vue')
 const Reservation = () => import('../views/Reservation/index.vue')
+const Contracts = () => import('../views/Contracts/index.vue')
+const ContractDetail = () => import('../views/Contracts/detail.vue')
+const ContractCreate = () => import('../views/Contracts/create.vue')
 const MyHouses = () => import('../views/MyHouses/index.vue')
 const MyHousesPublish = () => import('@/views/MyHouses/publish.vue')
 const MyHousesList = () => import('../views/MyHouses/list.vue')
 const Profile = () => import('../views/Profile/index.vue')
 const Thanks = () => import('../views/Thanks/index.vue')
 const Help = () => import('../views/Help/index.vue')
+const Bills = () => import('../views/Bills/index.vue')
+const BillDetail = () => import('../views/Bills/detail.vue')
 
 const routes = [
   {
@@ -28,16 +30,6 @@ const routes = [
     name: 'publicNews',
     meta: { title: '新闻通知' },
     component: PublicNews
-  },
-  {
-    path: '/message',
-    name: 'message',
-    component: Message,
-    redirect: '/message/chat',
-    children: [
-      { path: 'chat', name: 'messageChat', component: MessageChat },
-      { path: 'news', name: 'messageNews', component: MessageNews }
-    ]
   },
   {
     path: '/admin',
@@ -71,9 +63,39 @@ const routes = [
     component: Reservation,
   },
   {
+    path: '/contracts',
+    name: 'contracts',
+    component: Contracts,
+  },
+  {
+    path: '/contracts/detail/:id',
+    name: 'contractDetail',
+    component: ContractDetail,
+  },
+  {
+    path: '/contracts/create',
+    name: 'contractCreate',
+    component: ContractCreate,
+  },
+  {
     path: '/profile',
     name: 'profile',
     component: Profile
+  },
+  {
+    path: '/manage/rent',
+    name: 'bills',
+    component: Bills,
+  },
+  {
+    path: '/lease/payment',
+    name: 'leasePayment',
+    component: Bills,
+  },
+  {
+    path: '/bills/detail/:id',
+    name: 'billDetail',
+    component: BillDetail,
   },
   {
     path: '/thanks',

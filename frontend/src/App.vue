@@ -6,10 +6,27 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import Header from '@/components/Header.vue';
+import { useUserStore } from '@/stores/user.js';
 
-const route=useRoute()
+const route = useRoute()
+const userStore = useUserStore()
+
+// 刷新页面时恢复登录状态
+onMounted(async () => {
+  const token = localStorage.getItem('token')
+  // 如果有 token 但状态显示未登录，则恢复登录状态
+  if (token && !userStore.isLoggedIn) {
+    try {
+      await userStore.fetchCurrentUser()
+    } catch (e) {
+      // token 可能过期了，清除无效 token
+      localStorage.removeItem('token')
+    }
+  }
+})
 
 </script>
 
