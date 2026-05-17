@@ -1,93 +1,188 @@
 <template>
   <div class="reservation-page">
-    <div class="page-header">
-      <h2>预约管理</h2>
-      <p class="subtitle">管理看房预约</p>
-    </div>
-    
-    <div class="filter-tabs">
-      <span 
-        v-for="tab in tabs" 
-        :key="tab.value"
-        class="filter-tab"
-        :class="{ active: currentTab === tab.value }"
-        @click="currentTab = tab.value"
-      >
-        {{ tab.label }}
-      </span>
-    </div>
-
-    <div class="reservation-list">
-      <div v-if="loading" class="loading">加载中...</div>
+    <!-- 租客端视图 -->
+    <template v-if="isTenant">
+      <div class="page-header">
+        <div class="header-left">
+          <h2>我的预约</h2>
+          <p class="subtitle">管理我的看房预约</p>
+        </div>
+      </div>
       
-      <div v-else-if="filteredReservations.length === 0" class="empty">
-        暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}预约
+      <div class="filter-tabs">
+        <span 
+          v-for="tab in tenantTabs" 
+          :key="tab.value"
+          class="filter-tab"
+          :class="{ active: currentTab === tab.value }"
+          @click="currentTab = tab.value"
+        >
+          {{ tab.label }}
+          <span v-if="getTabCount(tab.value) > 0" class="tab-badge">{{ getTabCount(tab.value) }}</span>
+        </span>
       </div>
 
-      <div 
-        v-for="reservation in filteredReservations" 
-        :key="reservation.id"
-        class="reservation-card"
-      >
-        <div class="reservation-info">
-          <div class="reservation-title">
-            <span class="house-title">{{ reservation.house_title }}</span>
-            <span class="reservation-status" :class="reservation.status">{{ getStatusText(reservation.status) }}</span>
-          </div>
-          
-          <div class="reservation-details">
-            <div class="detail-item">
-              <i class="fa-solid fa-user"></i>
-              <span>{{ reservation.tenant_name }}</span>
-            </div>
-            <div class="detail-item">
-              <i class="fa-solid fa-phone"></i>
-              <span>{{ reservation.phone }}</span>
-            </div>
-            <div class="detail-item">
-              <i class="fa-solid fa-calendar"></i>
-              <span>{{ reservation.reservation_date }}</span>
-            </div>
-            <div class="detail-item">
-              <i class="fa-solid fa-clock"></i>
-              <span>{{ reservation.reservation_time }}</span>
-            </div>
-          </div>
-          
-          <div class="reservation-remark" v-if="reservation.remark">
-            <i class="fa-solid fa-message-circle"></i>
-            <span>{{ reservation.remark }}</span>
-          </div>
-        </div>
+      <div class="reservation-list">
+        <div v-if="loading" class="loading">加载中...</div>
         
-        <div class="reservation-actions">
-          <el-button 
-            v-if="reservation.status === 'pending'"
-            type="success"
-            size="small"
-            @click="confirmReservation(reservation)"
-          >
-            <i class="fa-solid fa-check"></i> 确认预约
-          </el-button>
-          <el-button 
-            v-if="reservation.status === 'pending'"
-            type="danger"
-            size="small"
-            @click="rejectReservation(reservation)"
-          >
-            <i class="fa-solid fa-times"></i> 拒绝预约
-          </el-button>
-          <el-button 
-            v-if="reservation.status !== 'pending'"
-            type="primary"
-            size="small"
-            @click="viewDetail(reservation)"
-          >
-            <i class="fa-solid fa-eye"></i> 查看详情
-          </el-button>
+        <div v-else-if="filteredReservations.length === 0" class="empty">
+          暂无{{ currentTab === 'all' ? '' : tenantTabs.find(t => t.value === currentTab)?.label }}预约
+        </div>
+
+        <div 
+          v-for="reservation in filteredReservations" 
+          :key="reservation.id"
+          class="reservation-card"
+        >
+          <div class="reservation-info">
+            <div class="reservation-title">
+              <span class="house-title">{{ reservation.house_title }}</span>
+              <span class="reservation-status" :class="reservation.status">{{ getStatusText(reservation.status) }}</span>
+            </div>
+            
+            <div class="reservation-details">
+              <div class="detail-item">
+                <i class="fa-solid fa-home"></i>
+                <span>{{ reservation.house_address }}</span>
+              </div>
+              <div class="detail-item">
+                <i class="fa-solid fa-user"></i>
+                <span>房东：{{ reservation.landlord_name }}</span>
+              </div>
+              <div class="detail-item">
+                <i class="fa-solid fa-phone"></i>
+                <span>{{ reservation.landlord_phone }}</span>
+              </div>
+              <div class="detail-item">
+                <i class="fa-solid fa-calendar"></i>
+                <span>{{ reservation.reservation_date }}</span>
+              </div>
+              <div class="detail-item">
+                <i class="fa-solid fa-clock"></i>
+                <span>{{ reservation.reservation_time }}</span>
+              </div>
+            </div>
+            
+            <div class="reservation-remark" v-if="reservation.remark">
+              <i class="fa-solid fa-message-circle"></i>
+              <span>{{ reservation.remark }}</span>
+            </div>
+          </div>
+          
+          <div class="reservation-actions">
+            <el-button 
+              v-if="reservation.status === 'pending'"
+              type="danger"
+              size="small"
+              @click="cancelReservation(reservation)"
+            >
+              <i class="fa-solid fa-xmark"></i> 取消预约
+            </el-button>
+            <el-button 
+              type="primary"
+              size="small"
+              @click="viewDetail(reservation)"
+            >
+              <i class="fa-solid fa-eye"></i> 查看详情
+            </el-button>
+          </div>
         </div>
       </div>
-    </div>
+    </template>
+
+    <!-- 房东端视图 -->
+    <template v-else>
+      <div class="page-header">
+        <div class="header-left">
+          <h2>预约管理</h2>
+          <p class="subtitle">管理看房预约</p>
+        </div>
+      </div>
+      
+      <div class="filter-tabs">
+        <span 
+          v-for="tab in landlordTabs" 
+          :key="tab.value"
+          class="filter-tab"
+          :class="{ active: currentTab === tab.value }"
+          @click="currentTab = tab.value"
+        >
+          {{ tab.label }}
+          <span v-if="getTabCount(tab.value) > 0" class="tab-badge">{{ getTabCount(tab.value) }}</span>
+        </span>
+      </div>
+
+      <div class="reservation-list">
+        <div v-if="loading" class="loading">加载中...</div>
+        
+        <div v-else-if="filteredReservations.length === 0" class="empty">
+          暂无{{ currentTab === 'all' ? '' : landlordTabs.find(t => t.value === currentTab)?.label }}预约
+        </div>
+
+        <div 
+          v-for="reservation in filteredReservations" 
+          :key="reservation.id"
+          class="reservation-card"
+        >
+          <div class="reservation-info">
+            <div class="reservation-title">
+              <span class="house-title">{{ reservation.house_title }}</span>
+              <span class="reservation-status" :class="reservation.status">{{ getStatusText(reservation.status) }}</span>
+            </div>
+            
+            <div class="reservation-details">
+              <div class="detail-item">
+                <i class="fa-solid fa-user"></i>
+                <span>{{ reservation.tenant_name }}</span>
+              </div>
+              <div class="detail-item">
+                <i class="fa-solid fa-phone"></i>
+                <span>{{ reservation.phone }}</span>
+              </div>
+              <div class="detail-item">
+                <i class="fa-solid fa-calendar"></i>
+                <span>{{ reservation.reservation_date }}</span>
+              </div>
+              <div class="detail-item">
+                <i class="fa-solid fa-clock"></i>
+                <span>{{ reservation.reservation_time }}</span>
+              </div>
+            </div>
+            
+            <div class="reservation-remark" v-if="reservation.remark">
+              <i class="fa-solid fa-message-circle"></i>
+              <span>{{ reservation.remark }}</span>
+            </div>
+          </div>
+          
+          <div class="reservation-actions">
+            <el-button 
+              v-if="reservation.status === 'pending'"
+              type="success"
+              size="small"
+              @click="confirmReservation(reservation)"
+            >
+              <i class="fa-solid fa-check"></i> 确认预约
+            </el-button>
+            <el-button 
+              v-if="reservation.status === 'pending'"
+              type="danger"
+              size="small"
+              @click="rejectReservation(reservation)"
+            >
+              <i class="fa-solid fa-times"></i> 拒绝预约
+            </el-button>
+            <el-button 
+              type="primary"
+              size="small"
+              @click="viewDetail(reservation)"
+            >
+              <i class="fa-solid fa-eye"></i> 查看详情
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </template>
 
     <Pagination 
       v-if="total > 0 && !loading"
@@ -104,6 +199,10 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import service from '@/utils/request'
+import { useUserStore } from '@/stores/user'
+import { mockTenantReservations, mockLandlordReservations } from '@/mock/reservation'
+
+const userStore = useUserStore()
 
 // 是否开启模拟数据
 const USE_MOCK_DATA = true
@@ -115,97 +214,29 @@ const pageSize = ref(10)
 const total = ref(0)
 const reservations = ref([])
 
-// 模拟数据
-const mockReservations = [
-  {
-    id: 1,
-    house_title: '中南大学14舍',
-    tenant_name: '张三',
-    phone: '138****1234',
-    reservation_date: '2024-01-15',
-    reservation_time: '14:00-16:00',
-    remark: '想下午看房，希望能详细介绍一下周边环境',
-    status: 'pending'
-  },
-  {
-    id: 2,
-    house_title: '麓山南路88号',
-    tenant_name: '李四',
-    phone: '139****5678',
-    reservation_date: '2024-01-16',
-    reservation_time: '10:00-12:00',
-    remark: '',
-    status: 'pending'
-  },
-  {
-    id: 3,
-    house_title: '天马小区3栋',
-    tenant_name: '王五',
-    phone: '137****9012',
-    reservation_date: '2024-01-14',
-    reservation_time: '09:00-11:00',
-    remark: '已确认看房时间',
-    status: 'confirmed'
-  },
-  {
-    id: 4,
-    house_title: '阳光公寓A座',
-    tenant_name: '赵六',
-    phone: '136****3456',
-    reservation_date: '2024-01-13',
-    reservation_time: '15:00-17:00',
-    remark: '租客临时有事取消',
-    status: 'rejected'
-  },
-  {
-    id: 5,
-    house_title: '望月湖小区',
-    tenant_name: '钱七',
-    phone: '135****7890',
-    reservation_date: '2024-01-10',
-    reservation_time: '14:00-16:00',
-    remark: '',
-    status: 'completed'
-  },
-  {
-    id: 6,
-    house_title: '溁湾镇地铁口',
-    tenant_name: '孙八',
-    phone: '134****2345',
-    reservation_date: '2024-01-17',
-    reservation_time: '11:00-13:00',
-    remark: '周末有空，希望能尽快安排',
-    status: 'pending'
-  },
-  {
-    id: 7,
-    house_title: '左家垅小区',
-    tenant_name: '周九',
-    phone: '133****6789',
-    reservation_date: '2024-01-12',
-    reservation_time: '16:00-18:00',
-    remark: '',
-    status: 'completed'
-  },
-  {
-    id: 8,
-    house_title: '王家湾步步高',
-    tenant_name: '吴十',
-    phone: '132****0123',
-    reservation_date: '2024-01-18',
-    reservation_time: '10:00-12:00',
-    remark: '想看看房子的采光情况',
-    status: 'pending'
-  }
+// 判断当前用户是否是租客
+const isTenant = computed(() => userStore.userRole === 'tenant')
+
+// 租客端标签
+const tenantTabs = [
+  { label: '全部', value: 'all' },
+  { label: '待确认', value: 'pending' },
+  { label: '已确认', value: 'confirmed' },
+  { label: '已取消', value: 'cancelled' },
+  { label: '已完成', value: 'completed' }
 ]
 
-const tabs = [
+// 房东端标签
+const landlordTabs = [
   { label: '全部', value: 'all' },
   { label: '待确认', value: 'pending' },
   { label: '已确认', value: 'confirmed' },
   { label: '已拒绝', value: 'rejected' },
   { label: '已完成', value: 'completed' }
 ]
+
+// 当前使用的标签列表
+const currentTabs = computed(() => isTenant.value ? tenantTabs : landlordTabs)
 
 const filteredReservations = computed(() => {
   if (currentTab.value === 'all') {
@@ -224,6 +255,7 @@ const getStatusText = (status) => {
     pending: '待确认',
     confirmed: '已确认',
     rejected: '已拒绝',
+    cancelled: '已取消',
     completed: '已完成'
   }
   return map[status] || status
@@ -234,18 +266,19 @@ const fetchReservations = async () => {
   
   try {
     if (USE_MOCK_DATA) {
-      // 使用模拟数据
+      // 根据角色使用不同的模拟数据
+      const currentMockData = isTenant.value ? mockTenantReservations : mockLandlordReservations
       const start = (pageNum.value - 1) * pageSize.value
       const end = start + pageSize.value
-      reservations.value = mockReservations.slice(start, end)
-      total.value = mockReservations.length
+      reservations.value = currentMockData.slice(start, end)
+      total.value = currentMockData.length
     } else {
       const params = {
         page: pageNum.value,
         page_size: pageSize.value
       }
       
-      const res = await service.get('/v1/reservations', { params })
+      const res = await service.get('/v1/appointments', { params })
       
       if (res.code === 0) {
         reservations.value = res.data.list
@@ -263,10 +296,10 @@ const fetchReservations = async () => {
 const confirmReservation = async (reservation) => {
   try {
     if (USE_MOCK_DATA) {
-      // 模拟确认预约
-      const idx = mockReservations.findIndex(r => r.id === reservation.id)
+      // 模拟确认预约 - 使用房东端数据
+      const idx = mockLandlordReservations.findIndex(r => r.id === reservation.id)
       if (idx !== -1) {
-        mockReservations[idx].status = 'confirmed'
+        mockLandlordReservations[idx].status = 'confirmed'
       }
       ElMessage({
         type: 'success',
@@ -305,10 +338,10 @@ const rejectReservation = async (reservation) => {
     )
     
     if (USE_MOCK_DATA) {
-      // 模拟拒绝预约
-      const idx = mockReservations.findIndex(r => r.id === reservation.id)
+      // 模拟拒绝预约 - 使用房东端数据
+      const idx = mockLandlordReservations.findIndex(r => r.id === reservation.id)
       if (idx !== -1) {
-        mockReservations[idx].status = 'rejected'
+        mockLandlordReservations[idx].status = 'rejected'
       }
       ElMessage({
         type: 'info',
@@ -322,6 +355,50 @@ const rejectReservation = async (reservation) => {
         ElMessage({
           type: 'info',
           message: `已拒绝 ${reservation.tenant_name} 的预约申请`,
+          duration: 2500
+        })
+        fetchReservations()
+      }
+    }
+  } catch (e) {
+    if (e !== 'cancel') {
+      ElMessage.error('操作失败，请稍后重试')
+      console.error(e)
+    }
+  }
+}
+
+const cancelReservation = async (reservation) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要取消预约吗？\n房源：${reservation.house_title}\n时间：${reservation.reservation_date} ${reservation.reservation_time}`,
+      '确认取消',
+      {
+        confirmButtonText: '取消预约',
+        cancelButtonText: '再想想',
+        type: 'warning',
+        confirmButtonClass: 'el-button--danger'
+      }
+    )
+    
+    if (USE_MOCK_DATA) {
+      // 模拟取消预约 - 使用租客端数据
+      const idx = mockTenantReservations.findIndex(r => r.id === reservation.id)
+      if (idx !== -1) {
+        mockTenantReservations[idx].status = 'cancelled'
+      }
+      ElMessage({
+        type: 'info',
+        message: '预约已取消',
+        duration: 2500
+      })
+      fetchReservations()
+    } else {
+      const res = await service.patch(`/v1/reservations/${reservation.id}/cancel`)
+      if (res.code === 0) {
+        ElMessage({
+          type: 'info',
+          message: '预约已取消',
           duration: 2500
         })
         fetchReservations()
@@ -352,66 +429,92 @@ onMounted(() => {
 
 <style scoped>
 .reservation-page {
-  padding: 20px;
-  max-width: 1000px;
-  margin: 0 auto;
-  background: #fff;
   min-height: 100vh;
+  background: #f5f5f5;
+  padding: 20px 200px;
 }
 
 .page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.page-header h2 {
-  font-size: 24px;
-  font-weight: 600;
-  color: #262626;
+.header-left h2 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
 }
 
-.page-header .subtitle {
+.header-left .subtitle {
+  margin: 5px 0 0;
+  color: #999;
   font-size: 14px;
-  color: #8c8c8c;
-  margin: 8px 0 0;
 }
 
 .filter-tabs {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 15px 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .filter-tab {
+  padding: 10px 20px;
   font-size: 14px;
-  color: #595959;
+  color: #666;
   cursor: pointer;
-  padding: 6px 12px 12px;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .filter-tab:hover {
+  background: #f0f5ff;
   color: #1890ff;
-  border-bottom-color: #1890ff;
 }
 
 .filter-tab.active {
-  color: #1890ff;
-  border-bottom-color: #1890ff;
+  background: #1890ff;
+  color: #fff;
+}
+
+.filter-tab.active .tab-badge {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .tab-badge {
-  background: #ff4d4f;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
   color: #fff;
-  font-size: 12px;
-  padding: 0 5px;
-  border-radius: 10px;
-  margin-left: 4px;
-  min-width: 18px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 12px;
+  margin-left: 6px;
+  min-width: 20px;
+  height: 20px;
+  line-height: 18px;
   text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(255, 77, 79, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.tab-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 3px 10px rgba(255, 77, 79, 0.45);
 }
 
 .reservation-list {
@@ -421,20 +524,28 @@ onMounted(() => {
 
 .loading, .empty {
   text-align: center;
-  padding: 60px;
+  padding: 40px;
   color: #8c8c8c;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
 .reservation-card {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px;
   background: #fff;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   border-radius: 8px;
-  border: 1px solid #f0f0f0;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
+}
+
+.reservation-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .reservation-info {
@@ -479,6 +590,11 @@ onMounted(() => {
 .reservation-status.completed {
   background: #f5f5f5;
   color: #8c8c8c;
+}
+
+.reservation-status.cancelled {
+  background: #e6f7ff;
+  color: #1890ff;
 }
 
 .reservation-details {

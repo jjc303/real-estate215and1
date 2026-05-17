@@ -17,6 +17,9 @@ const Thanks = () => import('../views/Thanks/index.vue')
 const Help = () => import('../views/Help/index.vue')
 const Bills = () => import('../views/Bills/index.vue')
 const BillDetail = () => import('../views/Bills/detail.vue')
+const Repair = () => import('../views/Repair/index.vue')
+const Complaint = () => import('../views/Complaint/index.vue')
+const ServiceRepair = () => import('../views/ServiceRepair/index.vue')
 
 const routes = [
   {
@@ -37,8 +40,9 @@ const routes = [
     component: Admin
   },
   {
-    path: '/houseDetail',
+    path: '/houseDetail/:id',
     name: 'houseDetail',
+    meta: { title: '房源详情' },
     component: HouseDetail
   },
   {
@@ -60,11 +64,19 @@ const routes = [
   {
     path: '/reservation',
     name: 'reservation',
+    meta: { title: '预约管理' },
+    component: Reservation,
+  },
+  {
+    path: '/lease/appointment',
+    name: 'leaseAppointment',
+    meta: { title: '预约看房' },
     component: Reservation,
   },
   {
     path: '/contracts',
     name: 'contracts',
+    meta: { title: '合同管理' },
     component: Contracts,
   },
   {
@@ -76,6 +88,12 @@ const routes = [
     path: '/contracts/create',
     name: 'contractCreate',
     component: ContractCreate,
+  },
+  {
+    path: '/lease/contract',
+    name: 'leaseContract',
+    meta: { title: '在线签约' },
+    component: Contracts,
   },
   {
     path: '/profile',
@@ -96,6 +114,24 @@ const routes = [
     path: '/bills/detail/:id',
     name: 'billDetail',
     component: BillDetail,
+  },
+  {
+    path: '/manage/repair',
+    name: 'repair',
+    meta: { title: '维修处理' },
+    component: Repair,
+  },
+  {
+    path: '/service/complaint',
+    name: 'serviceComplaint',
+    meta: { title: '投诉管理' },
+    component: Complaint,
+  },
+  {
+    path: '/service/repair',
+    name: 'serviceRepair',
+    meta: { title: '维修申请' },
+    component: ServiceRepair,
   },
   {
     path: '/thanks',

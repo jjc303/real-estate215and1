@@ -27,6 +27,10 @@
                   <i class="fa-solid fa-home"></i>
                   <span>房东</span>
                 </div>
+                <div v-else-if="userStore.userRole === 'tenant'" class="tenant-badge">
+                  <i class="fa-solid fa-user"></i>
+                  <span>租客</span>
+                </div>
               </div>
               <p class="user-role">{{ roleLabels[userStore.userRole] }}</p>
             </div>
@@ -34,18 +38,18 @@
 
           <div class="stats-row">
             <div class="stat-item">
-              <span class="stat-value">{{ stats.houses }}</span>
-              <span class="stat-label">已发布房源</span>
+              <span class="stat-value">{{ userStore.userRole === 'landlord' ? stats.houses : collections.length }}</span>
+              <span class="stat-label">{{ userStore.userRole === 'landlord' ? '已发布房源' : '收藏房源' }}</span>
             </div>
             <div class="stat-divider"></div>
             <div class="stat-item">
               <span class="stat-value">{{ stats.inquiries }}</span>
-              <span class="stat-label">本月咨询</span>
+              <span class="stat-label">{{ userStore.userRole === 'landlord' ? '本月咨询' : '本月看房' }}</span>
             </div>
             <div class="stat-divider"></div>
             <div class="stat-item">
               <span class="stat-value">{{ stats.contracts }}</span>
-              <span class="stat-label">已签合同</span>
+              <span class="stat-label">{{ userStore.userRole === 'landlord' ? '已签合同' : '已租房屋' }}</span>
             </div>
           </div>
         </div>
@@ -163,97 +167,41 @@
               <el-button type="primary" @click="changePassword">修改密码</el-button>
             </div>
           </div>
-
-          <div class="card-divider"></div>
-
-          <div class="form-section">
-            <h3 class="section-title">绑定设置</h3>
-            <div class="bind-list">
-              <div class="bind-item">
-                <div class="bind-info">
-                  <div class="bind-icon phone-icon">
-                    <i class="fa-solid fa-mobile-screen-button"></i>
-                  </div>
-                  <div class="bind-text">
-                    <span class="bind-label">手机号绑定</span>
-                    <span class="bind-status" :class="basicForm.phone ? 'bound' : 'unbound'">
-                      {{ basicForm.phone ? '已绑定' : '未绑定' }}
-                    </span>
-                  </div>
-                </div>
-                <el-button size="small" :type="basicForm.phone ? '' : 'primary'">
-                  {{ basicForm.phone ? '更换' : '绑定' }}
-                </el-button>
-              </div>
-
-              <div class="bind-item">
-                <div class="bind-info">
-                  <div class="bind-icon email-icon">
-                    <i class="fa-solid fa-envelope"></i>
-                  </div>
-                  <div class="bind-text">
-                    <span class="bind-label">邮箱绑定</span>
-                    <span class="bind-status" :class="basicForm.email ? 'bound' : 'unbound'">
-                      {{ basicForm.email ? '已绑定' : '未绑定' }}
-                    </span>
-                  </div>
-                </div>
-                <el-button size="small" :type="basicForm.email ? '' : 'primary'">
-                  {{ basicForm.email ? '更换' : '绑定' }}
-                </el-button>
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div class="content-card" v-if="activeMenu === 'preferences'">
+        <!-- 我的收藏 -->
+        <div class="content-card" v-if="activeMenu === 'collections'">
           <div class="card-header">
-            <div class="card-icon preferences-icon">
-              <i class="fa-solid fa-gear"></i>
+            <div class="card-icon collections-icon">
+              <i class="fa-solid fa-heart"></i>
             </div>
             <div class="card-title-wrap">
-              <h2 class="card-title">偏好设置</h2>
-              <p class="card-desc">自定义您的通知偏好</p>
+              <h2 class="card-title">我的收藏</h2>
+              <p class="card-desc">收藏的房源信息</p>
             </div>
           </div>
 
           <div class="form-section">
-            <div class="switch-list">
-              <div class="switch-item">
-                <div class="switch-info">
-                  <i class="fa-solid fa-bell"></i>
-                  <div class="switch-text">
-                    <span class="switch-label">消息通知</span>
-                    <span class="switch-desc">接收站内消息提醒</span>
-                  </div>
+            <div v-if="collections.length === 0" class="empty-state">
+              <i class="fa-solid fa-heart-broken"></i>
+              <p>暂无收藏的房源</p>
+            </div>
+            <div v-else class="collection-list">
+              <div v-for="item in collections" :key="item.id" class="collection-item">
+                <div class="collection-info">
+                  <h4 class="collection-title">{{ item.title }}</h4>
+                  <p class="collection-price">¥{{ item.price }}/月</p>
+                  <p class="collection-meta">{{ item.district }} · {{ item.houseType }} · {{ item.area }}㎡</p>
+                  <p class="collection-address">{{ item.address }}</p>
                 </div>
-                <el-switch v-model="preferences.notification" active-text="开启" inactive-text="关闭" />
-              </div>
-              <div class="switch-item">
-                <div class="switch-info">
-                  <i class="fa-solid fa-envelope"></i>
-                  <div class="switch-text">
-                    <span class="switch-label">邮件提醒</span>
-                    <span class="switch-desc">接收邮件通知</span>
-                  </div>
+                <div class="collection-actions">
+                  <button class="uncollect-btn" @click="removeCollection(item.id)">
+                    <i class="fa-solid fa-trash"></i>
+                    <span>取消收藏</span>
+                  </button>
                 </div>
-                <el-switch v-model="preferences.emailAlert" active-text="开启" inactive-text="关闭" />
-              </div>
-              <div class="switch-item">
-                <div class="switch-info">
-                  <i class="fa-solid fa-sms"></i>
-                  <div class="switch-text">
-                    <span class="switch-label">短信提醒</span>
-                    <span class="switch-desc">接收重要短信通知</span>
-                  </div>
-                </div>
-                <el-switch v-model="preferences.smsAlert" active-text="开启" inactive-text="关闭" />
               </div>
             </div>
-          </div>
-
-          <div class="form-actions">
-            <el-button type="primary" @click="savePreferences">保存设置</el-button>
           </div>
         </div>
         </div>
@@ -266,6 +214,12 @@
 import { ref, reactive, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user.js'
 import { ElMessage } from 'element-plus'
+import { computed } from 'vue';
+import { getFavoriteList, removeFavorite } from '@/api/favorite.js'
+import { mockFavorites } from '@/mock/favorites'
+
+// 是否使用模拟数据
+const USE_MOCK_DATA = true
 
 const userStore = useUserStore()
 const avatarInput = ref(null)
@@ -278,11 +232,14 @@ const roleLabels = {
   admin: '管理员'
 }
 
-const menuItems = [
-  { key: 'basic', label: '基本信息', icon: 'fa-solid fa-user' },
-  { key: 'security', label: '账号安全', icon: 'fa-solid fa-shield-halved' },
-  { key: 'preferences', label: '偏好设置', icon: 'fa-solid fa-gear' }
-]
+const menuItems = computed(() => {
+  const items = [
+    { key: 'basic', label: '基本信息', icon: 'fa-solid fa-user' },
+    { key: 'security', label: '账号安全', icon: 'fa-solid fa-shield-halved' },
+    { key: 'collections', label: '我的收藏', icon: 'fa-solid fa-heart' }
+  ]
+  return items
+})
 
 const avatarUrl = ref('https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png')
 
@@ -307,11 +264,71 @@ const passwordForm = reactive({
   confirmPassword: ''
 })
 
-const preferences = reactive({
-  notification: true,
-  emailAlert: true,
-  smsAlert: false
-})
+// 收藏列表（房源收藏）
+const collections = ref([])
+
+const loadCollections = async () => {
+  try {
+    if (USE_MOCK_DATA) {
+      // 使用模拟数据
+      collections.value = mockFavorites.map(item => ({
+        id: item.house_id,
+        title: item.house?.title || '',
+        price: item.house?.rent || '',
+        district: item.house?.region || '',
+        area: item.house?.area || '',
+        address: item.house?.address || '',
+        houseType: item.house?.house_type || '',
+        createdAt: item.favorite_created_at || ''
+      }))
+    } else {
+      // 使用真实API
+      const res = await getFavoriteList()
+      if (res.code === 0 && res.data) {
+        // 确保 res.data 是数组
+        const dataArray = Array.isArray(res.data) ? res.data : (res.data.list || [])
+        // 后端返回的结构是 { house_id, house: {...} }
+        collections.value = dataArray.map(item => ({
+          id: item.house_id,
+          title: item.house?.title || '',
+          price: item.house?.rent || '',
+          district: item.house?.region || '',
+          area: item.house?.area || '',
+          address: item.house?.address || '',
+          houseType: item.house?.house_type || '',
+          createdAt: item.favorite_created_at || ''
+        }))
+      } else {
+        collections.value = []
+      }
+    }
+  } catch (error) {
+    console.error('加载收藏列表失败', error)
+    collections.value = []
+  }
+}
+
+const removeCollection = async (houseId) => {
+  try {
+    if (USE_MOCK_DATA) {
+      // 使用模拟数据，直接删除
+      collections.value = collections.value.filter(item => item.id !== houseId)
+      ElMessage.success('已取消收藏')
+    } else {
+      // 使用真实API
+      const res = await removeFavorite(houseId)
+      if (res.code === 0) {
+        collections.value = collections.value.filter(item => item.id !== houseId)
+        ElMessage.success('已取消收藏')
+      } else {
+        ElMessage.error(res.message || '取消收藏失败')
+      }
+    }
+  } catch (error) {
+    console.error('取消收藏失败', error)
+    ElMessage.error('取消收藏失败')
+  }
+}
 
 const loadUserInfo = async () => {
   loading.value = true
@@ -445,12 +462,9 @@ const changePassword = () => {
   passwordForm.confirmPassword = ''
 }
 
-const savePreferences = () => {
-  ElMessage.success('偏好设置保存成功')
-}
-
 onMounted(() => {
   loadUserInfo()
+  loadCollections()
 })
 </script>
 
@@ -604,6 +618,18 @@ onMounted(() => {
   color: #92400e;
 }
 
+.tenant-badge {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
 .user-role {
   font-size: 14px;
   color: #64748b;
@@ -645,6 +671,7 @@ onMounted(() => {
   border-radius: 20px;
   padding: 8px 0;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+  margin-bottom:50px;
 }
 
 .menu-item {
@@ -937,5 +964,106 @@ onMounted(() => {
 
 .bind-status.unbound {
   color: #f59e0b;
+}
+
+/* 收藏相关样式 */
+.collections-icon {
+  background: linear-gradient(135deg, #f472b6 0%, #ec4899 100%);
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 60px 20px;
+  color: #94a3b8;
+}
+
+.empty-state i {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.empty-state p {
+  font-size: 15px;
+}
+
+.collection-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.collection-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #f8fafc;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+}
+
+.collection-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.collection-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: #1e293b;
+  margin: 0;
+}
+
+.collection-price {
+  font-size: 14px;
+  color: #f56c6c;
+  font-weight: 500;
+  margin: 0;
+}
+
+.collection-meta {
+  font-size: 13px;
+  color: #94a3b8;
+  margin: 0;
+}
+
+.collection-address {
+  font-size: 13px;
+  color: #64748b;
+  margin: 0;
+}
+
+.collection-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.uncollect-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #64748b;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.uncollect-btn:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+
+.uncollect-btn i {
+  font-size: 14px;
 }
 </style>

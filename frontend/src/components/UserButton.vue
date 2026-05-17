@@ -15,7 +15,7 @@
   
   <div class="username">
     <router-link to="/profile" class="profile-link">
-      <i class="fa-solid fa-circle-user"></i>
+      <i class="fa-solid fa-user-shield"></i>
       <span>{{ userStore.userName }}</span>
     </router-link>
   </div>
@@ -155,14 +155,21 @@ button {
   background: rgba(255, 255, 255, 0.15);
 }
 .username .profile-link i {
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
-  color: rgb(28, 173, 226);
+  background: linear-gradient(135deg, #e0f2fe 0%, #7dd3fc 100%);
+  color: #0369a1;
   border-radius: 50%;
-  font-size: 16px;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(125, 211, 252, 0.4);
+  transition: all 0.3s ease;
+}
+
+.username .profile-link:hover i {
+  transform: scale(1.1);
+  box-shadow: 0 6px 20px rgba(125, 211, 252, 0.6);
 }
 </style>

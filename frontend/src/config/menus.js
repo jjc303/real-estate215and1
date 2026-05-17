@@ -53,7 +53,8 @@ export const menus = {
       children: [
         { name: '预约确认', path: '/reservation' },
         { name: '合同管理', path: '/contracts' },
-        { name: '租金监控', path: '/manage/rent' }
+        { name: '租金监控', path: '/manage/rent' },
+        { name: '维修处理', path: '/manage/repair' }
       ]
     },
     { name: '新闻通知', path: '/news', icon: 'Message' },

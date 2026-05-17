@@ -263,7 +263,12 @@ const payBill = async () => {
       bill.value.paid_date = new Date().toISOString().split('T')[0]
       ElMessage.success(`账单 #${bill.value.id} 支付成功！`)
     } else {
-      const res = await service.patch(`/v1/bills/${bill.value.id}/pay`)
+      const res = await service.post('/v1/payments', {
+        bill_id: bill.value.id,
+        amount: bill.value.amount,
+        payment_method: 'mock',
+        remark: '在线支付'
+      })
       if (res.code === 0) {
         bill.value.status = 'paid'
         bill.value.paid_date = new Date().toISOString().split('T')[0]

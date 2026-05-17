@@ -1,95 +1,98 @@
 <template>
   <div class="bills-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2>租金监控</h2>
-        <p class="subtitle">管理您的租金账单</p>
-      </div>
-    </div>
-
-    <div class="filter-tabs">
-      <span 
-        v-for="tab in tabs" 
-        :key="tab.value"
-        class="filter-tab"
-        :class="{ active: currentTab === tab.value }"
-        @click="currentTab = tab.value"
-      >
-        {{ tab.label }}
-      </span>
-    </div>
-
-    <div class="bills-list">
-      <div v-if="loading" class="loading">加载中...</div>
-      
-      <div v-else-if="filteredBills.length === 0" class="empty">
-        暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}账单
-      </div>
-
-      <div 
-        v-for="bill in filteredBills" 
-        :key="bill.id"
-        class="bill-card"
-        @click="viewDetail(bill)"
-      >
-        <div class="bill-info">
-          <div class="bill-header">
-            <span class="bill-no">账单 #{{ bill.id }}</span>
-            <span class="bill-status" :class="bill.status">{{ getStatusText(bill.status) }}</span>
-          </div>
-          
-          <div class="bill-title">{{ bill.house?.title }}</div>
-          
-          <div class="bill-period">
-            <i class="fa-solid fa-calendar-days"></i>
-            <span>账期：{{ bill.period }}</span>
-          </div>
-          
-          <div class="bill-price">
-            <span class="price-label">应付金额：</span>
-            <span class="price-value">¥{{ bill.amount }}</span>
-          </div>
-          
-          <div class="bill-dates">
-            <div class="date-item">
-              <i class="fa-solid fa-clock"></i>
-              <span>到期时间：{{ bill.due_date }}</span>
-            </div>
-            <div v-if="bill.paid_date" class="date-item">
-              <i class="fa-solid fa-check-circle"></i>
-              <span>支付时间：{{ bill.paid_date }}</span>
-            </div>
-          </div>
+    <!-- 租客端视图 -->
+    <template v-if="isTenant">
+      <div class="page-header">
+        <div class="header-left">
+          <h2>我的账单</h2>
+          <p class="subtitle">管理我的租金账单</p>
         </div>
+      </div>
+
+      <div class="filter-tabs">
+        <span 
+          v-for="tab in tabs" 
+          :key="tab.value"
+          class="filter-tab"
+          :class="{ active: currentTab === tab.value }"
+          @click="currentTab = tab.value"
+        >
+          {{ tab.label }}
+          <span v-if="getTabCount(tab.value) > 0" class="tab-badge">{{ getTabCount(tab.value) }}</span>
+        </span>
+      </div>
+
+      <div class="bills-list">
+        <div v-if="loading" class="loading">加载中...</div>
         
-        <div class="bill-actions">
-          <el-button 
-            v-if="bill.status === 'unpaid'" 
-            type="primary" 
-            size="small"
-            @click.stop="payBill(bill)"
-          >
-            <i class="fa-solid fa-credit-card"></i> 立即支付
-          </el-button>
-          <el-button 
-            v-if="bill.status === 'paid'" 
-            type="success" 
-            size="small"
-            disabled
-          >
-            <i class="fa-solid fa-check"></i> 已支付
-          </el-button>
-          <el-button 
-            v-if="bill.status === 'overdue'" 
-            type="danger" 
-            size="small"
-            @click.stop="payBill(bill)"
-          >
-            <i class="fa-solid fa-exclamation-circle"></i> 逾期支付
-          </el-button>
+        <div v-else-if="filteredBills.length === 0" class="empty">
+          暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}账单
+        </div>
+
+        <div 
+          v-for="bill in filteredBills" 
+          :key="bill.id"
+          class="bill-card"
+          @click="viewDetail(bill)"
+        >
+          <div class="bill-info">
+            <div class="bill-header">
+              <span class="bill-no">账单 #{{ bill.id }}</span>
+              <span class="bill-status" :class="bill.status">{{ getStatusText(bill.status) }}</span>
+            </div>
+            
+            <div class="bill-title">{{ bill.house?.title }}</div>
+            
+            <div class="bill-period">
+              <i class="fa-solid fa-calendar-days"></i>
+              <span>账期：{{ bill.period }}</span>
+            </div>
+            
+            <div class="bill-price">
+              <span class="price-label">应付金额：</span>
+              <span class="price-value">¥{{ bill.amount }}</span>
+            </div>
+            
+            <div class="bill-dates">
+              <div class="date-item">
+                <i class="fa-solid fa-clock"></i>
+                <span>到期时间：{{ bill.due_date }}</span>
+              </div>
+              <div v-if="bill.paid_date" class="date-item">
+                <i class="fa-solid fa-check-circle"></i>
+                <span>支付时间：{{ bill.paid_date }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bill-actions">
+            <el-button 
+              v-if="bill.status === 'unpaid'" 
+              type="primary" 
+              size="small"
+              @click.stop="payBill(bill)"
+            >
+              <i class="fa-solid fa-credit-card"></i> 立即支付
+            </el-button>
+            <el-button 
+              v-if="bill.status === 'paid'" 
+              type="success" 
+              size="small"
+              disabled
+            >
+              <i class="fa-solid fa-check"></i> 已支付
+            </el-button>
+            <el-button 
+              v-if="bill.status === 'overdue'" 
+              type="danger" 
+              size="small"
+              @click.stop="payBill(bill)"
+            >
+              <i class="fa-solid fa-exclamation-circle"></i> 逾期支付
+            </el-button>
+          </div>
         </div>
       </div>
-    </div>
 
     <Pagination 
       v-if="total > 0 && !loading"
@@ -98,6 +101,94 @@
       :total="total"
       @change="handlePageChange"
     />
+    </template>
+
+    <!-- 房东端视图 -->
+    <template v-else>
+      <div class="page-header">
+        <div class="header-left">
+          <h2>账单管理</h2>
+          <p class="subtitle">管理您的租金账单</p>
+        </div>
+      </div>
+
+      <div class="filter-tabs">
+        <span 
+          v-for="tab in tabs" 
+          :key="tab.value"
+          class="filter-tab"
+          :class="{ active: currentTab === tab.value }"
+          @click="currentTab = tab.value"
+        >
+          {{ tab.label }}
+          <span v-if="getTabCount(tab.value) > 0" class="tab-badge">{{ getTabCount(tab.value) }}</span>
+        </span>
+      </div>
+
+      <div class="bills-list">
+        <div v-if="loading" class="loading">加载中...</div>
+        
+        <div v-else-if="filteredBills.length === 0" class="empty">
+          暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}账单
+        </div>
+
+        <div 
+          v-for="bill in filteredBills" 
+          :key="bill.id"
+          class="bill-card"
+          @click="viewDetail(bill)"
+        >
+          <div class="bill-info">
+            <div class="bill-header">
+              <span class="bill-no">账单 #{{ bill.id }}</span>
+              <span class="bill-status" :class="bill.status">{{ getStatusText(bill.status) }}</span>
+            </div>
+            
+            <div class="bill-title">{{ bill.house?.title }}</div>
+            
+            <div class="bill-tenant">
+              <i class="fa-solid fa-user"></i>
+              <span>租客：{{ bill.tenant_name }}</span>
+            </div>
+            
+            <div class="bill-period">
+              <i class="fa-solid fa-calendar-days"></i>
+              <span>账期：{{ bill.period }}</span>
+            </div>
+            
+            <div class="bill-price">
+              <span class="price-label">应收金额：</span>
+              <span class="price-value">¥{{ bill.amount }}</span>
+            </div>
+            
+            <div class="bill-dates">
+              <div class="date-item">
+                <i class="fa-solid fa-clock"></i>
+                <span>到期时间：{{ bill.due_date }}</span>
+              </div>
+              <div v-if="bill.paid_date" class="date-item">
+                <i class="fa-solid fa-check-circle"></i>
+                <span>支付时间：{{ bill.paid_date }}</span>
+              </div>
+            </div>
+          </div>
+          
+          <div class="bill-actions">
+            <el-button type="text" @click.stop="viewDetail(bill)">
+              <i class="fa-solid fa-eye"></i> 查看详情
+            </el-button>
+          </div>
+        </div>
+      </div>
+
+      <Pagination 
+        v-if="total > 0 && !loading"
+        :pageNum="pageNum"
+        :pageSize="pageSize"
+        :total="total"
+        @change="handlePageChange"
+      />
+    </template>
   </div>
 </template>
 
@@ -106,6 +197,10 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import service from '@/utils/request'
+import { useUserStore } from '@/stores/user'
+import { mockTenantBills, mockLandlordBills } from '@/mock/bills'
+
+const userStore = useUserStore()
 
 const USE_MOCK_DATA = true
 
@@ -116,134 +211,15 @@ const pageSize = ref(10)
 const total = ref(0)
 const bills = ref([])
 
+// 判断当前用户是否是租客
+const isTenant = computed(() => userStore.userRole === 'tenant')
+
+// 标签列表
 const tabs = [
   { label: '全部', value: 'all' },
   { label: '待支付', value: 'unpaid' },
   { label: '已支付', value: 'paid' },
   { label: '已逾期', value: 'overdue' }
-]
-
-const mockBills = [
-  {
-    id: 1,
-    contract_id: 1,
-    house_id: 1,
-    tenant_id: 2,
-    landlord_id: 3,
-    period: '2024年1月',
-    amount: '5000.00',
-    status: 'paid',
-    due_date: '2024-01-10',
-    paid_date: '2024-01-05',
-    created_at: '2024-01-01T00:00:00',
-    updated_at: '2024-01-05T10:00:00',
-    house: {
-      id: 1,
-      title: '麓山南精装两室',
-      region: '岳麓区',
-      address: '麓山南路100号'
-    }
-  },
-  {
-    id: 2,
-    contract_id: 1,
-    house_id: 1,
-    tenant_id: 2,
-    landlord_id: 3,
-    period: '2024年2月',
-    amount: '5000.00',
-    status: 'unpaid',
-    due_date: '2024-02-10',
-    paid_date: null,
-    created_at: '2024-02-01T00:00:00',
-    updated_at: '2024-02-01T00:00:00',
-    house: {
-      id: 1,
-      title: '麓山南精装两室',
-      region: '岳麓区',
-      address: '麓山南路100号'
-    }
-  },
-  {
-    id: 3,
-    contract_id: 2,
-    house_id: 2,
-    tenant_id: 4,
-    landlord_id: 5,
-    period: '2024年1月',
-    amount: '3500.00',
-    status: 'overdue',
-    due_date: '2024-01-15',
-    paid_date: null,
-    created_at: '2024-01-01T00:00:00',
-    updated_at: '2024-01-01T00:00:00',
-    house: {
-      id: 2,
-      title: '天马小区3栋',
-      region: '岳麓区',
-      address: '天马小区3栋'
-    }
-  },
-  {
-    id: 4,
-    contract_id: 3,
-    house_id: 3,
-    tenant_id: 6,
-    landlord_id: 7,
-    period: '2024年1月',
-    amount: '2800.00',
-    status: 'paid',
-    due_date: '2024-01-08',
-    paid_date: '2024-01-06',
-    created_at: '2024-01-01T00:00:00',
-    updated_at: '2024-01-06T15:00:00',
-    house: {
-      id: 3,
-      title: '左家垅小区',
-      region: '岳麓区',
-      address: '左家垅小区'
-    }
-  },
-  {
-    id: 5,
-    contract_id: 4,
-    house_id: 4,
-    tenant_id: 8,
-    landlord_id: 9,
-    period: '2024年2月',
-    amount: '4200.00',
-    status: 'unpaid',
-    due_date: '2024-02-12',
-    paid_date: null,
-    created_at: '2024-02-01T00:00:00',
-    updated_at: '2024-02-01T00:00:00',
-    house: {
-      id: 4,
-      title: '阳光公寓A座',
-      region: '雨花区',
-      address: '阳光公寓A座'
-    }
-  },
-  {
-    id: 6,
-    contract_id: 2,
-    house_id: 2,
-    tenant_id: 4,
-    landlord_id: 5,
-    period: '2024年2月',
-    amount: '3500.00',
-    status: 'unpaid',
-    due_date: '2024-02-15',
-    paid_date: null,
-    created_at: '2024-02-01T00:00:00',
-    updated_at: '2024-02-01T00:00:00',
-    house: {
-      id: 2,
-      title: '天马小区3栋',
-      region: '岳麓区',
-      address: '天马小区3栋'
-    }
-  }
 ]
 
 const filteredBills = computed(() => {
@@ -252,6 +228,11 @@ const filteredBills = computed(() => {
   }
   return bills.value.filter(bill => bill.status === currentTab.value)
 })
+
+const getTabCount = (status) => {
+  if (status === 'all') return bills.value.length
+  return bills.value.filter(b => b.status === status).length
+}
 
 const getStatusText = (status) => {
   const map = {
@@ -266,10 +247,12 @@ const fetchBills = async () => {
   loading.value = true
   try {
     if (USE_MOCK_DATA) {
+      // 根据角色使用不同的模拟数据
+      const currentMockData = isTenant.value ? mockTenantBills : mockLandlordBills
       const start = (pageNum.value - 1) * pageSize.value
       const end = start + pageSize.value
-      bills.value = mockBills.slice(start, end)
-      total.value = mockBills.length
+      bills.value = currentMockData.slice(start, end)
+      total.value = currentMockData.length
     } else {
       const params = {
         page: pageNum.value,
@@ -306,15 +289,22 @@ const payBill = async (bill) => {
     )
     
     if (USE_MOCK_DATA) {
-      const idx = mockBills.findIndex(b => b.id === bill.id)
+      // 根据角色使用不同的模拟数据
+      const currentMockData = isTenant.value ? mockTenantBills : mockLandlordBills
+      const idx = currentMockData.findIndex(b => b.id === bill.id)
       if (idx !== -1) {
-        mockBills[idx].status = 'paid'
-        mockBills[idx].paid_date = new Date().toISOString().split('T')[0]
+        currentMockData[idx].status = 'paid'
+        currentMockData[idx].paid_date = new Date().toISOString().split('T')[0]
       }
       ElMessage.success(`账单 #${bill.id} 支付成功！`)
       fetchBills()
     } else {
-      const res = await service.patch(`/v1/bills/${bill.id}/pay`)
+      const res = await service.post('/v1/payments', {
+        bill_id: bill.id,
+        amount: bill.amount,
+        payment_method: 'mock',
+        remark: '在线支付'
+      })
       if (res.code === 0) {
         ElMessage.success(`账单 #${bill.id} 支付成功！`)
         fetchBills()
@@ -340,11 +330,9 @@ onMounted(() => {
 
 <style scoped>
 .bills-page {
-  padding: 20px;
-  max-width: 1000px;
-  margin: 0 auto;
-  background: #fff;
   min-height: 100vh;
+  background: #f5f5f5;
+  padding: 20px 200px;
 }
 
 .page-header {
@@ -352,8 +340,10 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .header-left {
@@ -361,17 +351,17 @@ onMounted(() => {
   flex-direction: column;
 }
 
-.page-header h2 {
-  font-size: 24px;
-  font-weight: 600;
-  color: #262626;
+.header-left h2 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
 }
 
-.page-header .subtitle {
+.header-left .subtitle {
+  margin: 5px 0 0;
+  color: #999;
   font-size: 14px;
-  color: #8c8c8c;
-  margin: 8px 0 0;
 }
 
 .header-right .el-button {
@@ -380,27 +370,61 @@ onMounted(() => {
 
 .filter-tabs {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 15px 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .filter-tab {
+  padding: 10px 20px;
   font-size: 14px;
-  color: #595959;
+  color: #666;
   cursor: pointer;
-  padding: 6px 12px 12px;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .filter-tab:hover {
+  background: #f0f5ff;
   color: #1890ff;
-  border-bottom-color: #1890ff;
 }
 
 .filter-tab.active {
-  color: #1890ff;
-  border-bottom-color: #1890ff;
+  background: #1890ff;
+  color: #fff;
+}
+
+.filter-tab.active .tab-badge {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.tab-badge {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 12px;
+  margin-left: 6px;
+  min-width: 20px;
+  height: 20px;
+  line-height: 18px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(255, 77, 79, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.tab-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 3px 10px rgba(255, 77, 79, 0.45);
 }
 
 .bills-list {
@@ -412,23 +436,27 @@ onMounted(() => {
   text-align: center;
   padding: 40px;
   color: #8c8c8c;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
 .bill-card {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px;
   background: #fff;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
-  margin-bottom: 12px;
-  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  margin-bottom: 15px;
+  transition: all 0.2s ease;
   cursor: pointer;
 }
 
 .bill-card:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .bill-info {

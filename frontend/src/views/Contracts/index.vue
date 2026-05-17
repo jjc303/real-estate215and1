@@ -1,30 +1,122 @@
 <template>
   <div class="contracts-page">
-    <div class="page-header">
-      <div class="header-left">
-        <h2>合同管理</h2>
-        <p class="subtitle">管理您的租房合同</p>
+    <!-- 租客端视图 -->
+    <template v-if="isTenant">
+      <div class="page-header">
+        <div class="header-left">
+          <h2>我的合同</h2>
+          <p class="subtitle">管理我的租房合同</p>
+        </div>
       </div>
-      <div class="header-right">
-        <el-button type="primary" @click="createContract">
-          <i class="fa-solid fa-plus"></i> 新建合同
-        </el-button>
+
+      <div class="filter-tabs">
+        <span 
+          v-for="tab in tenantTabs" 
+          :key="tab.value"
+          class="filter-tab"
+          :class="{ active: currentTab === tab.value }"
+          @click="currentTab = tab.value"
+        >
+          {{ tab.label }}
+          <span v-if="getTabCount(tab.value) > 0" class="tab-badge">{{ getTabCount(tab.value) }}</span>
+        </span>
       </div>
-    </div>
 
-    <div class="filter-tabs">
-      <span 
-        v-for="tab in tabs" 
-        :key="tab.value"
-        class="filter-tab"
-        :class="{ active: currentTab === tab.value }"
-        @click="currentTab = tab.value"
-      >
-        {{ tab.label }}
-      </span>
-    </div>
+      <div class="contracts-list">
+        <div v-if="loading" class="loading">加载中...</div>
+        
+        <div v-else-if="filteredContracts.length === 0" class="empty">
+          暂无{{ currentTab === 'all' ? '' : tenantTabs.find(t => t.value === currentTab)?.label }}合同
+        </div>
 
-    <div class="contracts-list">
+        <div 
+          v-for="contract in filteredContracts" 
+          :key="contract.id"
+          class="contract-card"
+          @click="viewDetail(contract)"
+        >
+          <div class="contract-info">
+            <div class="contract-header">
+              <span class="contract-no">合同 #{{ contract.id }}</span>
+              <span class="contract-status" :class="contract.status">{{ getStatusText(contract.status) }}</span>
+            </div>
+            
+            <div class="contract-title">{{ contract.house?.title }}</div>
+            
+            <div class="contract-parties">
+              <div class="party-item">
+                <span class="party-label">房东：</span>
+                <span class="party-value">{{ contract.landlord_name }}</span>
+              </div>
+            </div>
+            
+            <div class="contract-dates">
+              <div class="date-item">
+                <i class="fa-solid fa-calendar-days"></i>
+                <span>租期：{{ contract.start_date }} 至 {{ contract.end_date }}</span>
+              </div>
+            </div>
+            
+            <div class="contract-price">
+              <span class="price-label">租金：</span>
+              <span class="price-value">¥{{ contract.monthly_rent }}/月</span>
+              <span class="deposit-info">押金：¥{{ contract.deposit }}</span>
+            </div>
+          </div>
+          
+          <div class="contract-actions">
+            <el-button type="text" @click.stop="viewDetail(contract)">
+              <i class="fa-solid fa-eye"></i> 查看详情
+            </el-button>
+            <el-button 
+              v-if="contract.status === 'pending'" 
+              type="success" 
+              size="small"
+              @click.stop="confirmContract(contract)"
+            >
+              <i class="fa-solid fa-check"></i> 确认合同
+            </el-button>
+            <el-button 
+              v-if="contract.status === 'pending'" 
+              type="danger" 
+              size="small"
+              @click.stop="rejectContract(contract)"
+            >
+              <i class="fa-solid fa-x"></i> 拒绝
+            </el-button>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- 房东端视图 -->
+    <template v-else>
+      <div class="page-header">
+        <div class="header-left">
+          <h2>合同管理</h2>
+          <p class="subtitle">管理您的租房合同</p>
+        </div>
+        <div class="header-right">
+          <el-button type="primary" @click="createContract">
+            <i class="fa-solid fa-plus"></i> 新建合同
+          </el-button>
+        </div>
+      </div>
+
+      <div class="filter-tabs">
+        <span 
+          v-for="tab in landlordTabs" 
+          :key="tab.value"
+          class="filter-tab"
+          :class="{ active: currentTab === tab.value }"
+          @click="currentTab = tab.value"
+        >
+          {{ tab.label }}
+          <span v-if="getTabCount(tab.value) > 0" class="tab-badge">{{ getTabCount(tab.value) }}</span>
+        </span>
+      </div>
+
+      <div class="contracts-list">
       <div v-if="loading" class="loading">加载中...</div>
       
       <div v-else-if="filteredContracts.length === 0" class="empty">
@@ -98,6 +190,7 @@
         </div>
       </div>
     </div>
+    </template>
 
     <Pagination 
       v-if="total > 0 && !loading"
@@ -114,6 +207,10 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import service from '@/utils/request'
+import { useUserStore } from '@/stores/user'
+import { mockTenantContracts, mockLandlordContracts } from '@/mock/contracts'
+
+const userStore = useUserStore()
 
 const USE_MOCK_DATA = true
 
@@ -124,7 +221,11 @@ const pageSize = ref(10)
 const total = ref(0)
 const contracts = ref([])
 
-const tabs = [
+// 判断当前用户是否是租客
+const isTenant = computed(() => userStore.userRole === 'tenant')
+
+// 租客端标签
+const tenantTabs = [
   { label: '全部', value: 'all' },
   { label: '待确认', value: 'pending' },
   { label: '已生效', value: 'active' },
@@ -132,164 +233,17 @@ const tabs = [
   { label: '已终止', value: 'terminated' }
 ]
 
-const mockContracts = [
-  {
-    id: 1,
-    house_id: 1,
-    tenant_id: 2,
-    landlord_id: 3,
-    appointment_id: 1,
-    start_date: '2024-01-20',
-    end_date: '2025-01-19',
-    monthly_rent: '5000.00',
-    deposit: '10000.00',
-    status: 'active',
-    remark: '一年整租',
-    created_at: '2024-01-15T10:00:00',
-    updated_at: '2024-01-15T10:30:00',
-    house: {
-      id: 1,
-      title: '中南大学14舍',
-      region: '岳麓区',
-      address: '中南大学14舍',
-      house_type: '三室一厅',
-      area: '100.00',
-      rent: '5000.00',
-      deposit: '10000.00',
-      status: 'listed'
-    }
-  },
-  {
-    id: 2,
-    house_id: 2,
-    tenant_id: 4,
-    landlord_id: 5,
-    appointment_id: 2,
-    start_date: '2024-01-25',
-    end_date: '2025-01-24',
-    monthly_rent: '3500.00',
-    deposit: '7000.00',
-    status: 'pending',
-    remark: '',
-    created_at: '2024-01-16T14:00:00',
-    updated_at: '2024-01-16T14:00:00',
-    house: {
-      id: 2,
-      title: '麓山南路88号',
-      region: '岳麓区',
-      address: '麓山南路88号',
-      house_type: '两室一厅',
-      area: '80.00',
-      rent: '3500.00',
-      deposit: '7000.00',
-      status: 'listed'
-    }
-  },
-  {
-    id: 3,
-    house_id: 3,
-    tenant_id: 6,
-    landlord_id: 7,
-    appointment_id: 3,
-    start_date: '2023-06-15',
-    end_date: '2024-06-14',
-    monthly_rent: '2800.00',
-    deposit: '5600.00',
-    status: 'terminated',
-    remark: '合同到期',
-    created_at: '2023-06-10T09:00:00',
-    updated_at: '2024-06-14T18:00:00',
-    house: {
-      id: 3,
-      title: '天马小区3栋',
-      region: '岳麓区',
-      address: '天马小区3栋',
-      house_type: '一室一厅',
-      area: '50.00',
-      rent: '2800.00',
-      deposit: '5600.00',
-      status: 'listed'
-    }
-  },
-  {
-    id: 4,
-    house_id: 4,
-    tenant_id: 8,
-    landlord_id: 9,
-    appointment_id: 4,
-    start_date: '2024-01-15',
-    end_date: '2025-01-14',
-    monthly_rent: '4200.00',
-    deposit: '8400.00',
-    status: 'active',
-    remark: '',
-    created_at: '2024-01-10T11:00:00',
-    updated_at: '2024-01-10T11:30:00',
-    house: {
-      id: 4,
-      title: '阳光公寓A座',
-      region: '雨花区',
-      address: '阳光公寓A座',
-      house_type: '两室两厅',
-      area: '90.00',
-      rent: '4200.00',
-      deposit: '8400.00',
-      status: 'listed'
-    }
-  },
-  {
-    id: 5,
-    house_id: 5,
-    tenant_id: 10,
-    landlord_id: 11,
-    appointment_id: 5,
-    start_date: '2023-03-05',
-    end_date: '2024-03-04',
-    monthly_rent: '3000.00',
-    deposit: '6000.00',
-    status: 'rejected',
-    remark: '租客拒绝签署',
-    created_at: '2023-03-01T10:00:00',
-    updated_at: '2023-03-02T10:00:00',
-    house: {
-      id: 5,
-      title: '望月湖小区',
-      region: '岳麓区',
-      address: '望月湖小区',
-      house_type: '两室一厅',
-      area: '70.00',
-      rent: '3000.00',
-      deposit: '6000.00',
-      status: 'listed'
-    }
-  },
-  {
-    id: 6,
-    house_id: 6,
-    tenant_id: 12,
-    landlord_id: 13,
-    appointment_id: 6,
-    start_date: '2024-01-22',
-    end_date: '2025-01-21',
-    monthly_rent: '4800.00',
-    deposit: '9600.00',
-    status: 'pending',
-    remark: '待租客确认',
-    created_at: '2024-01-18T15:00:00',
-    updated_at: '2024-01-18T15:00:00',
-    house: {
-      id: 6,
-      title: '溁湾镇地铁口',
-      region: '岳麓区',
-      address: '溁湾镇地铁口',
-      house_type: '三室两厅',
-      area: '120.00',
-      rent: '4800.00',
-      deposit: '9600.00',
-      status: 'listed'
-    }
-  }
+// 房东端标签
+const landlordTabs = [
+  { label: '全部', value: 'all' },
+  { label: '待确认', value: 'pending' },
+  { label: '已生效', value: 'active' },
+  { label: '已拒绝', value: 'rejected' },
+  { label: '已终止', value: 'terminated' }
 ]
+
+// 当前使用的标签列表
+const currentTabs = computed(() => isTenant.value ? tenantTabs : landlordTabs)
 
 const filteredContracts = computed(() => {
   if (currentTab.value === 'all') {
@@ -319,10 +273,12 @@ const fetchContracts = async () => {
   
   try {
     if (USE_MOCK_DATA) {
+      // 根据角色使用不同的模拟数据
+      const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
       const start = (pageNum.value - 1) * pageSize.value
       const end = start + pageSize.value
-      contracts.value = mockContracts.slice(start, end)
-      total.value = mockContracts.length
+      contracts.value = currentMockData.slice(start, end)
+      total.value = currentMockData.length
     } else {
       const params = {
         page: pageNum.value,
@@ -365,9 +321,10 @@ const confirmContract = async (contract) => {
     )
     
     if (USE_MOCK_DATA) {
-      const idx = mockContracts.findIndex(c => c.id === contract.id)
+      const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
+      const idx = currentMockData.findIndex(c => c.id === contract.id)
       if (idx !== -1) {
-        mockContracts[idx].status = 'active'
+        currentMockData[idx].status = 'active'
       }
       ElMessage.success(`合同 #${contract.id} 已确认生效！`)
       fetchContracts()
@@ -399,9 +356,10 @@ const rejectContract = async (contract) => {
     )
     
     if (USE_MOCK_DATA) {
-      const idx = mockContracts.findIndex(c => c.id === contract.id)
+      const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
+      const idx = currentMockData.findIndex(c => c.id === contract.id)
       if (idx !== -1) {
-        mockContracts[idx].status = 'rejected'
+        currentMockData[idx].status = 'rejected'
       }
       ElMessage.success(`合同 #${contract.id} 已拒绝！`)
       fetchContracts()
@@ -433,9 +391,10 @@ const cancelContract = async (contract) => {
     )
     
     if (USE_MOCK_DATA) {
-      const idx = mockContracts.findIndex(c => c.id === contract.id)
+      const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
+      const idx = currentMockData.findIndex(c => c.id === contract.id)
       if (idx !== -1) {
-        mockContracts[idx].status = 'cancelled'
+        currentMockData[idx].status = 'cancelled'
       }
       ElMessage.success(`合同 #${contract.id} 已取消！`)
       fetchContracts()
@@ -467,9 +426,10 @@ const terminateContract = async (contract) => {
     )
     
     if (USE_MOCK_DATA) {
-      const idx = mockContracts.findIndex(c => c.id === contract.id)
+      const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
+      const idx = currentMockData.findIndex(c => c.id === contract.id)
       if (idx !== -1) {
-        mockContracts[idx].status = 'terminated'
+        currentMockData[idx].status = 'terminated'
       }
       ElMessage.success(`合同 #${contract.id} 已终止！`)
       fetchContracts()
@@ -500,11 +460,9 @@ onMounted(() => {
 
 <style scoped>
 .contracts-page {
-  padding: 20px;
-  max-width: 1000px;
-  margin: 0 auto;
-  background: #fff;
   min-height: 100vh;
+  background: #f5f5f5;
+  padding: 20px 200px;
 }
 
 .page-header {
@@ -512,21 +470,23 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.header-left.page-header h2 {
-  font-size: 24px;
-  font-weight: 600;
-  color: #262626;
+.header-left h2 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
 }
 
-.page-header .subtitle {
+.header-left .subtitle {
+  margin: 5px 0 0;
+  color: #999;
   font-size: 14px;
-  color: #8c8c8c;
-  margin: 8px 0 0;
 }
 
 .header-right .el-button {
@@ -535,38 +495,61 @@ onMounted(() => {
 
 .filter-tabs {
   display: flex;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 15px 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .filter-tab {
+  padding: 10px 20px;
   font-size: 14px;
-  color: #595959;
+  color: #666;
   cursor: pointer;
-  padding: 6px 12px 12px;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .filter-tab:hover {
+  background: #f0f5ff;
   color: #1890ff;
-  border-bottom-color: #1890ff;
 }
 
 .filter-tab.active {
-  color: #1890ff;
-  border-bottom-color: #1890ff;
+  background: #1890ff;
+  color: #fff;
+}
+
+.filter-tab.active .tab-badge {
+  background: rgba(255, 255, 255, 0.3);
 }
 
 .tab-badge {
-  background: #ff4d4f;
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
   color: #fff;
-  font-size: 12px;
-  padding: 0 5px;
-  border-radius: 10px;
-  margin-left: 4px;
-  min-width: 18px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 12px;
+  margin-left: 6px;
+  min-width: 20px;
+  height: 20px;
+  line-height: 18px;
   text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(255, 77, 79, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.tab-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 3px 10px rgba(255, 77, 79, 0.45);
 }
 
 .contracts-list {
@@ -576,26 +559,29 @@ onMounted(() => {
 
 .loading, .empty {
   text-align: center;
-  padding: 60px;
+  padding: 40px;
   color: #8c8c8c;
+  background: #fff;
+  border-radius: 8px;
+  margin-bottom: 20px;
 }
 
 .contract-card {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   padding: 20px;
   background: #fff;
-  margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
   border-radius: 8px;
-  border: 1px solid #f0f0f0;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 
 .contract-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
 }
 
 .contract-info {

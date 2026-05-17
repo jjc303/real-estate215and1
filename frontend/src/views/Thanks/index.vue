@@ -33,7 +33,7 @@
       </div>
       
       <div class="footer">
-        <span class="footer-text">中南大学房地产租赁项目组 · 2026</span>
+        <span class="footer-text">房地产租赁项目组 · 2026</span>
       </div>
     </div>
   </div>

@@ -10,6 +10,14 @@
         </div>
         
         <div class="chat-popup-body">
+          <!-- 错误提示 -->
+          <Transition name="fade">
+            <div v-if="showError" class="error-toast">
+              <i class="fa-solid fa-circle-exclamation"></i>
+              <span>{{ errorMessage }}</span>
+            </div>
+          </Transition>
+          
           <div class="chat-sidebar">
             <div class="search-box">
               <el-input v-model="searchKeyword" placeholder="搜索租客或房源..." clearable size="small">
@@ -34,7 +42,7 @@
                   </div>
                   <div class="chat-preview">{{ item.lastMessage }}</div>
                   <div class="chat-bottom">
-                    <span class="chat-time">{{ item.time }}</span>
+                    <span class="chat-time">{{ formatRelativeTime(item.time) }}</span>
                   </div>
                 </div>
                 <div v-if="item.unread > 0" class="unread-badge">{{ item.unread }}</div>
@@ -43,21 +51,19 @@
           </div>
 
           <div class="chat-main">
-            <div class="chat-header">
-              <template v-if="selectedChat">
-                <div class="header-info">
-                  <span class="user-name">{{ selectedChat.userName }}</span>
-                </div>
-              </template>
-              <template v-else>
-                <div class="empty-header">
-                  <div class="empty-icon">
-                    <i class="fa-solid fa-comments"></i>
-                  </div>
-                  <p class="empty-title">开始沟通房源详情</p>
-                  <p class="empty-desc">选择一个对话，与租客交流租房事宜</p>
-                </div>
-              </template>
+            <div class="chat-header" v-if="selectedChat">
+              <div class="header-info">
+                <span class="user-name">{{ selectedChat.userName }}</span>
+              </div>
+            </div>
+
+            <!-- 空状态 -->
+            <div v-if="!selectedChat" class="empty-state">
+              <div class="empty-icon">
+                <i class="fa-solid fa-comments"></i>
+              </div>
+              <p class="empty-title">开始沟通房源详情</p>
+              <p class="empty-desc">选择一个对话，与租客交流租房事宜</p>
             </div>
 
             <div ref="messagesContainer" class="chat-messages" v-if="selectedChat">
@@ -65,7 +71,7 @@
                 <div :class="['message-bubble', { 'is-mine': msg.isMine }]">
                   {{ msg.content }}
                 </div>
-                <span :class="['message-time', { 'is-mine': msg.isMine }]">{{ msg.time }}</span>
+                <span :class="['message-time', { 'is-mine': msg.isMine }]">{{ formatRelativeTime(msg.time) }}</span>
               </div>
             </div>
 
@@ -74,7 +80,7 @@
               <!-- 快捷短语栏 -->
               <div class="quick-phrases">
                 <span 
-                  v-for="phrase in quickPhrases" 
+                  v-for="phrase in currentQuickPhrases" 
                   :key="phrase"
                   class="phrase-tag"
                   @click="insertPhrase(phrase)"
@@ -84,15 +90,6 @@
               </div>
               
               <div class="input-wrapper">
-                <div class="input-actions">
-                  <button class="action-btn" title="表情">
-                    <i class="fa-regular fa-face-smile"></i>
-                  </button>
-                  <button class="action-btn" title="图片">
-                    <i class="fa-regular fa-image"></i>
-                  </button>
-                </div>
-                
                 <div class="input-box">
                   <textarea
                     v-model="messageInput"
@@ -120,12 +117,23 @@
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, watch } from 'vue';
+import { 
+  getConversationList, 
+  getMessageList, 
+  sendMessage as sendMessageApi, 
+  markAsRead,
+  createConversation 
+} from '@/api/conversation';
 
 const props = defineProps({
   visible: {
     type: Boolean,
     default: false
+  },
+  houseId: {
+    type: Number,
+    default: null
   }
 });
 
@@ -135,33 +143,102 @@ const searchKeyword = ref('');
 const selectedChatId = ref(null);
 const messageInput = ref('');
 const messagesContainer = ref(null);
+const errorMessage = ref('');
+const showError = ref(false);
+const loading = ref(false);
+const messagesLoading = ref(false);
 
-// 快捷短语
-const quickPhrases = ref([
+// 当前用户信息（从 localStorage 获取）
+const currentUser = ref(null);
+try {
+  currentUser.value = JSON.parse(localStorage.getItem('userInfo') || 'null');
+} catch (e) {
+  currentUser.value = null;
+}
+
+const formatRelativeTime = (timeStr) => {
+  if (!timeStr) return '';
+  
+  if (timeStr.includes('昨天') || timeStr.includes('前天')) {
+    return timeStr;
+  }
+  
+  try {
+    const date = new Date(timeStr);
+    if (isNaN(date.getTime())) {
+      return timeStr;
+    }
+    
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    
+    if (diffMinutes < 1) {
+      return '刚刚';
+    } else if (diffMinutes < 60) {
+      return `${diffMinutes}分钟前`;
+    } else if (diffMinutes < 1440) {
+      const hoursAgo = Math.floor(diffMinutes / 60);
+      return `${hoursAgo}小时前`;
+    } else if (diffMinutes < 43200) {
+      const daysAgo = Math.floor(diffMinutes / 1440);
+      return `${daysAgo}天前`;
+    } else {
+      return date.toLocaleDateString('zh-CN');
+    }
+  } catch (e) {
+    return timeStr;
+  }
+};
+
+const showErrorMessage = (msg) => {
+  errorMessage.value = msg;
+  showError.value = true;
+  setTimeout(() => {
+    showError.value = false;
+  }, 3000);
+};
+
+// 房东快捷短语（租客发给房东）
+const landlordPhrases = [
   '房源还在',
   '随时可看房',
   '价格可谈',
-  '请留下联系方式'
-]);
+  '请留下联系方式',
+  '押一付三',
+  '精装修拎包入住'
+];
 
-const chatList = ref([
-  { id: 1, userName: '张三', lastMessage: '您好，请问房子还在吗？', time: '10:30', unread: 2 },
-  { id: 2, userName: '李四', lastMessage: '我想预约看房', time: '昨天', unread: 0 },
-  { id: 3, userName: '王五', lastMessage: '租金可以便宜点吗？', time: '09:15', unread: 1 },
-]);
+// 租客快捷短语（房东发给租客）
+const tenantPhrases = [
+  '请问租金多少',
+  '可以押一付一吗',
+  '能短租吗',
+  '有中介费吗',
+  '什么时候能看房',
+  '包物业费吗'
+];
 
-const currentMessages = ref([
-  { id: 1, content: '您好，请问房子还在吗？', time: '10:25', isMine: false },
-  { id: 2, content: '在的，您什么时候方便看房？', time: '10:26', isMine: true },
-  { id: 3, content: '周末可以吗？', time: '10:28', isMine: false },
-  { id: 4, content: '可以的，周六下午2点怎么样？', time: '10:30', isMine: true },
-]);
+const currentQuickPhrases = computed(() => {
+  if (!selectedChat.value || !currentUser.value) return [];
+  
+  // 当前用户是租客，发给房东的快捷短语
+  if (currentUser.value.role === 'tenant') {
+    return landlordPhrases;
+  }
+  // 当前用户是房东，发给租客的快捷短语
+  return tenantPhrases;
+});
+
+const chatList = ref([]);
+const currentMessages = ref([]);
 
 const filteredChatList = computed(() => {
   if (!searchKeyword.value) return chatList.value;
   return chatList.value.filter(item => 
     item.userName.includes(searchKeyword.value) ||
-    item.lastMessage.includes(searchKeyword.value)
+    (item.lastMessage && item.lastMessage.includes(searchKeyword.value)) ||
+    (item.house && item.house.title && item.house.title.includes(searchKeyword.value))
   );
 });
 
@@ -169,58 +246,228 @@ const selectedChat = computed(() => {
   return chatList.value.find(item => item.id === selectedChatId.value);
 });
 
-const selectChat = (item) => {
-  selectedChatId.value = item.id;
-  item.unread = 0;
-  nextTick(() => {
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+// 获取会话列表
+const loadConversationList = async () => {
+  loading.value = true;
+  try {
+    const res = await getConversationList();
+    if (res.code === 0 && res.data) {
+      const list = res.data.list || [];
+      chatList.value = list.map(item => ({
+        id: item.id,
+        userName: getOtherPartyName(item),
+        lastMessage: item.last_message ? item.last_message.content : '',
+        time: item.last_message_at,
+        unread: item.unread_count || 0,
+        tenantId: item.tenant_id,
+        landlordId: item.landlord_id,
+        houseId: item.house_id,
+        house: item.house
+      }));
+      
+      // 如果有传入 houseId，自动找到或创建对应的会话
+      if (props.houseId && chatList.value.length > 0) {
+        const existingChat = chatList.value.find(c => c.houseId === props.houseId);
+        if (existingChat) {
+          selectChat(existingChat);
+        }
+      }
+    } else {
+      showErrorMessage(res.message || '获取会话列表失败');
     }
-  });
+  } catch (error) {
+    console.error('获取会话列表失败:', error);
+    showErrorMessage('网络异常，无法获取会话列表');
+  } finally {
+    loading.value = false;
+  }
 };
 
+// 获取对方名称
+const getOtherPartyName = (conversation) => {
+  if (!currentUser.value) return '未知用户';
+  
+  if (currentUser.value.role === 'tenant') {
+    // 当前用户是租客，显示房东信息
+    return conversation.landlord_name || conversation.house?.landlord_name || '房东';
+  } else {
+    // 当前用户是房东，显示租客信息
+    return conversation.tenant_name || '租客';
+  }
+};
+
+// 获取消息列表
+const loadMessages = async (conversationId) => {
+  messagesLoading.value = true;
+  try {
+    const res = await getMessageList(conversationId);
+    if (res.code === 0 && res.data) {
+      const list = res.data.list || [];
+      currentMessages.value = list.map(msg => ({
+        id: msg.id,
+        content: msg.content,
+        time: msg.created_at,
+        isMine: msg.sender_id === currentUser.value?.id
+      }));
+      
+      // 标记已读
+      await markAsRead(conversationId);
+      
+      nextTick(() => {
+        if (messagesContainer.value) {
+          messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+        }
+      });
+    } else {
+      showErrorMessage(res.message || '获取消息失败');
+    }
+  } catch (error) {
+    console.error('获取消息失败:', error);
+    showErrorMessage('网络异常，无法获取消息');
+  } finally {
+    messagesLoading.value = false;
+  }
+};
+
+// 选择会话
+const selectChat = async (item) => {
+  selectedChatId.value = item.id;
+  
+  // 更新本地未读计数
+  item.unread = 0;
+  
+  // 加载消息
+  await loadMessages(item.id);
+};
+
+// 创建会话并选择
+const createAndSelectChat = async (houseId) => {
+  loading.value = true;
+  try {
+    console.log('创建会话 - houseId:', houseId);
+    console.log('创建会话 - token:', localStorage.getItem('token')?.substring(0, 20) + '...');
+    
+    const res = await createConversation(houseId);
+    console.log('创建会话 - 响应:', res);
+    
+    if (res.code === 0 && res.data) {
+      // 重新加载会话列表
+      await loadConversationList();
+    } else {
+      showErrorMessage(res.message || '创建会话失败');
+    }
+  } catch (error) {
+    console.error('创建会话失败 - 错误详情:', error);
+    console.error('创建会话失败 - 响应数据:', error.response?.data);
+    console.error('创建会话失败 - HTTP状态:', error.response?.status);
+    
+    const errorMsg = error.response?.data?.message || 
+                     error.response?.data?.msg ||
+                     error.message || 
+                     '网络异常，无法创建会话';
+    showErrorMessage(errorMsg);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 插入快捷短语
 const insertPhrase = (phrase) => {
   messageInput.value = phrase;
 };
 
+// 自动调整textarea高度
 const autoResize = (e) => {
   const textarea = e.target;
   textarea.style.height = 'auto';
   textarea.style.height = Math.min(textarea.scrollHeight, 120) + 'px';
 };
 
+// 处理回车
 const handleEnter = (e) => {
   if (!e.shiftKey) {
     sendMessage();
   }
 };
 
-const sendMessage = () => {
-  if (!messageInput.value.trim() || !selectedChat.value) return;
+// 发送消息
+const sendMessage = async () => {
+  if (!selectedChat.value) {
+    showErrorMessage('请先选择一个对话');
+    return;
+  }
   
-  currentMessages.value.push({
-    id: Date.now(),
-    content: messageInput.value,
-    time: new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' }),
-    isMine: true
-  });
+  const trimmedMessage = messageInput.value.trim();
   
-  messageInput.value = '';
+  if (!trimmedMessage) {
+    showErrorMessage('消息内容不能为空');
+    return;
+  }
   
-  // 重置textarea高度
-  nextTick(() => {
-    const textarea = document.querySelector('.input-box textarea');
-    if (textarea) textarea.style.height = 'auto';
-    
-    if (messagesContainer.value) {
-      messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+  if (trimmedMessage.length > 1000) {
+    showErrorMessage('消息内容不能超过1000个字符');
+    return;
+  }
+  
+  loading.value = true;
+  try {
+    const res = await sendMessageApi(selectedChat.value.id, trimmedMessage);
+    if (res.code === 0 && res.data) {
+      // 添加到本地消息列表
+      currentMessages.value.push({
+        id: res.data.id,
+        content: trimmedMessage,
+        time: res.data.created_at,
+        isMine: true
+      });
+      
+      messageInput.value = '';
+      
+      // 更新会话列表中的最后消息
+      const chatIndex = chatList.value.findIndex(c => c.id === selectedChat.value.id);
+      if (chatIndex !== -1) {
+        chatList.value[chatIndex].lastMessage = trimmedMessage;
+        chatList.value[chatIndex].time = res.data.created_at;
+      }
+      
+      nextTick(() => {
+        const textarea = document.querySelector('.input-box textarea');
+        if (textarea) textarea.style.height = 'auto';
+        
+        if (messagesContainer.value) {
+          messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight;
+        }
+      });
+    } else {
+      showErrorMessage(res.message || '发送消息失败');
     }
-  });
+  } catch (error) {
+    console.error('发送消息失败:', error);
+    showErrorMessage('网络异常，无法发送消息');
+  } finally {
+    loading.value = false;
+  }
 };
 
+// 关闭弹窗
 const close = () => {
   emit('update:visible', false);
 };
+
+// 监听 visible 变化，加载会话列表
+watch(() => props.visible, async (val) => {
+  if (val) {
+    await loadConversationList();
+    
+    // 如果传入了 houseId 且没有找到现有会话，创建新会话
+    if (props.houseId) {
+      const existingChat = chatList.value.find(c => c.houseId === props.houseId);
+      if (!existingChat) {
+        await createAndSelectChat(props.houseId);
+      }
+    }
+  }
+});
 </script>
 
 <style scoped>
@@ -245,9 +492,9 @@ const close = () => {
 }
 
 .chat-popup {
-  width: 90%;
-  max-width: 900px;
-  height: 75vh;
+  width: 80%;
+  max-width: 750px;
+  height: 85vh;
   background: #ffffff;
   border-radius: 16px;
   display: flex;
@@ -319,6 +566,51 @@ const close = () => {
   flex: 1;
   display: flex;
   overflow: hidden;
+  position: relative;
+}
+
+/* 错误提示 */
+.error-toast {
+  position: absolute;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  padding: 12px 20px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  box-shadow: 0 4px 20px rgba(239, 68, 68, 0.4);
+  z-index: 100;
+  animation: slideDown 0.3s ease;
+}
+
+.error-toast i {
+  font-size: 16px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
 .chat-sidebar {
@@ -507,13 +799,13 @@ const close = () => {
   color: #1e293b;
 }
 
-.empty-header {
+.empty-state {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 0;
-  flex: 1;
+  background: #f8fafc;
 }
 
 .empty-icon {
