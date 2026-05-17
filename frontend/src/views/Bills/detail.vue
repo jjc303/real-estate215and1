@@ -482,6 +482,7 @@ onMounted(() => {
 .bill-actions {
   display: flex;
   gap: 12px;
+  align-items: center;
   justify-content: flex-end;
   padding-top: 16px;
 }

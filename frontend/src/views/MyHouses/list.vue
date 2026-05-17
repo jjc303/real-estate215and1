@@ -67,7 +67,7 @@
     </div>
 
     <!-- 状态筛选 -->
-    <div class="filter-section">
+    <div class="filter-tabs">
       <span 
         v-for="tab in tabs" 
         :key="tab.value"
@@ -76,6 +76,7 @@
         @click="currentTab = tab.value"
       >
         {{ tab.label }}
+        <span v-if="getTabCount(tab.value) > 0" class="tab-badge">{{ getTabCount(tab.value) }}</span>
       </span>
     </div>
 
@@ -242,6 +243,11 @@ const filteredHouses = computed(() => {
   return result
 })
 
+const getTabCount = (status) => {
+  if (status === 'all') return houses.value.length
+  return houses.value.filter(h => h.status === status).length
+}
+
 const statusText = (status) => {
   const map = { draft: '草稿', listed: '已上架', offline: '已下架' }
   return map[status] || status
@@ -329,11 +335,9 @@ onMounted(() => {
 
 <style scoped>
 .my-houses {
-  padding: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-  background: #fff;
   min-height: 100vh;
+  background: #f5f5f5;
+  padding: 20px 200px;
 }
 
 .page-header {
@@ -341,25 +345,23 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
-  padding-bottom: 16px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
-.header-left {
-  display: flex;
-  flex-direction: column;
-}
-
-.page-header h2 {
-  font-size: 24px;
-  font-weight: 600;
-  color: #262626;
+.header-left h2 {
   margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #333;
 }
 
-.page-header .subtitle {
+.header-left .subtitle {
+  margin: 5px 0 0;
+  color: #999;
   font-size: 14px;
-  color: #8c8c8c;
-  margin: 8px 0 0;
 }
 
 .publish-btn {
@@ -372,15 +374,19 @@ onMounted(() => {
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   margin-bottom: 20px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .stat-card {
-  background: #fff;
+  background: #fafafa;
   padding: 16px;
   display: flex;
   align-items: center;
   gap: 12px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  border-radius: 6px;
 }
 
 .stat-icon {
@@ -414,11 +420,12 @@ onMounted(() => {
 /* 搜索栏 */
 .search-bar {
   margin-bottom: 20px;
-  padding: 12px 16px;
+  padding: 15px 20px;
   background: #fff;
   display: flex;
   gap: 10px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .search-bar :deep(.el-input) {
@@ -426,28 +433,63 @@ onMounted(() => {
 }
 
 /* 筛选区域 */
-.filter-section {
-  margin-bottom: 20px;
+.filter-tabs {
   display: flex;
-  gap: 32px;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 15px 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
 .filter-tab {
-  font-size: 16px;
-  color: #595959;
+  padding: 10px 20px;
+  font-size: 14px;
+  color: #666;
   cursor: pointer;
-  padding: 4px 0;
-  border-bottom: 2px solid transparent;
-  transition: all 0.2s;
-}
-
-.filter-tab.active {
-  color: #1890ff;
-  border-bottom-color: #1890ff;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
 .filter-tab:hover {
+  background: #f0f5ff;
   color: #1890ff;
+}
+
+.filter-tab.active {
+  background: #1890ff;
+  color: #fff;
+}
+
+.filter-tab.active .tab-badge {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.tab-badge {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 12px;
+  margin-left: 6px;
+  min-width: 20px;
+  height: 20px;
+  line-height: 18px;
+  text-align: center;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(255, 77, 79, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+}
+
+.tab-badge:hover {
+  transform: scale(1.05);
+  box-shadow: 0 3px 10px rgba(255, 77, 79, 0.45);
 }
 
 /* 房源列表 */
@@ -458,7 +500,7 @@ onMounted(() => {
 
 .loading, .empty {
   text-align: center;
-  padding: 60px;
+  padding: 40px;
   color: #8c8c8c;
 }
 
@@ -467,17 +509,16 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
+  padding: 20px;
   background: #fff;
   margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-  border-radius: 6px;
-  transition: none;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s ease;
 }
 
 .house-card:hover {
-  transform: none;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .house-left {
@@ -486,12 +527,10 @@ onMounted(() => {
 }
 
 .house-left h3 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
   color: #262626;
   margin: 0 0 10px 0;
-  text-decoration: none;
-  border-bottom: none;
 }
 
 .house-tags {
@@ -507,7 +546,6 @@ onMounted(() => {
   color: #8c8c8c;
   background: #f5f5f5;
   border-radius: 3px;
-  margin-right: 0;
 }
 
 .house-info-line {
@@ -531,7 +569,7 @@ onMounted(() => {
   padding: 3px 10px;
   font-size: 13px;
   margin-top: 10px;
-  border-radius: 3px;
+  border-radius: 4px;
 }
 
 .status.draft { background: #fff7e6; color: #fa8c16; }
@@ -539,11 +577,11 @@ onMounted(() => {
 .status.offline { background: #f5f5f5; color: #8c8c8c; }
 
 .house-right {
-  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 30px;
+  justify-content: center;
+  gap: 12px;
 }
 
 .house-price {
@@ -551,45 +589,20 @@ onMounted(() => {
 }
 
 .price-num {
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 600;
   color: #ff4d4f;
-  line-height: 1;
 }
 
 .price-unit {
-  font-size: 16px;
+  font-size: 14px;
   color: #8c8c8c;
-  margin-left: 2px;
 }
 
 .house-actions {
   display: flex;
-  gap: 12px;
-  align-items: center;
-}
-
-.house-actions :deep(.el-button--link) {
-  font-size: 14px;
-  padding: 0;
-  height: auto;
-  line-height: 1;
-  font-weight: 500;
-}
-
-@media (max-width: 992px) {
-  .stats-section {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  .house-card {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 16px;
-  }
-  
-  .house-actions {
-    margin-left: 0;
-  }
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 </style>

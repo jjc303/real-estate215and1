@@ -37,10 +37,12 @@
         <div class="repair-info">
           <div class="repair-header">
             <span class="repair-no">维修 #{{ repair.id }}</span>
-            <span class="repair-status" :class="repair.status">{{ getStatusText(repair.status) }}</span>
           </div>
           
-          <div class="repair-title">{{ repair.title }}</div>
+          <div class="repair-title-row">
+            <span class="repair-title">{{ repair.title }}</span>
+            <span class="repair-status" :class="repair.status">{{ getStatusText(repair.status) }}</span>
+          </div>
           
           <div class="repair-house">
             <i class="fa-solid fa-home"></i>
@@ -75,7 +77,7 @@
         </div>
         
         <div class="repair-actions">
-          <el-button type="text" @click.stop="viewDetail(repair)">
+          <el-button link @click.stop="viewDetail(repair)">
             <i class="fa-solid fa-eye"></i> 查看详情
           </el-button>
           <el-button 
@@ -358,7 +360,7 @@ onMounted(() => {
 .repair-card {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: 20px;
   background: #fff;
   border-radius: 8px;
@@ -411,11 +413,17 @@ onMounted(() => {
   color: #52c41a;
 }
 
+.repair-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
 .repair-title {
   font-size: 16px;
   font-weight: 600;
   color: #333;
-  margin-bottom: 10px;
 }
 
 .repair-house,
@@ -464,6 +472,8 @@ onMounted(() => {
 .repair-actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
   margin-left: 20px;
 }

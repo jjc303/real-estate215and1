@@ -220,6 +220,7 @@ import { watch } from 'vue';
 import { onMounted } from 'vue';
 import Pagination from '@/components/Pagination.vue';
 import { mockHouses } from'@/mock/houseList'
+import { ElMessage } from 'element-plus';
 const userStore = useUserStore();
 const route=useRoute();
 
@@ -347,7 +348,7 @@ const confirmPriceRange = () => {
   }
   
   if (filter.min_rent !== null && filter.max_rent !== null && filter.min_rent > filter.max_rent) {
-    alert('最低价格不能大于最高价格')
+    ElMessage.warning('最低价格不能大于最高价格')
     return
   }
   
@@ -369,7 +370,7 @@ const confirmAreaRange = () => {
   }
   
   if (filter.min_area !== null && filter.max_area !== null && filter.min_area > filter.max_area) {
-    alert('最小面积不能大于最大面积')
+    ElMessage.warning('最小面积不能大于最大面积')
     return
   }
   
@@ -404,7 +405,7 @@ const clearAllFilter = () => {
 const handleCollect=async(house)=>{
     //登录才能收藏
     if (!userStore.token) {
-        alert('请先登录')
+        ElMessage.warning('请先登录')
         return
     }
     //接入收藏处理接口

@@ -79,7 +79,7 @@
         </div>
         
         <div class="complaint-actions">
-          <el-button type="text" @click.stop="viewDetail(complaint)">
+          <el-button link @click.stop="viewDetail(complaint)">
             <i class="fa-solid fa-eye"></i> 查看详情
           </el-button>
         </div>
@@ -100,8 +100,8 @@
       width="500px"
     >
       <el-form :model="complaintForm" label-width="80px">
-        <el-form-item label="房源">
-          <el-select v-model="complaintForm.house_id" placeholder="请选择房源" style="width: 100%">
+        <el-form-item label="合同">
+          <el-select v-model="complaintForm.contract_id" placeholder="请选择合同" style="width: 100%">
             <el-option 
               v-for="house in myHouses" 
               :key="house.id" 
@@ -144,6 +144,7 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import { mockComplaints, mockMyHouses } from '@/mock/complaints'
+import { getComplaintList, createComplaint } from '@/api/complaint'
 
 const USE_MOCK_DATA = true
 
@@ -157,7 +158,7 @@ const dialogVisible = ref(false)
 const myHouses = ref([])
 
 const complaintForm = ref({
-  house_id: '',
+  contract_id: '',
   type: '',
   title: '',
   description: ''
@@ -211,7 +212,11 @@ const fetchComplaints = async () => {
       complaints.value = mockComplaints.slice(start, end)
       total.value = mockComplaints.length
     } else {
-      // 真实API调用
+      const res = await getComplaintList({ page: pageNum.value, page_size: pageSize.value })
+      if (res.code === 0) {
+        complaints.value = res.data.list
+        total.value = res.data.total
+      }
     }
   } catch (error) {
     console.error('获取投诉列表失败', error)
@@ -231,7 +236,7 @@ const fetchMyHouses = async () => {
 
 const showComplaintDialog = () => {
   complaintForm.value = {
-    house_id: '',
+    contract_id: '',
     type: '',
     title: '',
     description: ''
@@ -240,8 +245,8 @@ const showComplaintDialog = () => {
 }
 
 const submitComplaint = async () => {
-  if (!complaintForm.value.house_id) {
-    ElMessage.warning('请选择房源')
+  if (!complaintForm.value.contract_id) {
+    ElMessage.warning('请选择合同')
     return
   }
   if (!complaintForm.value.type) {
@@ -261,8 +266,8 @@ const submitComplaint = async () => {
     if (USE_MOCK_DATA) {
       const newComplaint = {
         id: complaints.value.length + 1,
-        house_id: complaintForm.value.house_id,
-        house: myHouses.value.find(h => h.id === complaintForm.value.house_id),
+        contract_id: complaintForm.value.contract_id,
+        house: myHouses.value.find(h => h.id === complaintForm.value.contract_id),
         type: complaintForm.value.type,
         title: complaintForm.value.title,
         description: complaintForm.value.description,
@@ -276,7 +281,15 @@ const submitComplaint = async () => {
       dialogVisible.value = false
       ElMessage.success('投诉提交成功')
     } else {
-      // 真实API调用
+      const res = await createComplaint({
+        contract_id: complaintForm.value.contract_id,
+        description: complaintForm.value.description
+      })
+      if (res.code === 0) {
+        dialogVisible.value = false
+        ElMessage.success('投诉提交成功')
+        fetchComplaints()
+      }
     }
   } catch (error) {
     ElMessage.error('提交失败，请稍后重试')
@@ -405,7 +418,7 @@ onMounted(() => {
 .complaint-card {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: 20px;
   background: #fff;
   border-radius: 8px;
@@ -526,6 +539,8 @@ onMounted(() => {
 .complaint-actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
   margin-left: 20px;
 }

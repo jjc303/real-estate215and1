@@ -7,6 +7,11 @@
           <h2>我的预约</h2>
           <p class="subtitle">管理我的看房预约</p>
         </div>
+        <div class="header-right">
+          <el-button type="primary" @click="showCreateDialog">
+            <i class="fa-solid fa-plus"></i> 发起预约
+          </el-button>
+        </div>
       </div>
       
       <div class="filter-tabs">
@@ -191,6 +196,54 @@
       :total="total"
       @change="handlePageChange"
     />
+
+    <!-- 发起预约对话框 -->
+    <el-dialog
+      v-if="isTenant"
+      title="发起预约"
+      :visible.sync="dialogVisible"
+      width="500px"
+    >
+      <el-form :model="reservationForm" label-width="80px">
+        <el-form-item label="选择房源">
+          <el-select v-model="reservationForm.house_id" placeholder="请选择房源" style="width: 100%">
+            <el-option 
+              v-for="house in availableHouses" 
+              :key="house.id" 
+              :label="house.title" 
+              :value="house.id"
+            ></el-option>
+          </el-select>
+        </el-form-item>
+        <el-form-item label="预约日期">
+          <el-date-picker 
+            v-model="reservationForm.appointment_date" 
+            type="date" 
+            placeholder="请选择日期"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="预约时间">
+          <el-time-picker 
+            v-model="reservationForm.appointment_time" 
+            placeholder="请选择时间"
+            style="width: 100%"
+          />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input 
+            v-model="reservationForm.remark" 
+            type="textarea" 
+            placeholder="请输入备注（可选）"
+            :rows="3"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitReservation">提交预约</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -213,6 +266,16 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const reservations = ref([])
+
+// 发起预约相关
+const dialogVisible = ref(false)
+const availableHouses = ref([])
+const reservationForm = ref({
+  house_id: '',
+  appointment_date: '',
+  appointment_time: '',
+  remark: ''
+})
 
 // 判断当前用户是否是租客
 const isTenant = computed(() => userStore.userRole === 'tenant')
@@ -308,7 +371,7 @@ const confirmReservation = async (reservation) => {
       })
       fetchReservations()
     } else {
-      const res = await service.patch(`/v1/reservations/${reservation.id}/confirm`)
+      const res = await service.patch(`/v1/appointments/${reservation.id}/confirm`)
       if (res.code === 0) {
         ElMessage({
           type: 'success',
@@ -350,7 +413,7 @@ const rejectReservation = async (reservation) => {
       })
       fetchReservations()
     } else {
-      const res = await service.patch(`/v1/reservations/${reservation.id}/reject`)
+      const res = await service.patch(`/v1/appointments/${reservation.id}/reject`)
       if (res.code === 0) {
         ElMessage({
           type: 'info',
@@ -394,7 +457,7 @@ const cancelReservation = async (reservation) => {
       })
       fetchReservations()
     } else {
-      const res = await service.patch(`/v1/reservations/${reservation.id}/cancel`)
+      const res = await service.patch(`/v1/appointments/${reservation.id}/cancel`)
       if (res.code === 0) {
         ElMessage({
           type: 'info',
@@ -420,6 +483,94 @@ const viewDetail = (reservation) => {
 const handlePageChange = (newPage) => {
   pageNum.value = newPage
   fetchReservations()
+}
+
+// 模拟房源数据
+const mockHouses = [
+  { id: 1, title: '中南大学14舍' },
+  { id: 2, title: '麓山南路88号' },
+  { id: 3, title: '天马小区3栋' },
+  { id: 4, title: '阳光公寓A座' },
+  { id: 5, title: '河西王府井小区' }
+]
+
+const fetchAvailableHouses = async () => {
+  if (USE_MOCK_DATA) {
+    availableHouses.value = mockHouses
+  } else {
+    try {
+      const res = await service.get('/v1/houses', { params: { page: 1, page_size: 20 } })
+      if (res.code === 0) {
+        availableHouses.value = res.data.list.map(h => ({ id: h.id, title: h.title }))
+      }
+    } catch (e) {
+      console.error('获取房源列表失败', e)
+      availableHouses.value = mockHouses
+    }
+  }
+}
+
+const showCreateDialog = () => {
+  fetchAvailableHouses()
+  reservationForm.value = {
+    house_id: '',
+    appointment_date: '',
+    appointment_time: '',
+    remark: ''
+  }
+  dialogVisible.value = true
+}
+
+const submitReservation = async () => {
+  if (!reservationForm.value.house_id) {
+    ElMessage.warning('请选择房源')
+    return
+  }
+  if (!reservationForm.value.appointment_date) {
+    ElMessage.warning('请选择预约日期')
+    return
+  }
+  if (!reservationForm.value.appointment_time) {
+    ElMessage.warning('请选择预约时间')
+    return
+  }
+
+  try {
+    if (USE_MOCK_DATA) {
+      const newReservation = {
+        id: mockTenantReservations.length + 1,
+        house_id: reservationForm.value.house_id,
+        house_title: availableHouses.value.find(h => h.id === reservationForm.value.house_id)?.title || '',
+        house_address: '测试地址',
+        landlord_name: '测试房东',
+        landlord_phone: '13800138000',
+        reservation_date: reservationForm.value.appointment_date,
+        reservation_time: reservationForm.value.appointment_time,
+        remark: reservationForm.value.remark,
+        status: 'pending',
+        created_at: new Date().toLocaleString()
+      }
+      mockTenantReservations.unshift(newReservation)
+      dialogVisible.value = false
+      ElMessage.success('预约发起成功！请等待房东确认')
+      fetchReservations()
+    } else {
+      const appointmentTime = `${reservationForm.value.appointment_date}T${reservationForm.value.appointment_time}`
+      const res = await service.post('/v1/appointments', {
+        house_id: reservationForm.value.house_id,
+        appointment_time: appointmentTime,
+        remark: reservationForm.value.remark || null
+      })
+      if (res.code === 0) {
+        dialogVisible.value = false
+        ElMessage.success('预约发起成功！请等待房东确认')
+        fetchReservations()
+      }
+    }
+  } catch (e) {
+    ElMessage.error('发起预约失败，请稍后重试')
+    console.error(e)
+  }
 }
 
 onMounted(() => {
@@ -534,7 +685,7 @@ onMounted(() => {
 .reservation-card {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: 20px;
   background: #fff;
   border-radius: 8px;
@@ -635,6 +786,7 @@ onMounted(() => {
 .reservation-actions {
   flex-shrink: 0;
   display: flex;
+  align-items: center;
   gap: 10px;
   margin-left: 20px;
 }

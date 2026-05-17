@@ -174,7 +174,7 @@
           </div>
           
           <div class="bill-actions">
-            <el-button type="text" @click.stop="viewDetail(bill)">
+            <el-button link @click.stop="viewDetail(bill)">
               <i class="fa-solid fa-eye"></i> 查看详情
             </el-button>
           </div>
@@ -444,7 +444,7 @@ onMounted(() => {
 .bill-card {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: 20px;
   background: #fff;
   border-radius: 8px;
@@ -551,6 +551,8 @@ onMounted(() => {
 
 .bill-actions {
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
 
 .bill-actions .el-button {

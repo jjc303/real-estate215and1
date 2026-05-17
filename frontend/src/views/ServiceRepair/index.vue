@@ -74,7 +74,7 @@
         </div>
         
         <div class="repair-actions">
-          <el-button type="text" @click.stop="viewDetail(repair)">
+          <el-button link @click.stop="viewDetail(repair)">
             <i class="fa-solid fa-eye"></i> 查看详情
           </el-button>
         </div>
@@ -95,14 +95,14 @@
       width="500px"
     >
       <el-form :model="repairForm" label-width="80px">
-        <el-form-item label="房源">
-          <el-select v-model="repairForm.house_id" placeholder="请选择房源" style="width: 100%">
+        <el-form-item label="合同">
+          <el-select v-model="repairForm.contract_id" placeholder="请选择合同" style="width: 100%">
             <el-option 
               v-for="house in myHouses" 
               :key="house.id" 
               :label="house.title" 
               :value="house.id"
-            />
+            ></el-option>
           </el-select>
         </el-form-item>
         <el-form-item label="维修类型">
@@ -152,7 +152,7 @@ const dialogVisible = ref(false)
 const myHouses = ref([])
 
 const repairForm = ref({
-  house_id: '',
+  contract_id: '',
   type: '',
   title: '',
   description: ''
@@ -229,7 +229,7 @@ const fetchMyHouses = async () => {
 
 const showRepairDialog = () => {
   repairForm.value = {
-    house_id: '',
+    contract_id: '',
     type: '',
     title: '',
     description: ''
@@ -238,8 +238,8 @@ const showRepairDialog = () => {
 }
 
 const submitRepair = async () => {
-  if (!repairForm.value.house_id) {
-    ElMessage.warning('请选择房源')
+  if (!repairForm.value.contract_id) {
+    ElMessage.warning('请选择合同')
     return
   }
   if (!repairForm.value.type) {
@@ -259,8 +259,8 @@ const submitRepair = async () => {
     if (USE_MOCK_DATA) {
       const newRepair = {
         id: repairs.value.length + 1,
-        house_id: repairForm.value.house_id,
-        house: myHouses.value.find(h => h.id === repairForm.value.house_id),
+        contract_id: repairForm.value.contract_id,
+        house: myHouses.value.find(h => h.id === repairForm.value.contract_id),
         type: repairForm.value.type,
         title: repairForm.value.title,
         description: repairForm.value.description,
@@ -273,7 +273,15 @@ const submitRepair = async () => {
       dialogVisible.value = false
       ElMessage.success('维修申请提交成功')
     } else {
-      // 真实API调用
+      const res = await createRepair({
+        contract_id: repairForm.value.contract_id,
+        description: repairForm.value.description
+      })
+      if (res.code === 0) {
+        dialogVisible.value = false
+        ElMessage.success('维修申请提交成功')
+        fetchRepairs()
+      }
     }
   } catch (error) {
     ElMessage.error('提交失败，请稍后重试')
@@ -402,7 +410,7 @@ onMounted(() => {
 .repair-card {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: 20px;
   background: #fff;
   border-radius: 8px;
@@ -507,6 +515,8 @@ onMounted(() => {
 .repair-actions {
   display: flex;
   flex-direction: column;
+  align-items: center;
+  justify-content: center;
   gap: 10px;
   margin-left: 20px;
 }

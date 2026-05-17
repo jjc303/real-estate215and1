@@ -65,7 +65,7 @@
           </div>
           
           <div class="contract-actions">
-            <el-button type="text" @click.stop="viewDetail(contract)">
+            <el-button link @click.stop="viewDetail(contract)">
               <i class="fa-solid fa-eye"></i> 查看详情
             </el-button>
             <el-button 
@@ -569,7 +569,7 @@ onMounted(() => {
 .contract-card {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   padding: 20px;
   background: #fff;
   border-radius: 8px;

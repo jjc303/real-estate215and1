@@ -19,6 +19,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { ElMessage } from 'element-plus';
 
 // 绑定输入框文字
 const searchText = ref('');
@@ -26,7 +27,7 @@ const searchText = ref('');
 // 搜索逻辑（可对接后端接口）
 const handleSearch = () => {
   if (!searchText.value.trim()) {
-    alert('请输入搜索内容！');
+    ElMessage.warning('请输入搜索内容！');
     return;
   }
   console.log('正在搜索：', searchText.value);
