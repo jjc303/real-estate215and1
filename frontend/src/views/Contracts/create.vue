@@ -16,9 +16,47 @@
           <div class="section-title">
             <i class="fa-solid fa-calendar-check"></i> 预约关联
           </div>
-          <el-form-item label="预约ID" prop="appointment_id" required>
-            <el-input-number v-model="form.appointment_id" :min="1" placeholder="请输入预约ID" />
+          <el-form-item label="选择预约" prop="appointment_id" required>
+            <el-select 
+              v-model="form.appointment_id" 
+              placeholder="请选择已确认的预约" 
+              style="width: 100%"
+              @change="onAppointmentChange"
+            >
+              <el-option 
+                v-for="apt in confirmedAppointments" 
+                :key="apt.id" 
+                :label="`#${apt.id} ${apt.house?.title || ''} — 租客 #${apt.tenant_id}`" 
+                :value="apt.id"
+              />
+            </el-select>
           </el-form-item>
+          
+          <div v-if="selectedAppointment" class="appointment-preview">
+            <div class="preview-title">预约详情</div>
+            <div class="preview-grid">
+              <div class="preview-item">
+                <span class="preview-label">房源</span>
+                <span class="preview-value">{{ selectedAppointment.house?.title }}</span>
+              </div>
+              <div class="preview-item">
+                <span class="preview-label">区域</span>
+                <span class="preview-value">{{ selectedAppointment.house?.region }} {{ selectedAppointment.house?.address }}</span>
+              </div>
+              <div class="preview-item">
+                <span class="preview-label">租客ID</span>
+                <span class="preview-value">#{{ selectedAppointment.tenant_id }}</span>
+              </div>
+              <div class="preview-item">
+                <span class="preview-label">预约时间</span>
+                <span class="preview-value">{{ formatDateTime(selectedAppointment.appointment_time) }}</span>
+              </div>
+              <div class="preview-item">
+                <span class="preview-label">看房备注</span>
+                <span class="preview-value">{{ selectedAppointment.remark || '无' }}</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div class="form-section">
@@ -76,11 +114,11 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import service from '@/utils/request'
 
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 const formRef = ref(null)
 
@@ -92,6 +130,41 @@ const form = reactive({
   deposit: 0,
   remark: ''
 })
+
+const confirmedAppointments = ref([])
+const appointmentsLoading = ref(false)
+
+const selectedAppointment = computed(() => {
+  return confirmedAppointments.value.find(a => a.id === form.appointment_id) || null
+})
+
+const formatDateTime = (datetime) => {
+  if (!datetime) return ''
+  const date = new Date(datetime)
+  return date.toLocaleString('zh-CN')
+}
+
+const fetchConfirmedAppointments = async () => {
+  appointmentsLoading.value = true
+  try {
+    const res = await service.get('/v1/appointments', { params: { page: 1, page_size: 100 } })
+    if (res.code === 0) {
+      confirmedAppointments.value = res.data.list.filter(a => a.status === 'confirmed')
+    }
+  } catch (e) {
+    console.error('获取预约列表失败', e)
+  } finally {
+    appointmentsLoading.value = false
+  }
+}
+
+const onAppointmentChange = (appointmentId) => {
+  const apt = confirmedAppointments.value.find(a => a.id === appointmentId)
+  if (apt) {
+    form.monthly_rent = Number(apt.house?.rent) || 0
+    form.deposit = Number(apt.house?.deposit) || 0
+  }
+}
 
 const goBack = () => {
   window.history.back()
@@ -140,6 +213,10 @@ const submitForm = async () => {
     }
   }
 }
+
+onMounted(() => {
+  fetchConfirmedAppointments()
+})
 </script>
 
 <style scoped>
@@ -147,7 +224,6 @@ const submitForm = async () => {
   padding: 20px;
   max-width: 600px;
   margin: 0 auto;
-  background: #fff;
   min-height: 100vh;
 }
 
@@ -255,5 +331,45 @@ const submitForm = async () => {
   .contract-form {
     padding: 16px;
   }
+}
+
+.appointment-preview {
+  margin-top: 12px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  border: 1px solid #f0f0f0;
+}
+
+.preview-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #e8e8e8;
+}
+
+.preview-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.preview-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.preview-label {
+  font-size: 13px;
+  color: #8c8c8c;
+}
+
+.preview-value {
+  font-size: 13px;
+  color: #262626;
+  text-align: right;
 }
 </style>

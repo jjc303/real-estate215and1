@@ -1,4 +1,5 @@
 <template>
+  <div class="houselist-root">
     <div class="title">
         <div class="img-wrap">
             <img src="@/assets/images/csu-logo.png" alt="中南大学logo" class="csu-logo" />
@@ -208,6 +209,7 @@
         />
     </div>
     <LoginModal/>
+  </div>
 </template>
 <script setup>
 import HouseBar from '@/components/HouseBar.vue';
@@ -659,16 +661,9 @@ onMounted(() => {
 
 </script>
 
-<style>
-*{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-</style>
 <style scoped>
 .title{
-    background: linear-gradient(to right, rgba(140,140,140,0.4), rgba(180,180,180,0.15));
+    background: linear-gradient(160deg, #1e293b 0%, #334155 60%, #475569 100%);
     display: flex;
     height: 170px;
     flex-direction: column;
@@ -697,6 +692,11 @@ onMounted(() => {
 }
 .filter-area{
     padding:0 140px;
+    background: #ffffff;
+    border-radius: 12px 12px 0 0;
+    margin: -12px 140px 0 140px;
+    padding: 20px 24px;
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
 }
 .breadcrumb-nav{
     display: flex;

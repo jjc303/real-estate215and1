@@ -9,6 +9,21 @@
         </div>
       </div>
 
+      <div class="stats-row" v-if="!loading && contractStats.total">
+        <div class="stat-card" :class="{ success: contractStats.active > 0 }">
+          <div class="stat-value">{{ contractStats.active }}</div>
+          <div class="stat-label">已生效合同</div>
+        </div>
+        <div class="stat-card" :class="{ warning: contractStats.pending > 0 }">
+          <div class="stat-value">{{ contractStats.pending }}</div>
+          <div class="stat-label">待确认合同</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ contractStats.total }}</div>
+          <div class="stat-label">合同总数</div>
+        </div>
+      </div>
+
       <div class="filter-tabs">
         <span 
           v-for="tab in tenantTabs" 
@@ -26,7 +41,9 @@
         <div v-if="loading" class="loading">加载中...</div>
         
         <div v-else-if="filteredContracts.length === 0" class="empty">
-          暂无{{ currentTab === 'all' ? '' : tenantTabs.find(t => t.value === currentTab)?.label }}合同
+          <div class="empty-icon"><i class="fa-solid fa-file-signature"></i></div>
+          <p class="empty-text">暂无{{ currentTab === 'all' ? '' : tenantTabs.find(t => t.value === currentTab)?.label }}合同</p>
+          <p class="empty-hint">租房合同会在这里显示</p>
         </div>
 
         <div 
@@ -103,6 +120,21 @@
         </div>
       </div>
 
+      <div class="stats-row" v-if="!loading && contractStats.total">
+        <div class="stat-card" :class="{ success: contractStats.active > 0 }">
+          <div class="stat-value">{{ contractStats.active }}</div>
+          <div class="stat-label">已生效合同</div>
+        </div>
+        <div class="stat-card" :class="{ warning: contractStats.pending > 0 }">
+          <div class="stat-value">{{ contractStats.pending }}</div>
+          <div class="stat-label">待确认合同</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ contractStats.total }}</div>
+          <div class="stat-label">合同总数</div>
+        </div>
+      </div>
+
       <div class="filter-tabs">
         <span 
           v-for="tab in landlordTabs" 
@@ -120,7 +152,9 @@
       <div v-if="loading" class="loading">加载中...</div>
       
       <div v-else-if="filteredContracts.length === 0" class="empty">
-        暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}合同
+        <div class="empty-icon"><i class="fa-solid fa-file-signature"></i></div>
+        <p class="empty-text">暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}合同</p>
+        <p class="empty-hint">租房合同会在这里显示</p>
       </div>
 
       <div 
@@ -199,6 +233,132 @@
       :total="total"
       @change="handlePageChange"
     />
+
+    <!-- 查看详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="合同详情"
+      width="560px"
+    >
+      <div v-if="detailContract" class="detail-content">
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-calendar-days"></i> 租期信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">起租日期</span>
+              <span class="detail-value">{{ detailContract.start_date }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">到期日期</span>
+              <span class="detail-value">{{ detailContract.end_date }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">租期时长</span>
+              <span class="detail-value">{{ getLeaseTerm(detailContract) }}个月</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">创建时间</span>
+              <span class="detail-value">{{ formatDateTime(detailContract.created_at) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-money-bill"></i> 费用信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">月租金</span>
+              <span class="detail-value price">¥{{ detailContract.monthly_rent }}/月</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">押金金额</span>
+              <span class="detail-value price">¥{{ detailContract.deposit }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-home"></i> 房源信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">房源名称</span>
+              <span class="detail-value">{{ detailContract.house?.title }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">所在区域</span>
+              <span class="detail-value">{{ detailContract.house?.region }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">详细地址</span>
+              <span class="detail-value">{{ detailContract.house?.address }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">房源类型</span>
+              <span class="detail-value">{{ detailContract.house?.house_type }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">建筑面积</span>
+              <span class="detail-value">{{ detailContract.house?.area }}㎡</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-users"></i> 签约方信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">{{ isTenant ? '房东' : '租客' }}</span>
+              <span class="detail-value">{{ isTenant ? detailContract.landlord_name : detailContract.tenant_name }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">合同编号</span>
+              <span class="detail-value">#{{ detailContract.id }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">合同状态</span>
+              <span class="detail-value">
+                <span class="contract-status" :class="detailContract.status">{{ getStatusText(detailContract.status) }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-clock"></i> 时间记录
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">创建时间</span>
+              <span class="detail-value">{{ formatDateTime(detailContract.created_at) }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">更新时间</span>
+              <span class="detail-value">{{ formatDateTime(detailContract.updated_at) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="detailContract.remark" class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-file-text"></i> 备注信息
+          </div>
+          <div class="detail-remark">{{ detailContract.remark }}</div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+    <BackToTop />
   </div>
 </template>
 
@@ -206,13 +366,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
+import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 import { mockTenantContracts, mockLandlordContracts } from '@/mock/contracts'
 
 const userStore = useUserStore()
 
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 const loading = ref(false)
 const currentTab = ref('all')
@@ -220,6 +381,10 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const contracts = ref([])
+
+// 查看详情相关
+const detailDialogVisible = ref(false)
+const detailContract = ref(null)
 
 // 判断当前用户是否是租客
 const isTenant = computed(() => userStore.userRole === 'tenant')
@@ -257,6 +422,12 @@ const getTabCount = (status) => {
   return contracts.value.filter(c => c.status === status).length
 }
 
+const contractStats = computed(() => ({
+  active: contracts.value.filter(c => c.status === 'active').length,
+  pending: contracts.value.filter(c => c.status === 'pending').length,
+  total: contracts.value.length
+}))
+
 const getStatusText = (status) => {
   const map = {
     pending: '待确认',
@@ -266,6 +437,28 @@ const getStatusText = (status) => {
     terminated: '已终止'
   }
   return map[status] || status
+}
+
+const getHouseStatusText = (status) => {
+  const map = {
+    draft: '草稿',
+    listed: '已上架',
+    offline: '已下架'
+  }
+  return map[status] || status
+}
+
+const getLeaseTerm = (contract) => {
+  if (!contract.start_date || !contract.end_date) return 0
+  const start = new Date(contract.start_date)
+  const end = new Date(contract.end_date)
+  return (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth())
+}
+
+const formatDateTime = (datetime) => {
+  if (!datetime) return '-'
+  const date = new Date(datetime)
+  return date.toLocaleString('zh-CN')
 }
 
 const fetchContracts = async () => {
@@ -286,7 +479,11 @@ const fetchContracts = async () => {
       }
       const res = await service.get('/v1/contracts', { params })
       if (res.code === 0) {
-        contracts.value = res.data.list
+        contracts.value = res.data.list.map(item => ({
+          ...item,
+          landlord_name: isTenant.value ? `房东 #${item.landlord_id}` : '',
+          tenant_name: isTenant.value ? '' : `租客 #${item.tenant_id}`
+        }))
         total.value = res.data.total
       }
     }
@@ -304,8 +501,8 @@ const createContract = () => {
 }
 
 const viewDetail = (contract) => {
-  // 跳转到合同详情页
-  window.location.href = `/contracts/detail/${contract.id}`
+  detailContract.value = contract
+  detailDialogVisible.value = true
 }
 
 const confirmContract = async (contract) => {
@@ -461,7 +658,7 @@ onMounted(() => {
 <style scoped>
 .contracts-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: linear-gradient(180deg, #f4f6f9 0%, #edf0f5 100%);
   padding: 20px 200px;
 }
 
@@ -487,6 +684,57 @@ onMounted(() => {
   margin: 5px 0 0;
   color: #999;
   font-size: 14px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-left: 3px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.stat-card.warning {
+  border-left-color: #f59e0b;
+}
+
+.stat-card.danger {
+  border-left-color: #ef4444;
+}
+
+.stat-card.success {
+  border-left-color: #10b981;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #94a3b8;
 }
 
 .header-right .el-button {
@@ -559,11 +807,29 @@ onMounted(() => {
 
 .loading, .empty {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
   color: #8c8c8c;
   background: #fff;
   border-radius: 8px;
   margin-bottom: 20px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #c0c4cc;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 15px;
+  color: #8c8c8c;
+  margin: 0 0 4px;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #b0b4bc;
+  margin: 0;
 }
 
 .contract-card {
@@ -580,8 +846,8 @@ onMounted(() => {
 }
 
 .contract-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
 }
 
 .contract-info {
@@ -745,5 +1011,71 @@ onMounted(() => {
     gap: 12px;
     flex-wrap: wrap;
   }
+}
+
+.detail-content {
+  padding: 0;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-section-title i {
+  color: #1890ff;
+  margin-right: 6px;
+}
+
+.detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.detail-label {
+  font-size: 14px;
+  color: #8c8c8c;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #262626;
+  text-align: right;
+}
+
+.detail-value.price {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.detail-remark {
+  font-size: 14px;
+  color: #595959;
+  line-height: 1.6;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-radius: 6px;
 }
 </style>

@@ -9,6 +9,21 @@
         </div>
       </div>
 
+      <div class="stats-row" v-if="!loading && billStats.total">
+        <div class="stat-card" :class="{ warning: billStats.totalUnpaid > 0 }">
+          <div class="stat-value">¥{{ billStats.totalUnpaid }}</div>
+          <div class="stat-label">待支付（{{ billStats.unpaidCount }}笔）</div>
+        </div>
+        <div class="stat-card" :class="{ danger: billStats.totalOverdue > 0 }">
+          <div class="stat-value">¥{{ billStats.totalOverdue }}</div>
+          <div class="stat-label">已逾期（{{ billStats.overdueCount }}笔）</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ bills.filter(b => b.status === 'paid').length }}</div>
+          <div class="stat-label">已支付账单</div>
+        </div>
+      </div>
+
       <div class="filter-tabs">
         <span 
           v-for="tab in tabs" 
@@ -26,7 +41,9 @@
         <div v-if="loading" class="loading">加载中...</div>
         
         <div v-else-if="filteredBills.length === 0" class="empty">
-          暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}账单
+          <div class="empty-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+          <p class="empty-text">暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}账单</p>
+          <p class="empty-hint">租金账单会在这里显示</p>
         </div>
 
         <div 
@@ -112,6 +129,21 @@
         </div>
       </div>
 
+      <div class="stats-row" v-if="!loading && billStats.total">
+        <div class="stat-card" :class="{ warning: billStats.totalUnpaid > 0 }">
+          <div class="stat-value">¥{{ billStats.totalUnpaid }}</div>
+          <div class="stat-label">待支付（{{ billStats.unpaidCount }}笔）</div>
+        </div>
+        <div class="stat-card" :class="{ danger: billStats.totalOverdue > 0 }">
+          <div class="stat-value">¥{{ billStats.totalOverdue }}</div>
+          <div class="stat-label">已逾期（{{ billStats.overdueCount }}笔）</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">{{ bills.filter(b => b.status === 'paid').length }}</div>
+          <div class="stat-label">已支付账单</div>
+        </div>
+      </div>
+
       <div class="filter-tabs">
         <span 
           v-for="tab in tabs" 
@@ -129,9 +161,10 @@
         <div v-if="loading" class="loading">加载中...</div>
         
         <div v-else-if="filteredBills.length === 0" class="empty">
-          暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}账单
+          <div class="empty-icon"><i class="fa-solid fa-file-invoice-dollar"></i></div>
+          <p class="empty-text">暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}账单</p>
+          <p class="empty-hint">租金账单会在这里显示</p>
         </div>
-
         <div 
           v-for="bill in filteredBills" 
           :key="bill.id"
@@ -189,6 +222,97 @@
         @change="handlePageChange"
       />
     </template>
+
+    <!-- 查看详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="账单详情"
+      width="520px"
+    >
+      <div v-if="detailBill" class="detail-content">
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-file-invoice"></i> 账单信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">账单编号</span>
+              <span class="detail-value">#{{ detailBill.id }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">账单状态</span>
+              <span class="detail-value">
+                <span class="bill-status" :class="detailBill.status">{{ getStatusText(detailBill.status) }}</span>
+              </span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">账单账期</span>
+              <span class="detail-value">{{ detailBill.period }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">应付金额</span>
+              <span class="detail-value price">¥{{ detailBill.amount }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">到期时间</span>
+              <span class="detail-value">{{ detailBill.due_date }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">支付时间</span>
+              <span class="detail-value">{{ detailBill.paid_date || '-' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-home"></i> 房源信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">房源名称</span>
+              <span class="detail-value">{{ detailBill.house?.title }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">所在区域</span>
+              <span class="detail-value">{{ detailBill.house?.region }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">详细地址</span>
+              <span class="detail-value">{{ detailBill.house?.address }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-file-signature"></i> 关联信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">合同编号</span>
+              <span class="detail-value">合同 #{{ detailBill.contract_id }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">{{ isTenant ? '房东' : '租客' }}</span>
+              <span class="detail-value">{{ isTenant ? (detailBill.landlord_name || '未知') : detailBill.tenant_name }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">创建时间</span>
+              <span class="detail-value">{{ formatDateTime(detailBill.created_at) }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">更新时间</span>
+              <span class="detail-value">{{ formatDateTime(detailBill.updated_at) }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+    <BackToTop />
   </div>
 </template>
 
@@ -196,13 +320,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
+import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 import { mockTenantBills, mockLandlordBills } from '@/mock/bills'
 
 const userStore = useUserStore()
 
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 const loading = ref(false)
 const currentTab = ref('all')
@@ -210,6 +335,10 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const bills = ref([])
+
+// 查看详情相关
+const detailDialogVisible = ref(false)
+const detailBill = ref(null)
 
 // 判断当前用户是否是租客
 const isTenant = computed(() => userStore.userRole === 'tenant')
@@ -234,6 +363,20 @@ const getTabCount = (status) => {
   return bills.value.filter(b => b.status === status).length
 }
 
+const billStats = computed(() => {
+  const unpaid = bills.value.filter(b => b.status === 'unpaid')
+  const overdue = bills.value.filter(b => b.status === 'overdue')
+  const totalUnpaid = unpaid.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+  const totalOverdue = overdue.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
+  return {
+    unpaidCount: unpaid.length,
+    overdueCount: overdue.length,
+    totalUnpaid,
+    totalOverdue,
+    total: bills.value.length
+  }
+})
+
 const getStatusText = (status) => {
   const map = {
     unpaid: '待支付',
@@ -241,6 +384,18 @@ const getStatusText = (status) => {
     overdue: '已逾期'
   }
   return map[status] || status
+}
+
+const formatDateTime = (datetime) => {
+  if (!datetime) return '-'
+  const date = new Date(datetime)
+  return date.toLocaleString('zh-CN')
+}
+
+const formatPeriod = (dateStr) => {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`
 }
 
 const fetchBills = async () => {
@@ -260,7 +415,18 @@ const fetchBills = async () => {
       }
       const res = await service.get('/v1/bills', { params })
       if (res.code === 0) {
-        bills.value = res.data.list
+        bills.value = res.data.list.map(item => ({
+          ...item,
+          house: {
+            title: `房源 #${item.house_id}`,
+            region: '-',
+            address: '-'
+          },
+          period: formatPeriod(item.due_date || item.created_at),
+          paid_date: null,
+          tenant_name: `租客 #${item.tenant_id}`,
+          landlord_name: `房东 #${item.landlord_id}`
+        }))
         total.value = res.data.total
       }
     }
@@ -273,7 +439,8 @@ const fetchBills = async () => {
 }
 
 const viewDetail = (bill) => {
-  window.location.href = `/bills/detail/${bill.id}`
+  detailBill.value = bill
+  detailDialogVisible.value = true
 }
 
 const payBill = async (bill) => {
@@ -331,7 +498,7 @@ onMounted(() => {
 <style scoped>
 .bills-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: linear-gradient(180deg, #f4f6f9 0%, #edf0f5 100%);
   padding: 20px 200px;
 }
 
@@ -366,6 +533,51 @@ onMounted(() => {
 
 .header-right .el-button {
   padding: 8px 20px;
+}
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.stat-card {
+  background: #fff;
+  border-radius: 10px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  border-left: 3px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.stat-card.warning {
+  border-left-color: #f59e0b;
+}
+
+.stat-card.danger {
+  border-left-color: #ef4444;
+}
+
+.stat-card.success {
+  border-left-color: #10b981;
+}
+
+.stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.stat-label {
+  font-size: 13px;
+  color: #94a3b8;
 }
 
 .filter-tabs {
@@ -434,11 +646,29 @@ onMounted(() => {
 
 .loading, .empty {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
   color: #8c8c8c;
   background: #fff;
   border-radius: 8px;
   margin-bottom: 20px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #c0c4cc;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 15px;
+  color: #8c8c8c;
+  margin: 0 0 4px;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #b0b4bc;
+  margin: 0;
 }
 
 .bill-card {
@@ -455,8 +685,8 @@ onMounted(() => {
 }
 
 .bill-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
 }
 
 .bill-info {
@@ -557,5 +787,71 @@ onMounted(() => {
 
 .bill-actions .el-button {
   margin-left: 8px;
+}
+
+.detail-content {
+  padding: 0;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-section-title i {
+  color: #1890ff;
+  margin-right: 6px;
+}
+
+.detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.detail-label {
+  font-size: 14px;
+  color: #8c8c8c;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #262626;
+  text-align: right;
+}
+
+.detail-value.price {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1890ff;
+}
+
+.detail-remark {
+  font-size: 14px;
+  color: #595959;
+  line-height: 1.6;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-radius: 6px;
 }
 </style>
