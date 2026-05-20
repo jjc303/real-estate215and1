@@ -19,19 +19,28 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { ElMessage } from 'element-plus';
+
+const router = useRouter();
 
 // 绑定输入框文字
 const searchText = ref('');
 
-// 搜索逻辑（可对接后端接口）
+// 搜索逻辑
 const handleSearch = () => {
   if (!searchText.value.trim()) {
-    alert('请输入搜索内容！');
+    ElMessage.warning('请输入搜索内容！');
     return;
   }
-  console.log('正在搜索：', searchText.value);
-  // 这里后续对接你的搜索接口
-  //例： fetchSearchData(searchText.value)
+  
+  // 跳转到房源列表页，并传递搜索关键词
+  router.push({
+    path: '/houseList',
+    query: {
+      keyword: searchText.value.trim()
+    }
+  });
 };
 </script>
 

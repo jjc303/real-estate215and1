@@ -219,7 +219,8 @@ import { useRoute,useRouter} from 'vue-router';
 import { watch } from 'vue';
 import { onMounted } from 'vue';
 import Pagination from '@/components/Pagination.vue';
-import { mockHouses } from'@/mock/houseList'
+import { getHouseList } from '@/api/house.js';
+import { ElMessage } from 'element-plus';
 const userStore = useUserStore();
 const route=useRoute();
 
@@ -231,7 +232,7 @@ const total = ref(0)//房源总数
 const pageNum=ref(1)//当前页数
 const pageSize=ref(10)//每页条数
 const houseList = ref([])//房源信息
-const districts=['不限','雨花','岳麓','天心','开福','芙蓉','望城','宁乡市','浏阳','长沙县'];
+const districts=['不限','雨花区','岳麓区','天心区','开福区','芙蓉区','望城区','宁乡市','浏阳区','长沙县'];
 const selectedDistrict=ref('');
 
 const prices = ref([
@@ -312,6 +313,8 @@ const setFilter=(key,value)=>{
          } else {
             filter.sort = value
         }
+        // 排序改变后重新获取数据并排序
+        fetchHouseList()
         return
     }
     const type = filterConfig[key]
@@ -326,8 +329,7 @@ const setFilter=(key,value)=>{
             filter[key].push(value)//选中
         }
     }
-    //接入接口 调用搜索函数
-
+    
     // 筛选条件改变，重置到第一页
     pageNum.value = 1
     fetchHouseList()
@@ -347,7 +349,7 @@ const confirmPriceRange = () => {
   }
   
   if (filter.min_rent !== null && filter.max_rent !== null && filter.min_rent > filter.max_rent) {
-    alert('最低价格不能大于最高价格')
+    ElMessage.warning('最低价格不能大于最高价格')
     return
   }
   
@@ -369,7 +371,7 @@ const confirmAreaRange = () => {
   }
   
   if (filter.min_area !== null && filter.max_area !== null && filter.min_area > filter.max_area) {
-    alert('最小面积不能大于最大面积')
+    ElMessage.warning('最小面积不能大于最大面积')
     return
   }
   
@@ -398,17 +400,44 @@ const clearAllFilter = () => {
   customArea.max = null
 
   pageNum.value = 1
+  // 保留搜索关键词，只清空筛选条件
   fetchHouseList()
 }
 
 const handleCollect=async(house)=>{
     //登录才能收藏
     if (!userStore.token) {
-        alert('请先登录')
+        ElMessage.warning('请先登录')
         return
     }
-    //接入收藏处理接口
-    house.isCollect = !house.isCollect
+    
+    try {
+        // 导入收藏 API
+        const { addFavorite, removeFavorite } = await import('@/api/favorite')
+        
+        if (house.isCollect) {
+            // 取消收藏
+            const res = await removeFavorite(house.id)
+            if (res.code === 0) {
+                house.isCollect = false
+                ElMessage.success('已取消收藏')
+            } else {
+                ElMessage.error(res.message || '取消收藏失败')
+            }
+        } else {
+            // 添加收藏
+            const res = await addFavorite(house.id)
+            if (res.code === 0) {
+                house.isCollect = true
+                ElMessage.success('收藏成功')
+            } else {
+                ElMessage.error(res.message || '收藏失败')
+            }
+        }
+    } catch (error) {
+        console.error('收藏操作失败:', error)
+        ElMessage.error('收藏失败，请重试')
+    }
 }
 /*const fetchHouseList=async()=>{
     const params={
@@ -433,22 +462,177 @@ const handleCollect=async(house)=>{
     total.value = res.data.total
 }*/
 
-// 只做分页，不做任何模拟筛选
 const fetchHouseList=async()=>{
-    // 模拟后端返回
-    const start = (pageNum.value - 1) * pageSize.value;
-    const end = start + pageSize.value;
-
-    const res = {
-        code: 200,
-        data: {
-            list: mockHouses.slice(start, end),
-            total: mockHouses.length
+    try {
+        // 从 URL 查询参数中获取搜索关键词
+        const searchKeyword = route.query.keyword || '';
+        
+        // 处理租金范围 - 支持多选
+        let minRent = filter.min_rent;
+        let maxRent = filter.max_rent;
+        
+        // 处理选中的租金区间（支持多选）
+        if (filter.price.length > 0) {
+            let minValues = [];
+            let maxValues = [];
+            
+            filter.price.forEach(priceRange => {
+                if (priceRange === '1000') {
+                    minValues.push(0);
+                    maxValues.push(1000);
+                } else if (priceRange === '1000-2000') {
+                    minValues.push(1000);
+                    maxValues.push(2000);
+                } else if (priceRange === '2000-3000') {
+                    minValues.push(2000);
+                    maxValues.push(3000);
+                } else if (priceRange === '5000') {
+                    minValues.push(5000);
+                    maxValues.push(null); // 无上限
+                }
+            });
+            
+            // 取所有区间的最小值和最大值
+            minRent = Math.min(...minValues);
+            // 如果有 null（表示无上限），则 maxRent 为 null，否则取最大值
+            maxRent = maxValues.includes(null) ? null : Math.max(...maxValues);
         }
+        
+        // 处理面积范围 - 支持多选
+        let minArea = filter.min_area;
+        let maxArea = filter.max_area;
+        
+        // 处理选中的面积区间（支持多选）
+        if (filter.area.length > 0) {
+            let minValues = [];
+            let maxValues = [];
+            
+            filter.area.forEach(areaRange => {
+                if (areaRange === '30') {
+                    minValues.push(0);
+                    maxValues.push(30);
+                } else if (areaRange === '30-50') {
+                    minValues.push(30);
+                    maxValues.push(50);
+                } else if (areaRange === '50-80') {
+                    minValues.push(50);
+                    maxValues.push(80);
+                } else if (areaRange === '80-100') {
+                    minValues.push(80);
+                    maxValues.push(100);
+                } else if (areaRange === '100') {
+                    minValues.push(100);
+                    maxValues.push(null); // 无上限
+                }
+            });
+            
+            // 取所有区间的最小值和最大值
+            minArea = Math.min(...minValues);
+            // 如果有 null（表示无上限），则 maxArea 为 null，否则取最大值
+            maxArea = maxValues.includes(null) ? null : Math.max(...maxValues);
+        }
+        
+        // 处理户型
+        let houseType = undefined;
+        if (filter.room.length > 0) {
+            // 将选中的户型合并，如"1,2,3"
+            houseType = filter.room.map(r => {
+                if (r === '1') return '一室';
+                if (r === '2') return '二室';
+                if (r === '3') return '三室';
+                if (r === '4+') return '四室';
+                return r;
+            }).join(',');
+        }
+        
+        const params = {
+            page: pageNum.value,
+            page_size: pageSize.value,
+            region: filter.district || undefined,
+            house_type: houseType,
+            min_rent: minRent,
+            max_rent: maxRent,
+            min_area: minArea,
+            max_area: maxArea,
+            keyword: searchKeyword || undefined
+        }
+        
+        // 移除 undefined 值
+        Object.keys(params).forEach(key => {
+            if (params[key] === undefined || params[key] === null || params[key] === '') {
+                delete params[key];
+            }
+        });
+        
+        console.log('===== 房源列表请求参数 =====');
+        console.log('请求参数:', params);
+        console.log('搜索关键词:', searchKeyword);
+        console.log('URL query:', route.query);
+        console.log('区域:', filter.district);
+        console.log('租金区间:', filter.price);
+        console.log('面积区间:', filter.area);
+        console.log('户型:', filter.room);
+        console.log('min_rent:', minRent, 'max_rent:', maxRent);
+        console.log('min_area:', minArea, 'max_area:', maxArea);
+        console.log('自定义价格:', customPrice);
+        console.log('自定义面积:', customArea);
+        
+        const res = await getHouseList(params)
+        
+        console.log('===== 房源列表响应 =====');
+        console.log('响应数据:', res);
+        console.log('房源数量:', res.data?.list?.length);
+        console.log('总条数:', res.data?.total);
+        
+        if (res.code === 0) {
+            console.log('===== 房源数据详情 =====');
+            if (res.data.list && res.data.list.length > 0) {
+                console.log('第一条房源数据:', res.data.list[0]);
+                console.log('第一条房源 region:', res.data.list[0].region);
+            }
+            
+            // 先映射数据
+            let mappedList = res.data.list.map(house => ({
+                id: house.id,
+                title: house.title || '无',
+                district: house.region || '无',
+                businessArea: house.community || '无',
+                area: parseFloat(house.area) || 0,
+                room: house.house_type || '无',
+                orientation: house.orientation || '无',
+                price: parseFloat(house.rent) || 0,
+                deposit: parseFloat(house.deposit) || 0,
+                images: [],
+                tags: [],
+                updateTime: house.updated_at || '',
+                isCollect: false,
+                floor: house.floor || '无',
+                decoration: house.decoration || '无',
+                description: house.description || '无',
+                status: house.status || '无',
+                address: house.address || '无'
+            }))
+            
+            // 前端排序
+            if (filter.sort === 'price_asc') {
+                mappedList.sort((a, b) => a.price - b.price)
+            } else if (filter.sort === 'price_desc') {
+                mappedList.sort((a, b) => b.price - a.price)
+            } else if (filter.sort === 'area_asc') {
+                mappedList.sort((a, b) => a.area - b.area)
+            } else if (filter.sort === 'area_desc') {
+                mappedList.sort((a, b) => b.area - a.area)
+            }
+            
+            houseList.value = mappedList
+            total.value = res.data.total
+        } else {
+            ElMessage.error(res.message || '获取房源列表失败')
+        }
+    } catch (error) {
+        ElMessage.error('获取房源列表失败')
+        console.error(error)
     }
-
-    houseList.value = res.data.list
-    total.value = res.data.total
 }
 // 翻页
 const handlePageChange = (page) => {
@@ -462,6 +646,12 @@ watch(()=>filter.district,(val)=>{
 watch(filter, () => {
   // fetchHouseList()
 }, { deep: true })
+
+// 监听 URL 搜索关键词变化
+watch(() => route.query.keyword, () => {
+  pageNum.value = 1
+  fetchHouseList()
+})
 
 onMounted(() => {
   fetchHouseList()

@@ -1,13 +1,18 @@
 <template>
   <div class="public-news-page">
+    <ParticlesBg />
     <div class="page-inner">
       <div class="page-header">
-        <h1>新闻通知</h1>
+        <h1 class="main-title">
+          <span class="news-title-char" v-for="(char, idx) in titleChars" :key="idx" :style="{ '--delay': `${idx * 0.15}s` }">
+            {{ char }}
+          </span>
+        </h1>
         <p class="subtitle">浏览最新平台公告和新闻资讯</p>
       </div>
 
       <div class="news-list-wrapper">
-        <div class="news-card" v-for="item in newsList" :key="item.id">
+        <div class="news-card fade-in" v-for="(item, idx) in newsList" :key="item.id" :style="{ animationDelay: `${0.6 + idx * 0.12}s` }">
           <div class="news-badge" v-if="item.isTop">置顶</div>
           <div class="news-card-body">
             <div class="news-meta">
@@ -30,6 +35,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import ParticlesBg from '@/components/ParticlesBg/index.vue'
 
 const newsList = ref([
   {
@@ -70,44 +76,95 @@ const newsList = ref([
   }
 ])
 
+const titleChars = '新闻通知'.split('')
+
 onMounted(() => {
+  document.querySelectorAll('.fade-in').forEach((el, idx) => {
+    setTimeout(() => el.classList.add('visible'), parseFloat(el.style.animationDelay) * 1000 + 200)
+  })
 })
 </script>
 
 <style scoped>
 .public-news-page {
-  width: 100vw;
-  min-height: calc(100vh - 140px);
-  background: linear-gradient(180deg, #eceef1 0%, #f5f7fa 100%);
-  position: relative;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
+  min-height: 100vh;
+  background: linear-gradient(180deg, #fafafa 0%, #f0f5ff 100%);
   padding: 40px 20px;
+  position: relative;
+  overflow: hidden;
 }
 
 .page-inner {
   max-width: 1200px;
   margin: 0 auto;
+  position: relative;
+  z-index: 10;
 }
 
 .page-header {
-  margin: 0 0 32px;
+  margin: 0 0 48px;
   text-align: center;
 }
 
-.page-header h1 {
-  font-size: 32px;
+.main-title {
+  font-size: 42px;
   font-weight: 700;
-  color: #1a1a2e;
-  margin: 0 0 8px;
+  margin: 0 0 12px;
+  position: relative;
+  display: inline-block;
+}
+
+.news-title-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(20px);
+  animation: newsTitleAppear 0.6s ease-out forwards;
+  animation-delay: var(--delay, 0s);
+  background: linear-gradient(90deg, #1890ff, #52c41a, #1890ff);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: newsTitleAppear 0.6s ease-out forwards, newsShine 3s linear infinite;
+  animation-delay: var(--delay, 0s), calc(var(--delay, 0s) + 0.4s);
+}
+
+@keyframes newsTitleAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes newsShine {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.fade-in {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: all 0.5s ease-out;
+}
+
+.fade-in.visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 .subtitle {
-  font-size: 15px;
-  color: #666;
+  font-size: 16px;
+  color: #8c8c8c;
   margin: 0;
+  letter-spacing: 3px;
 }
 
 .news-list-wrapper {
@@ -119,16 +176,18 @@ onMounted(() => {
 
 .news-card {
   background: white;
-  border-radius: 20px;
-  box-shadow: 0 4px 20px rgba(25, 118, 210, 0.08);
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
   overflow: hidden;
   position: relative;
+  border: 1px solid #f0f0f0;
   transition: transform 0.25s, box-shadow 0.25s;
 }
 
 .news-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 30px rgba(25, 118, 210, 0.14);
+  transform: translateY(-6px);
+  border-color: rgba(24, 144, 255, 0.5);
+  box-shadow: 0 12px 32px rgba(24, 144, 255, 0.12);
 }
 
 .news-badge {
@@ -154,8 +213,8 @@ onMounted(() => {
 }
 
 .news-category {
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #e6f7ff;
+  color: #1890ff;
   font-size: 12px;
   font-weight: 600;
   padding: 4px 10px;
@@ -172,21 +231,21 @@ onMounted(() => {
 .news-title {
   font-size: 20px;
   font-weight: 700;
-  color: #1a1a2e;
+  color: #262626;
   margin: 0 0 10px;
   line-height: 1.4;
 }
 
 .news-desc {
   font-size: 14px;
-  color: #666;
+  color: #595959;
   line-height: 1.7;
   margin: 0;
 }
 
 .news-card-footer {
   padding: 16px 24px;
-  border-top: 1px solid #f5f7fa;
+  border-top: 1px solid #f0f0f0;
   display: flex;
   justify-content: flex-start;
   align-items: center;
@@ -194,7 +253,7 @@ onMounted(() => {
 
 .news-author {
   font-size: 13px;
-  color: #888;
+  color: #8c8c8c;
   display: flex;
   align-items: center;
   gap: 6px;

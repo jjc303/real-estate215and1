@@ -34,9 +34,16 @@ service.interceptors.response.use(
     logger.error('请求错误：', error)
     // 401 未登录，自动跳登录
     if (error.response && error.response.status === 401) {
-      localStorage.removeItem('token')
-      localStorage.removeItem('userInfo')
-      window.location.href = '/login'
+      // 登录相关接口（login、register、send-sms等）失败时不跳转，让调用方处理
+      const requestUrl = error.response.config.url
+      const authPaths = ['/auth/login', '/auth/login-sms', '/auth/email/login', '/users', '/auth/send-sms', '/auth/email/code']
+      // 检查 URL 是否包含任何认证相关路径
+      const isAuthPath = authPaths.some(path => requestUrl.includes(path))
+      if (!isAuthPath) {
+        localStorage.removeItem('token')
+        localStorage.removeItem('userInfo')
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(error)
   }

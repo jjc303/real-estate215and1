@@ -15,6 +15,10 @@ export const useUserStore = defineStore('user', () => {
     const showLogin = ref(false);//登录模态框显示状态
     const showRegister = ref(false);//注册模态框显示状态
 
+    const token = computed(() => {
+        return localStorage.getItem('token') || '';
+    });
+
     const activeTab = ref('password');
     const registerType = ref('password');
     // 登录倒计时
@@ -98,9 +102,73 @@ export const useUserStore = defineStore('user', () => {
         const status = error.response?.status
         const response = error.response?.data
 
-        // 优先用后端返回的message
+        // 将code转为数字类型（处理后端返回字符串的情况）
+        const errorCode = response?.code !== undefined ? Number(response.code) : null
+
+        // 优先处理业务错误码（code字段）
+        if (errorCode !== null) {
+            const codeMessages = {
+                1001: '用户不存在',
+                1002: '用户名或密码错误',
+                1003: '登录已过期，请重新登录',
+                1004: '没有权限执行此操作',
+                2002: '用户名或邮箱已存在',
+                2101: '房源不存在',
+                2102: '房源状态不允许当前操作',
+                2201: '收藏记录不存在',
+                2202: '已收藏该房源',
+                2301: '预约不存在',
+                2302: '预约状态不允许当前操作',
+                2401: '会话不存在',
+                2402: '消息不存在',
+                2501: '合同或账单相关资源不存在',
+                2502: '合同状态不允许当前操作',
+                2503: '账单状态不允许当前操作',
+                2601: '支付记录不存在',
+                2602: '账单当前状态不允许支付',
+                2603: '支付金额不匹配',
+                2604: '账单已支付',
+                2701: '报修不存在',
+                2702: '报修状态不允许当前操作',
+                2801: '投诉不存在',
+                2802: '投诉状态不允许当前操作',
+                2901: '通知不存在',
+                2902: '通知状态不允许当前操作',
+                3001: '请求参数错误',
+                3002: '公告不存在',
+                3003: '公告状态非法',
+                5000: '服务器内部错误'
+            }
+            if (codeMessages[errorCode]) {
+                ElMessage.error(codeMessages[errorCode])
+                return
+            }
+        }
+
+        // 处理英文错误信息，转为中文
+        const englishMessages = {
+            'invalid credentials': '用户名或密码错误',
+            'Invalid credentials': '用户名或密码错误',
+            'user not found': '用户不存在',
+            'User not found': '用户不存在',
+            'email already exists': '邮箱已存在',
+            'Email already exists': '邮箱已存在',
+            'username already exists': '用户名已存在',
+            'Username already exists': '用户名已存在',
+            'code error': '验证码错误',
+            'Code error': '验证码错误',
+            'code expired': '验证码已过期',
+            'Code expired': '验证码已过期'
+        }
+
+        // 使用后端返回的message（先检查是否是英文错误，再显示原始message）
         if (response?.message || response?.msg) {
-            ElMessage.error(response.message || response.msg)
+            const msg = response.message || response.msg
+            if (englishMessages[msg]) {
+                ElMessage.error(englishMessages[msg])
+            } else {
+                ElMessage.error(msg)
+            }
             return
         }
 
@@ -306,6 +374,8 @@ export const useUserStore = defineStore('user', () => {
                 userId.value = res.data.user.id
                 userName.value = res.data.user.username
                 userRole.value = res.data.user.role
+                // 存储到 localStorage，方便其他组件使用
+                localStorage.setItem('userInfo', JSON.stringify(res.data.user))
             } else {
                 await fetchCurrentUser()
             }
@@ -375,6 +445,8 @@ export const useUserStore = defineStore('user', () => {
                     userId.value = loginRes.data.user.id
                     userName.value = loginRes.data.user.username
                     userRole.value = loginRes.data.user.role
+                    // 存储到 localStorage，方便其他组件使用
+                    localStorage.setItem('userInfo', JSON.stringify(loginRes.data.user))
                 } else {
                     await fetchCurrentUser()
                 }
@@ -407,6 +479,8 @@ export const useUserStore = defineStore('user', () => {
             userRole.value = res.data.role
             userAvatar.value = res.data.avatar || ''
             isLoggedIn.value = true
+            // 存储到 localStorage
+            localStorage.setItem('userInfo', JSON.stringify(res.data))
             return res.data
         } catch (e) {
             handleError(e, '获取用户信息失败')
@@ -500,6 +574,7 @@ export const useUserStore = defineStore('user', () => {
         userId,
         userInfo,
         userAvatar,
+        token,
         showLogin,
         showRegister,
         loginForm,

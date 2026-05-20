@@ -1,11 +1,11 @@
 <template>
-    <div class="house-bar-wrap">
+    <div class="house-bar-wrap" @click="goToDetail">
         <!-- 左侧房源图片 -->
         <div class="house-img">
             <img 
-              :src="house.images?.length?house.images[0]:defaultImg" 
+              :src="getHouseImage(house.images, 0, house.id)" 
               alt="房源封面" 
-              @error="$event.target.src = defaultImg"
+              @error="$event.target.src = getRandomImage(200, 140, house.id)"
             />
         </div>
         <!-- 中间：房源信息 -->
@@ -40,17 +40,24 @@
     </div>
 </template>
 <script setup>
-import defaultImg from '@/assets/images/default-house.png'
+import { useRouter } from 'vue-router'
+import { getHouseImage, getRandomImage } from '@/utils/tools.js'
 
-defineProps({
+const router = useRouter()
+
+const props = defineProps({
     house:{
         type:Object,
         required:true,
         default:()=>({})
     }
 })
-// 向外派发收藏事件 父组件处理收藏接口
+
 defineEmits(['collect'])
+
+const goToDetail = () => {
+    router.push(`/houseDetail/${props.house.id}`)
+}
 </script>
 
 <style scoped>
