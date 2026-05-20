@@ -1,4 +1,4 @@
-﻿# API 文档（当前实现）
+# API 文档（当前实现）
 
 Version: v1.16.0  
 Base URL: `http://127.0.0.1:8000`  
@@ -166,7 +166,7 @@ Content-Type: application/json
 
 ### 4.1 模块说明
 
-User 模块负责普通注册、个人资料查询与修改。
+User 模块负责普通注册、用户列表查询与单个用户查询。
 
 角色取值：
 - `tenant`
@@ -180,8 +180,11 @@ User 模块负责普通注册、个人资料查询与修改。
 ### 4.2 接口列表
 
 - `POST /api/v1/users`
-- `GET /api/v1/users/me`
+- `GET /api/v1/users`
+- `GET /api/v1/users/{user_id}`
 - `PUT /api/v1/users/me`
+
+> **注意**：获取当前登录用户信息请使用 `GET /api/v1/auth/me`
 
 ### 4.3 注册
 
@@ -234,9 +237,44 @@ User 模块负责普通注册、个人资料查询与修改。
 }
 ```
 
-### 4.4 获取当前用户
+### 4.4 用户列表
 
-`GET /api/v1/users/me`
+`GET /api/v1/users`
+
+支持 query：
+- `page`：默认 `1`
+- `page_size`：默认 `10`
+
+返回分页结构：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "username": "alice",
+        "role": "tenant",
+        "real_name": "Alice",
+        "phone": "13800000000",
+        "email": "alice@example.com",
+        "avatar": "https://example.com/avatar.png",
+        "status": "active",
+        "created_at": "2026-05-03T12:00:00"
+      }
+    ],
+    "total": 1,
+    "page": 1,
+    "page_size": 10
+  }
+}
+```
+
+### 4.5 用户详情
+
+`GET /api/v1/users/{user_id}`
 
 返回字段：
 - `id`
@@ -269,27 +307,57 @@ User 模块负责普通注册、个人资料查询与修改。
 }
 ```
 
-### 4.5 更新个人资料
+### 4.6 更新用户信息
 
 `PUT /api/v1/users/me`
 
-说明：
-- 只能修改自己的资料
-- 允许更新基础展示信息
-- 不能通过该接口改角色
+权限：
+- 需要登录
 
-请求体示例：
+请求体：
 
 ```json
 {
-  "real_name": "Alice Zhang",
+  "real_name": "Alice Wang",
   "phone": "13900000000",
   "email": "alice_new@example.com",
-  "avatar": "https://example.com/new-avatar.png"
+  "avatar": "https://example.com/new_avatar.png",
+  "password": "newpassword123"
 }
 ```
 
-返回字段与 `GET /api/v1/users/me` 一致。
+字段规则：
+- 所有字段均为可选，只传需要更新的字段即可
+- `real_name`：最长 50，空串视为 `null`
+- `phone`：最长 20，空串视为 `null`
+- `email`：最长 100，空串视为 `null`，不能与其他用户重复
+- `avatar`：最长 255，空串视为 `null`
+- `password`：6-255，空串视为 `null`（不更新密码）
+
+成功响应示例：
+
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "id": 1,
+    "username": "alice",
+    "role": "tenant",
+    "real_name": "Alice Wang",
+    "phone": "13900000000",
+    "email": "alice_new@example.com",
+    "avatar": "https://example.com/new_avatar.png",
+    "status": "active",
+    "created_at": "2026-05-03T12:00:00"
+  }
+}
+```
+
+常见错误：
+- `1003`：未登录
+- `1001`：用户不存在
+- `2002`：邮箱已被其他用户占用
 
 ---
 
