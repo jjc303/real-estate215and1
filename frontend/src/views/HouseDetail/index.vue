@@ -11,20 +11,24 @@
             <div class="gallery-section">
                 <div class="gallery-main">
                     <img 
-                        :src="house.images?.length ? house.images[currentImgIndex] : defaultImg" 
+                        :src="getHouseImage(house.images, currentImgIndex, house.id)" 
                         alt="房源主图"
-                        @error="$event.target.src = defaultImg"
+                        @error="$event.target.src = getRandomImage(500, 320, house.id)"
                     />
                 </div>
                 <div class="gallery-thumbs">
                     <div 
-                        v-for="(img, index) in (house.images || [])" 
+                        v-for="(img, index) in (house.images && house.images.length > 0 ? house.images : [1])" 
                         :key="index"
                         class="thumb-item"
                         :class="{ active: currentImgIndex === index }"
                         @click="currentImgIndex = index"
                     >
-                        <img :src="img" :alt="`图片${index + 1}`" />
+                        <img 
+                            :src="house.images && house.images.length > 0 ? img : getRandomImage(100, 80, house.id)" 
+                            :alt="`图片${index + 1}`" 
+                            @error="$event.target.src = getRandomImage(100, 80, house.id)"
+                        />
                     </div>
                 </div>
             </div>
@@ -38,11 +42,11 @@
                 <div class="house-meta">
                     <div class="meta-item">
                         <span class="meta-label">位置</span>
-                        <span class="meta-value">{{ house.district }} · {{ house.businessArea }}</span>
+                        <span class="meta-value">{{ house.district || '无' }} · {{ house.businessArea || '无' }}</span>
                     </div>
                     <div class="meta-item">
                         <span class="meta-label">户型</span>
-                        <span class="meta-value">{{ house.room }}{{ house.hall }}厅 · {{ house.area }}㎡</span>
+                        <span class="meta-value">{{ house.room === '无' ? '无' : `${house.room}` }} · {{ house.area === 0 ? '无' : `${house.area}㎡` }}</span>
                     </div>
                     <div class="meta-item">
                         <span class="meta-label">朝向</span>
@@ -50,7 +54,7 @@
                     </div>
                     <div class="meta-item">
                         <span class="meta-label">楼层</span>
-                        <span class="meta-value">{{ house.floor }}层 / 共{{ house.totalFloor }}层</span>
+                        <span class="meta-value">{{ house.floor || '无' }}</span>
                     </div>
                 </div>
                 <div class="house-tags">
@@ -88,35 +92,35 @@
             <div class="params-grid">
                 <div class="param-item">
                     <span class="param-label">建筑面积</span>
-                    <span class="param-value">{{ house.area }}㎡</span>
+                    <span class="param-value">{{ house.area === 0 ? '无' : `${house.area}㎡` }}</span>
                 </div>
                 <div class="param-item">
                     <span class="param-label">户型</span>
-                    <span class="param-value">{{ house.room }}室{{ house.hall }}厅{{ house.toilet }}卫</span>
+                    <span class="param-value">{{ house.room || '无' }}</span>
                 </div>
                 <div class="param-item">
                     <span class="param-label">朝向</span>
-                    <span class="param-value">{{ house.orientation }}</span>
+                    <span class="param-value">{{ house.orientation || '无' }}</span>
                 </div>
                 <div class="param-item">
                     <span class="param-label">楼层</span>
-                    <span class="param-value">{{ house.floor }}层 / 共{{ house.totalFloor }}层</span>
+                    <span class="param-value">{{ house.floor || '无' }}</span>
                 </div>
                 <div class="param-item">
                     <span class="param-label">装修</span>
-                    <span class="param-value">{{ house.decoration }}</span>
+                    <span class="param-value">{{ house.decoration || '无' }}</span>
                 </div>
                 <div class="param-item">
-                    <span class="param-label">电梯</span>
-                    <span class="param-value">{{ house.elevator ? '有' : '无' }}</span>
+                    <span class="param-label">地址</span>
+                    <span class="param-value">{{ house.address || '无' }}</span>
                 </div>
                 <div class="param-item">
                     <span class="param-label">租金</span>
-                    <span class="param-value">{{ house.price }}元/月</span>
+                    <span class="param-value">{{ house.price === 0 ? '无' : `${house.price}元/月` }}</span>
                 </div>
                 <div class="param-item">
-                    <span class="param-label">付款方式</span>
-                    <span class="param-value">{{ house.payment }}</span>
+                    <span class="param-label">押金</span>
+                    <span class="param-value">{{ house.deposit === 0 ? '无' : `${house.deposit}元` }}</span>
                 </div>
             </div>
         </div>
@@ -136,8 +140,8 @@ import { useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/user.js';
 import { ElMessage } from 'element-plus';
 import ChatPopup from '@/components/ChatPopup.vue';
-import defaultImg from '@/assets/images/default-house.png';
-import { mockHouses } from '@/mock/houseList';
+import { getHouseImage, getRandomImage } from '@/utils/tools.js';
+import { getHouseDetail } from '@/api/house.js';
 
 const route = useRoute();
 const userStore = useUserStore();
@@ -164,23 +168,53 @@ const openChat = () => {
 };
 
 const fetchHouseDetail = async () => {
-    const houseId = parseInt(route.params.id);
-    // 模拟获取房源详情
-    const foundHouse = mockHouses.find(h => h.id === houseId);
-    if (foundHouse) {
+    try {
+        const houseId = parseInt(route.params.id);
+        const res = await getHouseDetail(houseId);
+        
+        if (res.code === 0) {
+            const data = res.data;
+            house.value = {
+                id: data.id,
+                title: data.title || '无',
+                price: parseFloat(data.rent) || 0,
+                deposit: parseFloat(data.deposit) || 0,
+                district: data.region || '无',
+                businessArea: data.community || '无',
+                area: parseFloat(data.area) || 0,
+                room: data.house_type || '无',
+                orientation: data.orientation || '无',
+                floor: data.floor || '无',
+                decoration: data.decoration || '无',
+                description: data.description || '无',
+                status: data.status || '无',
+                address: data.address || '无',
+                images: [],
+                tags: [],
+                isCollect: false
+            };
+        } else {
+            ElMessage.error(res.message || '获取房源详情失败');
+            house.value = {
+                id: houseId,
+                title: '房源不存在',
+                price: 0,
+                district: '',
+                businessArea: '',
+                area: 0,
+                room: 0,
+                orientation: '',
+                floor: 0,
+                description: '',
+                images: [],
+                tags: []
+            };
+        }
+    } catch (error) {
+        ElMessage.error('获取房源详情失败');
+        console.error(error);
         house.value = {
-            ...foundHouse,
-            // 保留原始图片数据，不覆盖
-            isCollect: false,
-            hall: 1,
-            toilet: 1,
-            totalFloor: 28,
-            decoration: '精装修',
-            payment: '押一付三'
-        };
-    } else {
-        house.value = {
-            id: houseId,
+            id: parseInt(route.params.id),
             title: '房源不存在',
             price: 0,
             district: '',

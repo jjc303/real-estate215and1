@@ -10,7 +10,7 @@
 <template v-else>
   <button class="btn-notification" @click="showChatPopup = true">
     <i class="fa-solid fa-bell"></i>
-    <span class="notification-badge" v-if="unreadCount > 0">{{ unreadCount }}</span>
+    <span class="notification-badge" v-if="unreadCount > 0">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
   </button>
   
   <div class="username">
@@ -24,19 +24,51 @@
     <i class="fa-solid fa-right-from-bracket"></i> 退出
   </button>
   
-  <ChatPopup v-model:visible="showChatPopup" />
+  <ChatPopup v-model:visible="showChatPopup" @update:unread-count="updateUnreadCount" />
 </template>
 </template>
 
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useUserStore } from '@/stores/user.js';
 import ChatPopup from '@/components/ChatPopup.vue';
+import { getConversationList } from '@/api/conversation';
 
 const userStore = useUserStore();
 const showChatPopup = ref(false);
-const unreadCount = ref(3);
+const unreadCount = ref(0);
+
+const fetchUnreadCount = async () => {
+  try {
+    const res = await getConversationList();
+    if (res.code === 0 && res.data) {
+      const list = res.data.list || [];
+      unreadCount.value = list.reduce((sum, item) => sum + (item.unread_count || 0), 0);
+    }
+  } catch (error) {
+    console.error('获取未读消息数失败:', error);
+  }
+};
+
+const updateUnreadCount = (count) => {
+  // 直接使用传入的计数值
+  unreadCount.value = count;
+};
+
+// 监听聊天窗口打开，重新获取未读消息数
+watch(() => showChatPopup.value, async (newVal) => {
+  if (newVal) {
+    // 打开聊天窗口时重新获取未读消息数
+    await fetchUnreadCount();
+  }
+});
+
+onMounted(() => {
+  if (userStore.isLoggedIn) {
+    fetchUnreadCount();
+  }
+});
 </script>
 <style scoped>
 

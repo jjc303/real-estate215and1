@@ -201,7 +201,7 @@
     <el-dialog
       v-if="isTenant"
       title="发起预约"
-      :visible.sync="dialogVisible"
+      v-model="dialogVisible"
       width="500px"
     >
       <el-form :model="reservationForm" label-width="80px">
@@ -258,7 +258,7 @@ import { mockTenantReservations, mockLandlordReservations } from '@/mock/reserva
 const userStore = useUserStore()
 
 // 是否开启模拟数据
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false // 停止使用模拟数据
 
 const loading = ref(false)
 const currentTab = ref('all')

@@ -374,6 +374,8 @@ export const useUserStore = defineStore('user', () => {
                 userId.value = res.data.user.id
                 userName.value = res.data.user.username
                 userRole.value = res.data.user.role
+                // 存储到 localStorage，方便其他组件使用
+                localStorage.setItem('userInfo', JSON.stringify(res.data.user))
             } else {
                 await fetchCurrentUser()
             }
@@ -443,6 +445,8 @@ export const useUserStore = defineStore('user', () => {
                     userId.value = loginRes.data.user.id
                     userName.value = loginRes.data.user.username
                     userRole.value = loginRes.data.user.role
+                    // 存储到 localStorage，方便其他组件使用
+                    localStorage.setItem('userInfo', JSON.stringify(loginRes.data.user))
                 } else {
                     await fetchCurrentUser()
                 }
@@ -475,6 +479,8 @@ export const useUserStore = defineStore('user', () => {
             userRole.value = res.data.role
             userAvatar.value = res.data.avatar || ''
             isLoggedIn.value = true
+            // 存储到 localStorage
+            localStorage.setItem('userInfo', JSON.stringify(res.data))
             return res.data
         } catch (e) {
             handleError(e, '获取用户信息失败')

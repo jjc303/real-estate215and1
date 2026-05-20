@@ -148,25 +148,103 @@ const showError = ref(false);
 const loading = ref(false);
 const messagesLoading = ref(false);
 
-// 当前用户信息（从 localStorage 获取）
+// 当前用户信息
 const currentUser = ref(null);
-try {
-  currentUser.value = JSON.parse(localStorage.getItem('userInfo') || 'null');
-} catch (e) {
-  currentUser.value = null;
-}
+
+// 获取当前用户信息的函数
+const fetchCurrentUser = async () => {
+  try {
+    // 先从 localStorage 尝试获取
+    const userInfo = localStorage.getItem('userInfo');
+    console.log('localStorage userInfo:', userInfo);
+    
+    if (userInfo && userInfo !== 'null') {
+      currentUser.value = JSON.parse(userInfo);
+      console.log('解析后的用户信息:', currentUser.value);
+    }
+    
+    // 如果 localStorage 没有，尝试从 token 解码
+    if (!currentUser.value?.id) {
+      const token = localStorage.getItem('token');
+      console.log('localStorage token:', token?.substring(0, 50) + '...');
+      
+      if (token) {
+        try {
+          const payload = token.split('.')[1];
+          const decoded = JSON.parse(atob(payload));
+          console.log('Token payload 解码:', decoded);
+          // JWT 标准字段：sub 是 subject（用户 ID），role 是自定义字段
+          currentUser.value = { 
+            id: decoded.sub || decoded.user_id, 
+            role: decoded.role 
+          };
+        } catch (e) {
+          console.error('Token 解码失败:', e);
+        }
+      }
+    }
+    
+    // 如果还是没有获取到，调用 API
+    if (!currentUser.value?.id) {
+      const { getAuthMe } = await import('@/api/auth');
+      const res = await getAuthMe();
+      console.log('API 获取用户信息响应:', res);
+      if (res.code === 0 && res.data) {
+        currentUser.value = {
+          id: res.data.id,
+          role: res.data.role,
+          username: res.data.username,
+          real_name: res.data.real_name
+        };
+        console.log('API 获取的用户信息:', currentUser.value);
+        console.log('用户 ID:', currentUser.value.id);
+      }
+    }
+    
+    console.log('最终当前用户信息:', currentUser.value);
+    console.log('最终用户 ID:', currentUser.value?.id);
+  } catch (e) {
+    console.error('获取用户信息失败:', e);
+    currentUser.value = null;
+  }
+};
 
 const formatRelativeTime = (timeStr) => {
   if (!timeStr) return '';
   
-  if (timeStr.includes('昨天') || timeStr.includes('前天')) {
+  // 如果已经是相对时间格式，直接返回
+  if (timeStr.includes('刚刚') || timeStr.includes('分钟前') || 
+      timeStr.includes('小时前') || timeStr.includes('天前') ||
+      timeStr.includes('昨天') || timeStr.includes('前天')) {
     return timeStr;
   }
   
   try {
-    const date = new Date(timeStr);
+    let date;
+    
+    // 处理ISO 8601格式（后端返回格式）
+    if (timeStr.includes('T')) {
+      // 确保时间字符串有正确的时区信息
+      if (!timeStr.includes('Z') && !timeStr.includes('+')) {
+        // 添加Z表示UTC时间
+        date = new Date(timeStr + 'Z');
+      } else {
+        date = new Date(timeStr);
+      }
+    } else {
+      // 尝试其他格式
+      date = new Date(timeStr);
+    }
+    
     if (isNaN(date.getTime())) {
-      return timeStr;
+      // 尝试作为时间戳处理
+      const timestamp = parseFloat(timeStr);
+      if (!isNaN(timestamp)) {
+        // 处理秒级时间戳（需要乘以1000）
+        date = new Date(timestamp * (timestamp < 1e12 ? 1000 : 1));
+      } else {
+        return timeStr;
+      }
     }
     
     const now = new Date();
@@ -180,6 +258,10 @@ const formatRelativeTime = (timeStr) => {
     } else if (diffMinutes < 1440) {
       const hoursAgo = Math.floor(diffMinutes / 60);
       return `${hoursAgo}小时前`;
+    } else if (diffMinutes < 2880) {
+      return '昨天';
+    } else if (diffMinutes < 4320) {
+      return '前天';
     } else if (diffMinutes < 43200) {
       const daysAgo = Math.floor(diffMinutes / 1440);
       return `${daysAgo}天前`;
@@ -187,6 +269,7 @@ const formatRelativeTime = (timeStr) => {
       return date.toLocaleDateString('zh-CN');
     }
   } catch (e) {
+    console.error('时间格式化失败:', timeStr, e);
     return timeStr;
   }
 };
@@ -199,34 +282,31 @@ const showErrorMessage = (msg) => {
   }, 3000);
 };
 
-// 房东快捷短语（租客发给房东）
-const landlordPhrases = [
+// 租客快捷短语（房东发给租客）
+const tenantPhrases = [
   '房源还在',
   '随时可看房',
   '价格可谈',
   '请留下联系方式',
-  '押一付三',
-  '精装修拎包入住'
 ];
 
-// 租客快捷短语（房东发给租客）
-const tenantPhrases = [
+// 房东快捷短语（租客发给房东）
+const landlordPhrases = [
   '请问租金多少',
   '可以押一付一吗',
   '能短租吗',
   '有中介费吗',
-  '什么时候能看房',
-  '包物业费吗'
+
 ];
 
 const currentQuickPhrases = computed(() => {
   if (!selectedChat.value || !currentUser.value) return [];
   
-  // 当前用户是租客，发给房东的快捷短语
+  // 当前用户是租客，显示租客发给房东的快捷短语
   if (currentUser.value.role === 'tenant') {
     return landlordPhrases;
   }
-  // 当前用户是房东，发给租客的快捷短语
+  // 当前用户是房东，显示房东发给租客的快捷短语
   return tenantPhrases;
 });
 
@@ -287,6 +367,11 @@ const loadConversationList = async () => {
 const getOtherPartyName = (conversation) => {
   if (!currentUser.value) return '未知用户';
   
+  // 优先显示房源标题
+  if (conversation.house?.title) {
+    return conversation.house.title;
+  }
+  
   if (currentUser.value.role === 'tenant') {
     // 当前用户是租客，显示房东信息
     return conversation.landlord_name || conversation.house?.landlord_name || '房东';
@@ -303,11 +388,21 @@ const loadMessages = async (conversationId) => {
     const res = await getMessageList(conversationId);
     if (res.code === 0 && res.data) {
       const list = res.data.list || [];
+      const currentUserId = currentUser.value?.id;
+      
+      console.log('===== 加载消息 =====');
+      console.log('当前用户 ID:', currentUserId);
+      console.log('消息总数:', list.length);
+      list.forEach((msg, index) => {
+        const isMine = currentUserId !== undefined && String(msg.sender_id) === String(currentUserId);
+        console.log(`消息${index + 1}: 发送者=${msg.sender_id}, 内容="${msg.content}", 是否我的=${isMine}`);
+      });
+      
       currentMessages.value = list.map(msg => ({
         id: msg.id,
         content: msg.content,
         time: msg.created_at,
-        isMine: msg.sender_id === currentUser.value?.id
+        isMine: currentUserId !== undefined && String(msg.sender_id) === String(currentUserId)
       }));
       
       // 标记已读
@@ -405,21 +500,22 @@ const sendMessage = async () => {
   }
   
   if (trimmedMessage.length > 1000) {
-    showErrorMessage('消息内容不能超过1000个字符');
+    showErrorMessage('消息内容不能超过 1000 个字符');
     return;
   }
+  
+  console.log('===== 发送消息 =====');
+  console.log('会话 ID:', selectedChat.value.id);
+  console.log('消息内容:', trimmedMessage);
   
   loading.value = true;
   try {
     const res = await sendMessageApi(selectedChat.value.id, trimmedMessage);
+    console.log('发送消息响应:', res);
+    
     if (res.code === 0 && res.data) {
-      // 添加到本地消息列表
-      currentMessages.value.push({
-        id: res.data.id,
-        content: trimmedMessage,
-        time: res.data.created_at,
-        isMine: true
-      });
+      // 重新加载消息列表以确保正确显示
+      await loadMessages(selectedChat.value.id);
       
       messageInput.value = '';
       
@@ -439,10 +535,14 @@ const sendMessage = async () => {
         }
       });
     } else {
+      console.error('发送消息失败 - 响应码:', res.code);
+      console.error('发送消息失败 - 错误信息:', res.message);
       showErrorMessage(res.message || '发送消息失败');
     }
   } catch (error) {
-    console.error('发送消息失败:', error);
+    console.error('发送消息失败 - 异常:', error);
+    console.error('发送消息失败 - 响应:', error.response);
+    console.error('发送消息失败 - 响应数据:', error.response?.data);
     showErrorMessage('网络异常，无法发送消息');
   } finally {
     loading.value = false;
@@ -450,13 +550,29 @@ const sendMessage = async () => {
 };
 
 // 关闭弹窗
-const close = () => {
+const close = async () => {
   emit('update:visible', false);
+  // 关闭时重新获取未读消息数
+  try {
+    const res = await getConversationList();
+    if (res.code === 0 && res.data) {
+      const list = res.data.list || [];
+      const totalUnread = list.reduce((sum, item) => sum + (item.unread_count || 0), 0);
+      emit('update:unread-count', totalUnread);
+    }
+  } catch (error) {
+    console.error('获取未读消息数失败:', error);
+    emit('update:unread-count', 0);
+  }
 };
 
 // 监听 visible 变化，加载会话列表
 watch(() => props.visible, async (val) => {
   if (val) {
+    // 先获取当前用户信息
+    await fetchCurrentUser();
+    
+    // 再加载会话列表
     await loadConversationList();
     
     // 如果传入了 houseId 且没有找到现有会话，创建新会话

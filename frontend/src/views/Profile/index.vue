@@ -219,7 +219,7 @@ import { getFavoriteList, removeFavorite } from '@/api/favorite.js'
 import { mockFavorites } from '@/mock/favorites'
 
 // 是否使用模拟数据
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 const userStore = useUserStore()
 const avatarInput = ref(null)

@@ -16,8 +16,10 @@ export const getConversationDetail = (id) => {
 }
 
 // 获取消息列表
-export const getMessageList = (conversationId) => {
-  return service.get(`/v1/conversations/${conversationId}/messages`)
+export const getMessageList = (conversationId, page = 1, pageSize = 100) => {
+  return service.get(`/v1/conversations/${conversationId}/messages`, {
+    params: { page, page_size: pageSize }
+  })
 }
 
 // 发送消息
