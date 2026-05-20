@@ -2,9 +2,10 @@ from __future__ import annotations
 
 from flask import Blueprint, g, request
 
+from app.common.dependencies import get_required_current_user_id
 from app.container.services import get_user_service
 from app.core.response import success
-from app.modules.user.schema import UserCreateSchema, UserListQuerySchema
+from app.modules.user.schema import UserCreateSchema, UserListQuerySchema, UserUpdateSchema
 
 
 bp = Blueprint("user", __name__)
@@ -31,3 +32,12 @@ def get_user(user_id: int):
     service = get_user_service()
     data = service.get_user_by_id(g.db, user_id)
     return success(data=data)
+
+
+@bp.put("/me")
+def update_me():
+    current_user_id = get_required_current_user_id()
+    data = UserUpdateSchema(**(request.get_json() or {}))
+    service = get_user_service()
+    result = service.update_user(g.db, current_user_id=current_user_id, data=data)
+    return success(data=result)

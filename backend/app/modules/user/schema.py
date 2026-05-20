@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from pydantic import ConfigDict, Field
+from pydantic import ConfigDict, Field, field_validator
 
 from app.common.base_schema import BaseSchema
 
@@ -38,3 +38,23 @@ class UserListQuerySchema(BaseSchema):
 
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=100)
+
+
+class UserUpdateSchema(BaseSchema):
+    model_config = ConfigDict(from_attributes=True, extra="ignore")
+
+    real_name: str | None = Field(default=None, max_length=50)
+    phone: str | None = Field(default=None, max_length=20)
+    email: str | None = Field(default=None, max_length=100)
+    avatar: str | None = Field(default=None, max_length=255)
+    password: str | None = Field(default=None, min_length=6, max_length=255)
+
+    @field_validator("real_name", "phone", "email", "avatar", "password", mode="before")
+    @classmethod
+    def normalize_update_text(cls, value: object) -> object:
+        if not isinstance(value, str):
+            return value
+        value = value.strip()
+        if value == "":
+            return None
+        return value

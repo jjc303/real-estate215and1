@@ -9,7 +9,7 @@ from app.core.exceptions import UserAlreadyExistsException, UserNotFoundExceptio
 from app.core.security import hash_password
 from app.modules.user.model import User
 from app.modules.user.repository import UserRepository
-from app.modules.user.schema import UserCreateSchema, UserReadSchema
+from app.modules.user.schema import UserCreateSchema, UserReadSchema, UserUpdateSchema
 
 
 class UserService:
@@ -63,3 +63,38 @@ class UserService:
         total = self.user_repository.count_users(db)
         items = [UserReadSchema.model_validate(user).model_dump(mode="json") for user in users]
         return build_page_result(items=items, total=total, page=page, page_size=page_size)
+
+    def update_user(self, db: Session, current_user_id: int, data: UserUpdateSchema) -> dict[str, object]:
+        user = self.user_repository.get_by_id(db, current_user_id)
+        if user is None:
+            raise UserNotFoundException()
+
+        normalized_email = normalize_email(data.email)
+        if normalized_email is not None:
+            existing_email_user = self.user_repository.get_by_email(db, normalized_email)
+            if existing_email_user is not None and existing_email_user.id != user.id:
+                raise UserAlreadyExistsException(message="email already exists")
+
+        if data.real_name is not None:
+            user.real_name = data.real_name
+        if data.phone is not None:
+            user.phone = data.phone
+        if data.email is not None:
+            user.email = normalized_email
+        if data.avatar is not None:
+            user.avatar = data.avatar
+        if data.password is not None:
+            user.password = hash_password(data.password)
+
+        try:
+            db.commit()
+            db.refresh(user)
+        except IntegrityError as exc:
+            db.rollback()
+            raise UserAlreadyExistsException(message="user already exists") from exc
+        except Exception:
+            db.rollback()
+            raise
+
+        schema = UserReadSchema.model_validate(user)
+        return schema.model_dump(mode="json")
