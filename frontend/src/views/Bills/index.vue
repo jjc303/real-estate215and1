@@ -9,21 +9,6 @@
         </div>
       </div>
 
-      <div class="stats-row" v-if="!loading && billStats.total">
-        <div class="stat-card" :class="{ warning: billStats.totalUnpaid > 0 }">
-          <div class="stat-value">¥{{ billStats.totalUnpaid }}</div>
-          <div class="stat-label">待支付（{{ billStats.unpaidCount }}笔）</div>
-        </div>
-        <div class="stat-card" :class="{ danger: billStats.totalOverdue > 0 }">
-          <div class="stat-value">¥{{ billStats.totalOverdue }}</div>
-          <div class="stat-label">已逾期（{{ billStats.overdueCount }}笔）</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ bills.filter(b => b.status === 'paid').length }}</div>
-          <div class="stat-label">已支付账单</div>
-        </div>
-      </div>
-
       <div class="filter-tabs">
         <span 
           v-for="tab in tabs" 
@@ -127,20 +112,10 @@
           <h2>账单管理</h2>
           <p class="subtitle">管理您的租金账单</p>
         </div>
-      </div>
-
-      <div class="stats-row" v-if="!loading && billStats.total">
-        <div class="stat-card" :class="{ warning: billStats.totalUnpaid > 0 }">
-          <div class="stat-value">¥{{ billStats.totalUnpaid }}</div>
-          <div class="stat-label">待支付（{{ billStats.unpaidCount }}笔）</div>
-        </div>
-        <div class="stat-card" :class="{ danger: billStats.totalOverdue > 0 }">
-          <div class="stat-value">¥{{ billStats.totalOverdue }}</div>
-          <div class="stat-label">已逾期（{{ billStats.overdueCount }}笔）</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ bills.filter(b => b.status === 'paid').length }}</div>
-          <div class="stat-label">已支付账单</div>
+        <div class="header-right">
+          <el-button type="primary" @click="openCreateDialog">
+            <i class="fa-solid fa-plus"></i> 创建账单
+          </el-button>
         </div>
       </div>
 
@@ -210,12 +185,28 @@
             <el-button link @click.stop="viewDetail(bill)">
               <i class="fa-solid fa-eye"></i> 查看详情
             </el-button>
+            <el-button
+              v-if="bill.status === 'unpaid'"
+              type="danger"
+              size="small"
+              @click.stop="cancelBill(bill)"
+            >
+              <i class="fa-solid fa-ban"></i> 取消
+            </el-button>
+            <el-button
+              v-if="bill.status === 'unpaid'"
+              type="warning"
+              size="small"
+              @click.stop="markOverdue(bill)"
+            >
+              <i class="fa-solid fa-clock"></i> 标记逾期
+            </el-button>
           </div>
         </div>
       </div>
 
       <Pagination 
-        v-if="total > 0 && !loading"
+        
         :pageNum="pageNum"
         :pageSize="pageSize"
         :total="total"
@@ -312,12 +303,57 @@
         <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog
+      v-model="createDialogVisible"
+      title="创建账单"
+      width="500px"
+    >
+      <el-form :model="createForm" label-width="90px">
+        <el-form-item label="关联合同" required>
+          <el-select
+            v-model="createForm.contract_id"
+            placeholder="请选择已生效的合同"
+            style="width: 100%"
+            @change="onContractChange"
+          >
+            <el-option
+              v-for="c in activeContracts"
+              :key="c.id"
+              :label="`合同 #${c.id} ${c.house?.title || ''} — 租客ID:${c.tenant_id}`"
+              :value="c.id"
+            />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="账单类型" required>
+          <el-select v-model="createForm.bill_type" placeholder="请选择账单类型" style="width: 100%">
+            <el-option label="租金" value="rent" />
+            <el-option label="押金" value="deposit" />
+            <el-option label="其他" value="other" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="金额(元)" required>
+          <el-input-number v-model="createForm.amount" :min="1" :precision="2" placeholder="请输入金额" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="到期日期" required>
+          <el-date-picker v-model="createForm.due_date" type="date" value-format="YYYY-MM-DD" placeholder="选择到期日期" style="width: 100%" />
+        </el-form-item>
+        <el-form-item label="备注">
+          <el-input v-model="createForm.remark" type="textarea" :rows="2" placeholder="备注信息（可选）" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="createDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitCreateBill">创建</el-button>
+      </template>
+    </el-dialog>
+
     <BackToTop />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
@@ -339,6 +375,19 @@ const bills = ref([])
 // 查看详情相关
 const detailDialogVisible = ref(false)
 const detailBill = ref(null)
+
+// 创建账单相关
+const createDialogVisible = ref(false)
+const activeContracts = ref([])
+const contractsLoading = ref(false)
+
+const createForm = reactive({
+  contract_id: null,
+  bill_type: 'rent',
+  amount: null,
+  due_date: '',
+  remark: ''
+})
 
 // 判断当前用户是否是租客
 const isTenant = computed(() => userStore.userRole === 'tenant')
@@ -362,20 +411,6 @@ const getTabCount = (status) => {
   if (status === 'all') return bills.value.length
   return bills.value.filter(b => b.status === status).length
 }
-
-const billStats = computed(() => {
-  const unpaid = bills.value.filter(b => b.status === 'unpaid')
-  const overdue = bills.value.filter(b => b.status === 'overdue')
-  const totalUnpaid = unpaid.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
-  const totalOverdue = overdue.reduce((sum, b) => sum + (Number(b.amount) || 0), 0)
-  return {
-    unpaidCount: unpaid.length,
-    overdueCount: overdue.length,
-    totalUnpaid,
-    totalOverdue,
-    total: bills.value.length
-  }
-})
 
 const getStatusText = (status) => {
   const map = {
@@ -475,11 +510,57 @@ const payBill = async (bill) => {
       if (res.code === 0) {
         ElMessage.success(`账单 #${bill.id} 支付成功！`)
         fetchBills()
+      } else {
+        ElMessage.error(res.message || '支付失败')
       }
     }
   } catch (e) {
-    if (e !== 'cancel') {
-      ElMessage.error('支付失败，请稍后重试')
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error(e.response?.data?.message || '支付失败，请稍后重试')
+      console.error(e)
+    }
+  }
+}
+
+const cancelBill = async (bill) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要取消账单 #${bill.id} 吗？`,
+      '确认取消',
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+    )
+    const res = await service.patch(`/v1/bills/${bill.id}/cancel`)
+    if (res.code === 0) {
+      ElMessage.success('账单已取消')
+      fetchBills()
+    } else {
+      ElMessage.error(res.message || '取消失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error(e.response?.data?.message || '取消失败，请稍后重试')
+      console.error(e)
+    }
+  }
+}
+
+const markOverdue = async (bill) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定将账单 #${bill.id} 标记为逾期吗？`,
+      '确认标记逾期',
+      { confirmButtonText: '确认', cancelButtonText: '取消', type: 'warning' }
+    )
+    const res = await service.patch(`/v1/bills/${bill.id}/mark-overdue`)
+    if (res.code === 0) {
+      ElMessage.success('已标记为逾期')
+      fetchBills()
+    } else {
+      ElMessage.error(res.message || '操作失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error(e.response?.data?.message || '操作失败，请稍后重试')
       console.error(e)
     }
   }
@@ -488,6 +569,79 @@ const payBill = async (bill) => {
 const handlePageChange = (newPage) => {
   pageNum.value = newPage
   fetchBills()
+}
+
+const fetchActiveContracts = async () => {
+  contractsLoading.value = true
+  try {
+    const res = await service.get('/v1/contracts', { params: { page: 1, page_size: 100 } })
+    if (res.code === 0) {
+      activeContracts.value = res.data.list.filter(c => c.status === 'active' && c.landlord_id === userStore.userId)
+    }
+  } catch (e) {
+    console.error('获取合同列表失败', e)
+  } finally {
+    contractsLoading.value = false
+  }
+}
+
+const openCreateDialog = () => {
+  createForm.contract_id = null
+  createForm.bill_type = 'rent'
+  createForm.amount = null
+  createForm.due_date = ''
+  createForm.remark = ''
+  fetchActiveContracts()
+  createDialogVisible.value = true
+}
+
+const onContractChange = (contractId) => {
+  const contract = activeContracts.value.find(c => c.id === contractId)
+  if (contract) {
+    if (!createForm.amount) {
+      createForm.amount = Number(contract.monthly_rent) || 0
+    }
+  }
+}
+
+const submitCreateBill = async () => {
+  if (!createForm.contract_id) {
+    ElMessage.warning('请选择关联合同')
+    return
+  }
+  if (!createForm.bill_type) {
+    ElMessage.warning('请选择账单类型')
+    return
+  }
+  if (!createForm.amount || createForm.amount <= 0) {
+    ElMessage.warning('请输入有效的金额')
+    return
+  }
+  if (!createForm.due_date) {
+    ElMessage.warning('请选择到期日期')
+    return
+  }
+
+  try {
+    const res = await service.post('/v1/bills', {
+      contract_id: createForm.contract_id,
+      bill_type: createForm.bill_type,
+      amount: createForm.amount,
+      due_date: createForm.due_date,
+      remark: createForm.remark || null
+    })
+    if (res.code === 0) {
+      ElMessage.success('账单创建成功')
+      createDialogVisible.value = false
+      pageNum.value = 1
+      fetchBills()
+    } else {
+      ElMessage.error(res.message || '创建失败')
+    }
+  } catch (e) {
+    console.error('创建账单失败', e)
+    ElMessage.error(e.response?.data?.message || '创建失败，请稍后重试')
+  }
 }
 
 onMounted(() => {
@@ -533,51 +687,6 @@ onMounted(() => {
 
 .header-right .el-button {
   padding: 8px 20px;
-}
-
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  background: #fff;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border-left: 3px solid #e2e8f0;
-  transition: all 0.2s ease;
-}
-
-.stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-.stat-card.warning {
-  border-left-color: #f59e0b;
-}
-
-.stat-card.danger {
-  border-left-color: #ef4444;
-}
-
-.stat-card.success {
-  border-left-color: #10b981;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #94a3b8;
 }
 
 .filter-tabs {
@@ -691,13 +800,15 @@ onMounted(() => {
 
 .bill-info {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .bill-header {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 12px;
 }
 
 .bill-no {
@@ -731,7 +842,6 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 500;
   color: #262626;
-  margin-bottom: 8px;
 }
 
 .bill-period {
@@ -740,7 +850,18 @@ onMounted(() => {
   gap: 6px;
   font-size: 14px;
   color: #595959;
-  margin-bottom: 8px;
+}
+
+.bill-tenant {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #595959;
+}
+
+.bill-tenant i {
+  color: #94a3b8;
 }
 
 .bill-period i {
@@ -748,7 +869,6 @@ onMounted(() => {
 }
 
 .bill-price {
-  margin-bottom: 8px;
 }
 
 .price-label {

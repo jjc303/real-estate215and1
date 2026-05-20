@@ -14,21 +14,6 @@
         </div>
       </div>
 
-      <div class="stats-row" v-if="!loading && reservationStats.total">
-        <div class="stat-card" :class="{ warning: reservationStats.pending > 0 }">
-          <div class="stat-value">{{ reservationStats.pending }}</div>
-          <div class="stat-label">待确认预约</div>
-        </div>
-        <div class="stat-card" :class="{ success: reservationStats.confirmed > 0 }">
-          <div class="stat-value">{{ reservationStats.confirmed }}</div>
-          <div class="stat-label">已确认预约</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ reservationStats.total }}</div>
-          <div class="stat-label">预约总数</div>
-        </div>
-      </div>
-
       <div class="filter-tabs">
         <span 
           v-for="tab in tenantTabs" 
@@ -118,21 +103,6 @@
         <div class="header-left">
           <h2>预约管理</h2>
           <p class="subtitle">管理看房预约</p>
-        </div>
-      </div>
-
-      <div class="stats-row" v-if="!loading && reservationStats.total">
-        <div class="stat-card" :class="{ warning: reservationStats.pending > 0 }">
-          <div class="stat-value">{{ reservationStats.pending }}</div>
-          <div class="stat-label">待确认预约</div>
-        </div>
-        <div class="stat-card" :class="{ success: reservationStats.confirmed > 0 }">
-          <div class="stat-value">{{ reservationStats.confirmed }}</div>
-          <div class="stat-label">已确认预约</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ reservationStats.total }}</div>
-          <div class="stat-label">预约总数</div>
         </div>
       </div>
 
@@ -453,12 +423,6 @@ const getTabCount = (status) => {
   if (status === 'all') return reservations.value.length
   return reservations.value.filter(r => r.status === status).length
 }
-
-const reservationStats = computed(() => ({
-  pending: reservations.value.filter(r => r.status === 'pending').length,
-  confirmed: reservations.value.filter(r => r.status === 'confirmed').length,
-  total: reservations.value.length
-}))
 
 const getStatusText = (status) => {
   const map = {
@@ -783,51 +747,6 @@ onMounted(() => {
   margin: 5px 0 0;
   color: #999;
   font-size: 14px;
-}
-
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  background: #fff;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border-left: 3px solid #e2e8f0;
-  transition: all 0.2s ease;
-}
-
-.stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-.stat-card.warning {
-  border-left-color: #f59e0b;
-}
-
-.stat-card.danger {
-  border-left-color: #ef4444;
-}
-
-.stat-card.success {
-  border-left-color: #10b981;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #94a3b8;
 }
 
 .filter-tabs {

@@ -9,21 +9,6 @@
         </div>
       </div>
 
-      <div class="stats-row" v-if="!loading && contractStats.total">
-        <div class="stat-card" :class="{ success: contractStats.active > 0 }">
-          <div class="stat-value">{{ contractStats.active }}</div>
-          <div class="stat-label">已生效合同</div>
-        </div>
-        <div class="stat-card" :class="{ warning: contractStats.pending > 0 }">
-          <div class="stat-value">{{ contractStats.pending }}</div>
-          <div class="stat-label">待确认合同</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ contractStats.total }}</div>
-          <div class="stat-label">合同总数</div>
-        </div>
-      </div>
-
       <div class="filter-tabs">
         <span 
           v-for="tab in tenantTabs" 
@@ -120,21 +105,6 @@
         </div>
       </div>
 
-      <div class="stats-row" v-if="!loading && contractStats.total">
-        <div class="stat-card" :class="{ success: contractStats.active > 0 }">
-          <div class="stat-value">{{ contractStats.active }}</div>
-          <div class="stat-label">已生效合同</div>
-        </div>
-        <div class="stat-card" :class="{ warning: contractStats.pending > 0 }">
-          <div class="stat-value">{{ contractStats.pending }}</div>
-          <div class="stat-label">待确认合同</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-value">{{ contractStats.total }}</div>
-          <div class="stat-label">合同总数</div>
-        </div>
-      </div>
-
       <div class="filter-tabs">
         <span 
           v-for="tab in landlordTabs" 
@@ -153,7 +123,7 @@
       
       <div v-else-if="filteredContracts.length === 0" class="empty">
         <div class="empty-icon"><i class="fa-solid fa-file-signature"></i></div>
-        <p class="empty-text">暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}合同</p>
+        <p class="empty-text">暂无{{ currentTab === 'all' ? '' : currentTabs.find(t => t.value === currentTab)?.label }}合同</p>
         <p class="empty-hint">租房合同会在这里显示</p>
       </div>
 
@@ -422,12 +392,6 @@ const getTabCount = (status) => {
   return contracts.value.filter(c => c.status === status).length
 }
 
-const contractStats = computed(() => ({
-  active: contracts.value.filter(c => c.status === 'active').length,
-  pending: contracts.value.filter(c => c.status === 'pending').length,
-  total: contracts.value.length
-}))
-
 const getStatusText = (status) => {
   const map = {
     pending: '待确认',
@@ -690,51 +654,6 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.stats-row {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.stat-card {
-  background: #fff;
-  border-radius: 10px;
-  padding: 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-  border-left: 3px solid #e2e8f0;
-  transition: all 0.2s ease;
-}
-
-.stat-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-1px);
-}
-
-.stat-card.warning {
-  border-left-color: #f59e0b;
-}
-
-.stat-card.danger {
-  border-left-color: #ef4444;
-}
-
-.stat-card.success {
-  border-left-color: #10b981;
-}
-
-.stat-value {
-  font-size: 28px;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 4px;
-}
-
-.stat-label {
-  font-size: 13px;
-  color: #94a3b8;
 }
 
 .header-right .el-button {

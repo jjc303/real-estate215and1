@@ -217,6 +217,7 @@ import { ElMessage } from 'element-plus'
 import { computed } from 'vue';
 import { getFavoriteList, removeFavorite } from '@/api/favorite.js'
 import { mockFavorites } from '@/mock/favorites'
+import service from '@/utils/request'
 
 // 是否使用模拟数据
 const USE_MOCK_DATA = false
@@ -438,7 +439,7 @@ const resetBasicForm = async () => {
   ElMessage.info('已取消修改')
 }
 
-const changePassword = () => {
+const changePassword = async () => {
   if (!passwordForm.oldPassword) {
     ElMessage.warning('请输入原密码')
     return
@@ -455,11 +456,17 @@ const changePassword = () => {
     ElMessage.warning('密码长度至少6位')
     return
   }
-  
-  ElMessage.success('密码修改成功，请重新登录')
-  passwordForm.oldPassword = ''
-  passwordForm.newPassword = ''
-  passwordForm.confirmPassword = ''
+
+  try {
+    await service.put('/v1/users/me', { password: passwordForm.newPassword })
+    ElMessage.success('密码修改成功')
+    passwordForm.oldPassword = ''
+    passwordForm.newPassword = ''
+    passwordForm.confirmPassword = ''
+  } catch (err) {
+    console.error('密码修改失败', err)
+    ElMessage.error(err.response?.data?.message || '密码修改失败，请稍后重试')
+  }
 }
 
 onMounted(() => {

@@ -66,12 +66,12 @@
           <el-row :gutter="20">
             <el-col :span="12">
               <el-form-item label="起租日期" prop="start_date" required>
-                <el-date-picker v-model="form.start_date" type="date" placeholder="选择起租日期" />
+                <el-date-picker v-model="form.start_date" type="date" value-format="YYYY-MM-DD" placeholder="选择起租日期" />
               </el-form-item>
             </el-col>
             <el-col :span="12">
               <el-form-item label="到期日期" prop="end_date" required>
-                <el-date-picker v-model="form.end_date" type="date" placeholder="选择到期日期" />
+                <el-date-picker v-model="form.end_date" type="date" value-format="YYYY-MM-DD" placeholder="选择到期日期" />
               </el-form-item>
             </el-col>
           </el-row>
@@ -123,7 +123,7 @@ const USE_MOCK_DATA = false
 const formRef = ref(null)
 
 const form = reactive({
-  appointment_id: 0,
+  appointment_id: null,
   start_date: '',
   end_date: '',
   monthly_rent: 0,
@@ -172,6 +172,31 @@ const goBack = () => {
 
 const submitForm = async () => {
   try {
+    if (!form.appointment_id) {
+      ElMessage.warning('请选择已确认的预约')
+      return
+    }
+    if (!form.start_date) {
+      ElMessage.warning('请选择起租日期')
+      return
+    }
+    if (!form.end_date) {
+      ElMessage.warning('请选择到期日期')
+      return
+    }
+    if (form.start_date >= form.end_date) {
+      ElMessage.warning('到期日期必须晚于起租日期')
+      return
+    }
+    if (!form.monthly_rent || form.monthly_rent <= 0) {
+      ElMessage.warning('月租金必须大于0')
+      return
+    }
+    if (form.deposit < 0) {
+      ElMessage.warning('押金不能为负数')
+      return
+    }
+
     await ElMessageBox.confirm(
       '确认创建合同吗？创建后合同将处于待确认状态，等待租客确认后生效。',
       '确认创建',
