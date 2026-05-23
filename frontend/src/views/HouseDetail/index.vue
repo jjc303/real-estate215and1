@@ -1,6 +1,10 @@
 <template>
     <div class="house-detail">
         <div class="title-section">
+            <button class="back-btn" @click="goBack">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>返回</span>
+            </button>
             <h1 class="house-title">{{ house.title }}</h1>
         </div>
 
@@ -129,7 +133,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user.js';
 import { ElMessage } from 'element-plus';
 import ChatPopup from '@/components/ChatPopup.vue';
@@ -137,11 +141,16 @@ import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js';
 import { getHouseDetail } from '@/api/house.js';
 
 const route = useRoute();
+const router = useRouter();
 const userStore = useUserStore();
 
 const house = ref({});
 const currentImgIndex = ref(0);
 const showChat = ref(false);
+
+const goBack = () => {
+    router.back();
+};
 
 const handleCollect = () => {
     if (!userStore.token) {
@@ -238,6 +247,31 @@ onMounted(() => {
     margin-bottom: 16px;
     padding-bottom: 16px;
     border-bottom: 1px solid #eee;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    margin-bottom: 12px;
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+    background: #e2e8f0;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+
+.back-btn i {
+    font-size: 13px;
 }
 
 .house-title {
