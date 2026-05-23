@@ -99,7 +99,7 @@
           <p class="subtitle">管理您的租房合同</p>
         </div>
         <div class="header-right">
-          <el-button type="primary" @click="createContract">
+          <el-button type="primary" @click="showCreateDialog">
             <i class="fa-solid fa-plus"></i> 新建合同
           </el-button>
         </div>
@@ -328,12 +328,106 @@
         <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
+
+    <!-- 新建合同对话框 -->
+    <el-dialog
+      v-model="createDialogVisible"
+      title="新建合同"
+      width="580px"
+    >
+      <el-form ref="createFormRef" :model="createForm" label-width="100px">
+        <div class="form-section-card">
+          <div class="form-section-title">
+            <i class="fa-solid fa-calendar-check"></i> 预约关联
+          </div>
+          <el-form-item label="选择预约" prop="appointment_id" required>
+            <el-select 
+              v-model="createForm.appointment_id" 
+              placeholder="请选择已确认的预约" 
+              style="width: 100%"
+              @change="onAppointmentChange"
+            >
+              <el-option 
+                v-for="apt in confirmedAppointments" 
+                :key="apt.id" 
+                :label="`#${apt.id} ${apt.house?.title || ''} — 租客 #${apt.tenant_id}`" 
+                :value="apt.id"
+              />
+            </el-select>
+          </el-form-item>
+          
+          <div v-if="selectedAppointment" class="appointment-preview">
+            <div class="preview-item">
+              <span class="preview-label">房源</span>
+              <span class="preview-value">{{ selectedAppointment.house?.title }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">区域</span>
+              <span class="preview-value">{{ selectedAppointment.house?.region }} {{ selectedAppointment.house?.address }}</span>
+            </div>
+            <div class="preview-item">
+              <span class="preview-label">租客ID</span>
+              <span class="preview-value">#{{ selectedAppointment.tenant_id }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-section-card">
+          <div class="form-section-title">
+            <i class="fa-solid fa-calendar-days"></i> 租期信息
+          </div>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="起租日期" prop="start_date" required>
+                <el-date-picker v-model="createForm.start_date" type="date" value-format="YYYY-MM-DD" placeholder="选择起租日期" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="到期日期" prop="end_date" required>
+                <el-date-picker v-model="createForm.end_date" type="date" value-format="YYYY-MM-DD" placeholder="选择到期日期" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <div class="form-section-card">
+          <div class="form-section-title">
+            <i class="fa-solid fa-money-bill"></i> 费用信息
+          </div>
+          <el-row :gutter="16">
+            <el-col :span="12">
+              <el-form-item label="月租金(元)" prop="monthly_rent" required>
+                <el-input-number v-model="createForm.monthly_rent" :min="0" placeholder="月租金" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+            <el-col :span="12">
+              <el-form-item label="押金(元)" prop="deposit" required>
+                <el-input-number v-model="createForm.deposit" :min="0" placeholder="押金金额" style="width: 100%" />
+              </el-form-item>
+            </el-col>
+          </el-row>
+        </div>
+
+        <div class="form-section-card">
+          <div class="form-section-title">
+            <i class="fa-solid fa-file-text"></i> 备注信息
+          </div>
+          <el-form-item label="备注">
+            <el-input v-model="createForm.remark" type="textarea" :rows="3" placeholder="请输入备注信息（可选）" />
+          </el-form-item>
+        </div>
+      </el-form>
+      <template #footer>
+        <el-button @click="createDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="submitCreateForm" :loading="createLoading">创建合同</el-button>
+      </template>
+    </el-dialog>
     <BackToTop />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
@@ -346,20 +440,35 @@ const userStore = useUserStore()
 const USE_MOCK_DATA = false
 
 const loading = ref(false)
+const createLoading = ref(false)
 const currentTab = ref('all')
 const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const contracts = ref([])
 
-// 查看详情相关
 const detailDialogVisible = ref(false)
 const detailContract = ref(null)
 
-// 判断当前用户是否是租客
+const createDialogVisible = ref(false)
+const createFormRef = ref(null)
+const createForm = reactive({
+  appointment_id: null,
+  start_date: '',
+  end_date: '',
+  monthly_rent: 0,
+  deposit: 0,
+  remark: ''
+})
+
+const confirmedAppointments = ref([])
+
+const selectedAppointment = computed(() => {
+  return confirmedAppointments.value.find(a => a.id === createForm.appointment_id) || null
+})
+
 const isTenant = computed(() => userStore.userRole === 'tenant')
 
-// 租客端标签
 const tenantTabs = [
   { label: '全部', value: 'all' },
   { label: '待确认', value: 'pending' },
@@ -368,7 +477,6 @@ const tenantTabs = [
   { label: '已终止', value: 'terminated' }
 ]
 
-// 房东端标签
 const landlordTabs = [
   { label: '全部', value: 'all' },
   { label: '待确认', value: 'pending' },
@@ -377,7 +485,6 @@ const landlordTabs = [
   { label: '已终止', value: 'terminated' }
 ]
 
-// 当前使用的标签列表
 const currentTabs = computed(() => isTenant.value ? tenantTabs : landlordTabs)
 
 const filteredContracts = computed(() => {
@@ -425,12 +532,96 @@ const formatDateTime = (datetime) => {
   return date.toLocaleString('zh-CN')
 }
 
+const resetCreateForm = () => {
+  createForm.appointment_id = null
+  createForm.start_date = ''
+  createForm.end_date = ''
+  createForm.monthly_rent = 0
+  createForm.deposit = 0
+  createForm.remark = ''
+}
+
+const showCreateDialog = () => {
+  resetCreateForm()
+  createDialogVisible.value = true
+  fetchConfirmedAppointments()
+}
+
+const fetchConfirmedAppointments = async () => {
+  try {
+    const res = await service.get('/v1/appointments', { params: { page: 1, page_size: 100 } })
+    if (res.code === 0) {
+      confirmedAppointments.value = res.data.list.filter(a => a.status === 'confirmed')
+    }
+  } catch (e) {
+    console.error('获取预约列表失败', e)
+  }
+}
+
+const onAppointmentChange = (appointmentId) => {
+  const apt = confirmedAppointments.value.find(a => a.id === appointmentId)
+  if (apt) {
+    createForm.monthly_rent = Number(apt.house?.rent) || 0
+    createForm.deposit = Number(apt.house?.deposit) || 0
+  }
+}
+
+const submitCreateForm = async () => {
+  try {
+    if (!createForm.appointment_id) {
+      ElMessage.warning('请选择已确认的预约')
+      return
+    }
+    if (!createForm.start_date) {
+      ElMessage.warning('请选择起租日期')
+      return
+    }
+    if (!createForm.end_date) {
+      ElMessage.warning('请选择到期日期')
+      return
+    }
+    if (createForm.start_date >= createForm.end_date) {
+      ElMessage.warning('到期日期必须晚于起租日期')
+      return
+    }
+    if (!createForm.monthly_rent || createForm.monthly_rent <= 0) {
+      ElMessage.warning('月租金必须大于0')
+      return
+    }
+    if (createForm.deposit < 0) {
+      ElMessage.warning('押金不能为负数')
+      return
+    }
+
+    createLoading.value = true
+    const res = await service.post('/v1/contracts', {
+      appointment_id: createForm.appointment_id,
+      start_date: createForm.start_date,
+      end_date: createForm.end_date,
+      monthly_rent: createForm.monthly_rent,
+      deposit: createForm.deposit,
+      remark: createForm.remark || ''
+    })
+    if (res.code === 0) {
+      ElMessage.success('合同创建成功')
+      createDialogVisible.value = false
+      fetchContracts()
+    } else {
+      ElMessage.error(res.message || '创建失败')
+    }
+  } catch (e) {
+    console.error('创建合同失败', e)
+    ElMessage.error('创建失败，请稍后重试')
+  } finally {
+    createLoading.value = false
+  }
+}
+
 const fetchContracts = async () => {
   loading.value = true
   
   try {
     if (USE_MOCK_DATA) {
-      // 根据角色使用不同的模拟数据
       const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
       const start = (pageNum.value - 1) * pageSize.value
       const end = start + pageSize.value
@@ -457,11 +648,6 @@ const fetchContracts = async () => {
   } finally {
     loading.value = false
   }
-}
-
-const createContract = () => {
-  // 跳转到创建合同页面
-  window.location.href = '/contracts/create'
 }
 
 const viewDetail = (contract) => {
@@ -996,5 +1182,49 @@ onMounted(() => {
   padding: 10px 12px;
   background: #fafafa;
   border-radius: 6px;
+}
+
+.form-section-card {
+  margin-bottom: 16px;
+}
+
+.form-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.form-section-title i {
+  color: #1890ff;
+  margin-right: 6px;
+}
+
+.appointment-preview {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #f6f8fa;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.preview-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.preview-label {
+  color: #8c8c8c;
+  min-width: 50px;
+}
+
+.preview-value {
+  color: #333;
 }
 </style>

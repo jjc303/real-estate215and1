@@ -24,7 +24,7 @@ const unsplashArchitectureIds = [
     '1600047508189-055b4335eed7',
     '1560520660-beb1b6b80d81',
     '1600566753086-0c7e1a89e43f',
-    '1600047508080-6b2cfdde8aa5',
+    '1600047508080-6b2cfd8deaa5',
     '1600047508118-5155356f667b',
     '1600566752222-35792bedcfeb',
     '1560062187-0c55d4b6ca3e',
@@ -40,6 +40,18 @@ const unsplashArchitectureIds = [
     '1598924958631-81b718094eea',
     '1600047508054-84e3c34a5e73'
 ]
+
+const fallbackHouseImages = [
+    '/images/house1.jpg',
+    '/images/house2.jpg',
+    '/images/house3.jpg',
+    '/images/house4.jpg'
+]
+
+export const getDefaultHouseImage = (seed = 0) => {
+    const idx = seed > 0 ? seed % fallbackHouseImages.length : Math.floor(Math.random() * fallbackHouseImages.length)
+    return fallbackHouseImages[idx]
+}
 
 export const getHouseImage = (images, index = 0, houseId = 0) => {
     if (images && images.length > index && images[index]) {

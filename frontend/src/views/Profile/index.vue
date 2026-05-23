@@ -62,6 +62,7 @@
             :class="{ active: activeMenu === item.key }"
             @click="activeMenu = item.key"
           >
+            <span class="menu-indicator"></span>
             <i :class="item.icon"></i>
             <span>{{ item.label }}</span>
           </div>
@@ -69,141 +70,149 @@
         </div>
 
         <div class="profile-content">
-        <div class="content-card" v-if="activeMenu === 'basic'">
-          <div class="card-header">
-            <div class="card-icon basic-icon">
-              <i class="fa-solid fa-user"></i>
-            </div>
-            <div class="card-title-wrap">
-              <h2 class="card-title">账户信息</h2>
-              <p class="card-desc">管理您的基本个人信息</p>
-            </div>
-          </div>
-          
-          <div class="form-section">
-            <div class="form-group">
-              <div class="form-item">
-                <label class="form-label">
-                  <i class="fa-solid fa-user"></i>
-                  <span>用户名</span>
-                </label>
-                <el-input v-model="basicForm.username" placeholder="用户名不可修改" disabled />
-              </div>
-              <div class="form-item">
-                <label class="form-label">
-                  <i class="fa-solid fa-user-check"></i>
-                  <span>真实姓名</span>
-                </label>
-                <el-input v-model="basicForm.nickname" placeholder="请输入真实姓名" />
-              </div>
-            </div>
-          </div>
-
-          <div class="card-divider"></div>
-
-          <div class="form-section">
-            <h3 class="section-title">联系方式</h3>
-            <div class="form-group">
-              <div class="form-item">
-                <label class="form-label">
-                  <i class="fa-solid fa-phone"></i>
-                  <span>手机号</span>
-                </label>
-                <el-input v-model="basicForm.phone" placeholder="请输入手机号" />
-              </div>
-              <div class="form-item">
-                <label class="form-label">
-                  <i class="fa-solid fa-envelope"></i>
-                  <span>邮箱</span>
-                </label>
-                <el-input v-model="basicForm.email" placeholder="请输入邮箱" />
-              </div>
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <el-button type="primary" @click="saveBasicInfo">保存更改</el-button>
-            <el-button @click="resetBasicForm">取消</el-button>
-          </div>
-        </div>
-
-        <div class="content-card" v-if="activeMenu === 'security'">
-          <div class="card-header">
-            <div class="card-icon security-icon">
-              <i class="fa-solid fa-shield-halved"></i>
-            </div>
-            <div class="card-title-wrap">
-              <h2 class="card-title">安全设置</h2>
-              <p class="card-desc">保护您的账户安全</p>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <h3 class="section-title">修改密码</h3>
-            <div class="form-group">
-              <div class="form-item">
-                <label class="form-label">
-                  <i class="fa-solid fa-key"></i>
-                  <span>原密码</span>
-                </label>
-                <el-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码" show-password />
-              </div>
-              <div class="form-item">
-                <label class="form-label">
-                  <i class="fa-solid fa-lock"></i>
-                  <span>新密码</span>
-                </label>
-                <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码" show-password />
-              </div>
-              <div class="form-item">
-                <label class="form-label">
-                  <i class="fa-solid fa-lock-open"></i>
-                  <span>确认新密码</span>
-                </label>
-                <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" show-password />
-              </div>
-            </div>
-            <div class="form-actions">
-              <el-button type="primary" @click="changePassword">修改密码</el-button>
-            </div>
-          </div>
-        </div>
-
-        <!-- 我的收藏 -->
-        <div class="content-card" v-if="activeMenu === 'collections'">
-          <div class="card-header">
-            <div class="card-icon collections-icon">
-              <i class="fa-solid fa-heart"></i>
-            </div>
-            <div class="card-title-wrap">
-              <h2 class="card-title">我的收藏</h2>
-              <p class="card-desc">收藏的房源信息</p>
-            </div>
-          </div>
-
-          <div class="form-section">
-            <div v-if="collections.length === 0" class="empty-state">
-              <i class="fa-solid fa-heart-broken"></i>
-              <p>暂无收藏的房源</p>
-            </div>
-            <div v-else class="collection-list">
-              <div v-for="item in collections" :key="item.id" class="collection-item">
-                <div class="collection-info">
-                  <h4 class="collection-title">{{ item.title }}</h4>
-                  <p class="collection-price">¥{{ item.price }}/月</p>
-                  <p class="collection-meta">{{ item.district }} · {{ item.houseType }} · {{ item.area }}㎡</p>
-                  <p class="collection-address">{{ item.address }}</p>
+          <transition name="fade-slide" mode="out-in">
+            <template v-if="activeMenu === 'basic'" :key="'basic'">
+              <div class="content-card">
+                <div class="card-header">
+                  <div class="card-icon basic-icon">
+                    <i class="fa-solid fa-user"></i>
+                  </div>
+                  <div class="card-title-wrap">
+                    <h2 class="card-title">账户信息</h2>
+                    <p class="card-desc">管理您的基本个人信息</p>
+                  </div>
                 </div>
-                <div class="collection-actions">
-                  <button class="uncollect-btn" @click="removeCollection(item.id)">
-                    <i class="fa-solid fa-trash"></i>
-                    <span>取消收藏</span>
-                  </button>
+                
+                <div class="form-section">
+                  <div class="form-group">
+                    <div class="form-item">
+                      <label class="form-label">
+                        <i class="fa-solid fa-user"></i>
+                        <span>用户名</span>
+                      </label>
+                      <el-input v-model="basicForm.username" placeholder="用户名不可修改" disabled />
+                    </div>
+                    <div class="form-item">
+                      <label class="form-label">
+                        <i class="fa-solid fa-user-check"></i>
+                        <span>真实姓名</span>
+                      </label>
+                      <el-input v-model="basicForm.nickname" placeholder="请输入真实姓名" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card-divider"></div>
+
+                <div class="form-section">
+                  <h3 class="section-title">联系方式</h3>
+                  <div class="form-group">
+                    <div class="form-item">
+                      <label class="form-label">
+                        <i class="fa-solid fa-phone"></i>
+                        <span>手机号</span>
+                      </label>
+                      <el-input v-model="basicForm.phone" placeholder="请输入手机号" />
+                    </div>
+                    <div class="form-item">
+                      <label class="form-label">
+                        <i class="fa-solid fa-envelope"></i>
+                        <span>邮箱</span>
+                      </label>
+                      <el-input v-model="basicForm.email" placeholder="请输入邮箱" />
+                    </div>
+                  </div>
+                </div>
+
+                <div class="form-actions">
+                  <el-button type="primary" @click="saveBasicInfo">保存更改</el-button>
+                  <el-button @click="resetBasicForm">取消</el-button>
                 </div>
               </div>
-            </div>
-          </div>
-        </div>
+            </template>
+
+            <template v-else-if="activeMenu === 'security'" :key="'security'">
+              <div class="content-card">
+                <div class="card-header">
+                  <div class="card-icon security-icon">
+                    <i class="fa-solid fa-shield-halved"></i>
+                  </div>
+                  <div class="card-title-wrap">
+                    <h2 class="card-title">安全设置</h2>
+                    <p class="card-desc">保护您的账户安全</p>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <h3 class="section-title">修改密码</h3>
+                  <div class="form-group">
+                    <div class="form-item">
+                      <label class="form-label">
+                        <i class="fa-solid fa-key"></i>
+                        <span>原密码</span>
+                      </label>
+                      <el-input v-model="passwordForm.oldPassword" type="password" placeholder="请输入原密码" show-password />
+                    </div>
+                    <div class="form-item">
+                      <label class="form-label">
+                        <i class="fa-solid fa-lock"></i>
+                        <span>新密码</span>
+                      </label>
+                      <el-input v-model="passwordForm.newPassword" type="password" placeholder="请输入新密码" show-password />
+                    </div>
+                    <div class="form-item">
+                      <label class="form-label">
+                        <i class="fa-solid fa-lock-open"></i>
+                        <span>确认新密码</span>
+                      </label>
+                      <el-input v-model="passwordForm.confirmPassword" type="password" placeholder="请再次输入新密码" show-password />
+                    </div>
+                  </div>
+                  <div class="form-actions">
+                    <el-button type="primary" @click="changePassword">修改密码</el-button>
+                  </div>
+                </div>
+              </div>
+            </template>
+
+            <!-- 我的收藏 -->
+            <template v-else-if="activeMenu === 'collections'" :key="'collections'">
+              <div class="content-card">
+                <div class="card-header">
+                  <div class="card-icon collections-icon">
+                    <i class="fa-solid fa-heart"></i>
+                  </div>
+                  <div class="card-title-wrap">
+                    <h2 class="card-title">我的收藏</h2>
+                    <p class="card-desc">收藏的房源信息</p>
+                  </div>
+                </div>
+
+                <div class="form-section">
+                  <div v-if="collections.length === 0" class="empty-state">
+                    <i class="fa-solid fa-heart-broken"></i>
+                    <p>暂无收藏的房源</p>
+                  </div>
+                  <div v-else class="collection-list">
+                    <div v-for="item in collections" :key="item.id" class="collection-item">
+                      <div class="collection-info">
+                        <h4 class="collection-title">{{ item.title }}</h4>
+                        <p class="collection-price">¥{{ item.price }}/月</p>
+                        <p class="collection-meta">{{ item.district }} · {{ item.houseType }} · {{ item.area }}㎡</p>
+                        <p class="collection-address">{{ item.address }}</p>
+                      </div>
+                      <div class="collection-actions">
+                        <button class="uncollect-btn" @click="removeCollection(item.id)">
+                          <i class="fa-solid fa-trash"></i>
+                          <span>取消收藏</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </transition>
         </div>
       </div>
     </div>
@@ -682,30 +691,77 @@ onMounted(() => {
 }
 
 .menu-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 24px;
   cursor: pointer;
-  transition: all 0.25s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 15px;
   color: #64748b;
+  overflow: hidden;
+}
+
+.menu-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, rgba(148, 163, 184, 0.1) 0%, rgba(148, 163, 184, 0.05) 100%);
+  opacity: 0;
+  transform: translateX(-100%);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-item:hover::before {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .menu-item:hover {
-  background: #e2e8f0;
-  color: #64748b;
+  color: #475569;
+  transform: translateX(4px);
 }
 
 .menu-item.active {
-  background: linear-gradient(90deg, #e2e8f0 0%, #f1f5f9 100%);
   color: #475569;
-  border-right: 3px solid #64748b;
+}
+
+.menu-indicator {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 4px;
+  height: 24px;
+  background: linear-gradient(180deg, #64748b 0%, #94a3b8 100%);
+  border-radius: 0 2px 2px 0;
+  transform: translateY(-50%) scaleY(0);
+  opacity: 0;
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-item.active .menu-indicator {
+  transform: translateY(-50%) scaleY(1);
+  opacity: 1;
+}
+
+.menu-item.active::before {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .menu-item i {
   width: 20px;
   font-size: 16px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.menu-item.active i {
+  transform: scale(1.1);
+  color: #64748b;
 }
 
 .profile-content {
@@ -1072,5 +1128,21 @@ onMounted(() => {
 
 .uncollect-btn i {
   font-size: 14px;
+}
+
+/* 内容切换动画 */
+.fade-slide-enter-active,
+.fade-slide-leave-active {
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-slide-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.fade-slide-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
 }
 </style>

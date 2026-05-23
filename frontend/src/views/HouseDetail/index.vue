@@ -1,19 +1,16 @@
 <template>
     <div class="house-detail">
-        <!-- 标题区域（放在最上方） -->
         <div class="title-section">
             <h1 class="house-title">{{ house.title }}</h1>
         </div>
 
-        <!-- 主内容区：左侧图片，右侧信息 -->
         <div class="main-section">
-            <!-- 左侧图片区 -->
             <div class="gallery-section">
                 <div class="gallery-main">
                     <img 
                         :src="getHouseImage(house.images, currentImgIndex, house.id)" 
                         alt="房源主图"
-                        @error="$event.target.src = getRandomImage(500, 320, house.id)"
+                        @error="$event.target.src = getDefaultHouseImage(house.id)"
                     />
                 </div>
                 <div class="gallery-thumbs">
@@ -25,15 +22,14 @@
                         @click="currentImgIndex = index"
                     >
                         <img 
-                            :src="house.images && house.images.length > 0 ? img : getRandomImage(100, 80, house.id)" 
+                            :src="house.images && house.images.length > 0 ? img : getDefaultHouseImage(house.id)" 
                             :alt="`图片${index + 1}`" 
-                            @error="$event.target.src = getRandomImage(100, 80, house.id)"
+                            @error="$event.target.src = getDefaultHouseImage(house.id)"
                         />
                     </div>
                 </div>
             </div>
 
-            <!-- 右侧信息区 -->
             <div class="info-section">
                 <div class="house-price">
                     <span class="price-value">{{ house.price }}</span>
@@ -78,7 +74,6 @@
             </div>
         </div>
 
-        <!-- 房源详情描述 -->
         <div class="detail-section">
             <h2 class="section-title">房源描述</h2>
             <div class="detail-content">
@@ -86,7 +81,6 @@
             </div>
         </div>
 
-        <!-- 房源参数 -->
         <div class="params-section">
             <h2 class="section-title">房源参数</h2>
             <div class="params-grid">
@@ -125,7 +119,6 @@
             </div>
         </div>
 
-        <!-- 聊天弹窗 -->
         <ChatPopup 
             :visible="showChat" 
             :house-id="house.id"
@@ -140,7 +133,7 @@ import { useRoute } from 'vue-router';
 import { useUserStore } from '@/stores/user.js';
 import { ElMessage } from 'element-plus';
 import ChatPopup from '@/components/ChatPopup.vue';
-import { getHouseImage, getRandomImage } from '@/utils/tools.js';
+import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js';
 import { getHouseDetail } from '@/api/house.js';
 
 const route = useRoute();
@@ -156,7 +149,6 @@ const handleCollect = () => {
         return;
     }
     house.value.isCollect = !house.value.isCollect;
-    // 后续接入收藏接口
 };
 
 const openChat = () => {
@@ -242,7 +234,6 @@ onMounted(() => {
     padding: 20px;
 }
 
-/* 标题区域 */
 .title-section {
     margin-bottom: 16px;
     padding-bottom: 16px;
@@ -257,14 +248,12 @@ onMounted(() => {
     margin: 0;
 }
 
-/* 主内容区 - 左右布局 */
 .main-section {
     display: flex;
     gap: 30px;
     margin-bottom: 30px;
 }
 
-/* 左侧图片区 */
 .gallery-section {
     width: 500px;
     flex-shrink: 0;
@@ -326,7 +315,6 @@ onMounted(() => {
     border-color: #006cd8;
 }
 
-/* 右侧信息区 */
 .info-section {
     flex: 1;
     display: flex;
@@ -444,7 +432,6 @@ onMounted(() => {
     height: 20px;
 }
 
-/* 详情描述 */
 .detail-section,
 .params-section {
     background: #fff;
@@ -469,7 +456,6 @@ onMounted(() => {
     color: #666;
 }
 
-/* 参数网格 */
 .params-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -497,21 +483,14 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-    .info-section {
+    .main-section {
         flex-direction: column;
-        gap: 20px;
     }
-
-    .info-actions {
-        align-items: stretch;
+    .gallery-section {
+        width: 100%;
     }
-
     .params-grid {
         grid-template-columns: repeat(2, 1fr);
-    }
-
-    .gallery-main {
-        height: 280px;
     }
 }
 </style>

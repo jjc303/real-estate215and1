@@ -1,7 +1,7 @@
 <template>
   <div class="house-card" @click="$emit('click',house)">
     <div class="house-img">
-        <img :src="house.image || getHouseImage(house.images, 0)" :alt="house.title" @error="$event.target.src = getRandomImage(300, 240)"/>
+        <img :src="house.image || getHouseImage(house.images, 0, house.id)" :alt="house.title" @error="$event.target.src = getDefaultHouseImage(house.id)"/>
         <div class="badge" v-if="house.badge">{{ house.badge }}</div>
     </div>
     <div class="house-info">
@@ -15,7 +15,7 @@
 </template>
 
 <script setup>
-import { getHouseImage, getRandomImage } from '@/utils/tools.js'
+import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js'
 
 defineProps({
   house: {
