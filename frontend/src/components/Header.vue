@@ -15,20 +15,17 @@ import NavBar from '@/components/NavBar.vue'
 import UserButton from '@/components/UserButton.vue';
 
 </script>
-<style>
-*{
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-</style>
 <style scoped>
 .header {
     width: 100%;
     height: 60px;
-    background-color:rgb(186,194,203);
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
     display: flex;
     align-items: center;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.15);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 .header-wrap {
     display: flex;

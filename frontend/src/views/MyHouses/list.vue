@@ -85,7 +85,9 @@
       <div v-if="loading" class="loading">加载中...</div>
       
       <div v-else-if="filteredHouses.length === 0" class="empty">
-        {{ searchKeyword ? '未找到匹配的房源' : '暂无房源，去发布一个吧' }}
+        <div class="empty-icon"><i class="fa-solid fa-home"></i></div>
+        <p class="empty-text">{{ searchKeyword ? '未找到匹配的房源' : '暂无房源' }}</p>
+        <p class="empty-hint">{{ searchKeyword ? '试试其他关键词吧' : '去发布一个吧' }}</p>
       </div>
 
       <div 
@@ -151,6 +153,7 @@
         @change="handlePageChange"
       />
     </div>
+    <BackToTop />
   </div>
 </template>
 
@@ -159,6 +162,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
+import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 
 const router = useRouter()
@@ -336,7 +340,7 @@ onMounted(() => {
 <style scoped>
 .my-houses {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: linear-gradient(180deg, #f4f6f9 0%, #edf0f5 100%);
   padding: 20px 200px;
 }
 
@@ -500,8 +504,26 @@ onMounted(() => {
 
 .loading, .empty {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
   color: #8c8c8c;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #c0c4cc;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 15px;
+  color: #8c8c8c;
+  margin: 0 0 4px;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #b0b4bc;
+  margin: 0;
 }
 
 /* 房源卡片 */
@@ -518,7 +540,8 @@ onMounted(() => {
 }
 
 .house-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
 }
 
 .house-left {

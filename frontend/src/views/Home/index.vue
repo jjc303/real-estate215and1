@@ -1,5 +1,6 @@
 <template>
-  <div class="page-wrap">
+  <div class="home-root">
+    <div class="page-wrap">
     <!-- 首页主体内容 -->
     <div class="home-container">
         <div class="home-header">
@@ -54,6 +55,7 @@
           />
       </div>
     </div>
+  </div>
   </div>
 </template>
 

@@ -29,7 +29,9 @@
       <div v-if="loading" class="loading">加载中...</div>
       
       <div v-else-if="filteredRepairs.length === 0" class="empty">
-        暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}维修申请
+        <div class="empty-icon"><i class="fa-solid fa-tools"></i></div>
+        <p class="empty-text">暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}维修申请</p>
+        <p class="empty-hint">维修申请记录会在这里显示</p>
       </div>
 
       <div 
@@ -130,6 +132,7 @@
         <el-button type="primary" @click="submitRepair">提交</el-button>
       </template>
     </el-dialog>
+    <BackToTop />
   </div>
 </template>
 
@@ -137,10 +140,12 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
+import BackToTop from '@/components/BackToTop.vue'
 import { mockTenantRepairs, mockMyHouses } from '@/mock/serviceRepairs'
 import { getRepairList, createRepair } from '@/api/repair'
+import service from '@/utils/request'
 
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 const loading = ref(false)
 const currentTab = ref('all')
@@ -196,6 +201,12 @@ const getTypeText = (type) => {
   return map[type] || type
 }
 
+const formatDateTime = (datetime) => {
+  if (!datetime) return ''
+  const date = new Date(datetime)
+  return date.toLocaleString('zh-CN')
+}
+
 const fetchRepairs = async () => {
   loading.value = true
   try {
@@ -207,7 +218,14 @@ const fetchRepairs = async () => {
     } else {
       const res = await getRepairList({ page: pageNum.value, page_size: pageSize.value })
       if (res.code === 0) {
-        repairs.value = res.data.list
+        repairs.value = res.data.list.map(item => ({
+          ...item,
+          title: item.description ? item.description.slice(0, 20) + (item.description.length > 20 ? '...' : '') : '维修申请',
+          house: { title: `房源 #${item.house_id}` },
+          type: 'other',
+          created_at: formatDateTime(item.created_at),
+          processed_at: item.processed_at ? formatDateTime(item.processed_at) : null
+        }))
         total.value = res.data.total
       }
     }
@@ -223,7 +241,20 @@ const fetchMyHouses = async () => {
   if (USE_MOCK_DATA) {
     myHouses.value = mockMyHouses
   } else {
-    // 真实API调用
+    try {
+      const res = await service.get('/v1/contracts', { params: { page: 1, page_size: 100 } })
+      if (res.code === 0) {
+        myHouses.value = res.data.list
+          .filter(c => c.status === 'active')
+          .map(c => ({
+            id: c.id,
+            title: c.house?.title || `房源 #${c.house_id}`
+          }))
+      }
+    } catch (e) {
+      console.error('获取合同列表失败', e)
+      myHouses.value = []
+    }
   }
 }
 
@@ -306,7 +337,7 @@ onMounted(() => {
 <style scoped>
 .repair-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: linear-gradient(180deg, #f4f6f9 0%, #edf0f5 100%);
   padding: 20px 200px;
 }
 
@@ -400,11 +431,29 @@ onMounted(() => {
 
 .loading, .empty {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
   color: #8c8c8c;
   background: #fff;
   border-radius: 8px;
   margin-bottom: 20px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #c0c4cc;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 15px;
+  color: #8c8c8c;
+  margin: 0 0 4px;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #b0b4bc;
+  margin: 0;
 }
 
 .repair-card {
@@ -420,8 +469,8 @@ onMounted(() => {
 }
 
 .repair-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
 }
 
 .repair-info {

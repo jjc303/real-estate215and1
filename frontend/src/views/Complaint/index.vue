@@ -29,7 +29,9 @@
       <div v-if="loading" class="loading">加载中...</div>
       
       <div v-else-if="filteredComplaints.length === 0" class="empty">
-        暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}投诉
+        <div class="empty-icon"><i class="fa-solid fa-comment-dots"></i></div>
+        <p class="empty-text">暂无{{ currentTab === 'all' ? '' : tabs.find(t => t.value === currentTab)?.label }}投诉建议</p>
+        <p class="empty-hint">投诉建议记录会在这里显示</p>
       </div>
 
       <div 
@@ -136,6 +138,7 @@
         <el-button type="primary" @click="submitComplaint">提交</el-button>
       </template>
     </el-dialog>
+    <BackToTop />
   </div>
 </template>
 
@@ -143,6 +146,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
+import BackToTop from '@/components/BackToTop.vue'
 import { mockComplaints, mockMyHouses } from '@/mock/complaints'
 import { getComplaintList, createComplaint } from '@/api/complaint'
 
@@ -314,7 +318,7 @@ onMounted(() => {
 <style scoped>
 .complaint-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: linear-gradient(180deg, #f4f6f9 0%, #edf0f5 100%);
   padding: 20px 200px;
 }
 
@@ -408,11 +412,29 @@ onMounted(() => {
 
 .loading, .empty {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
   color: #8c8c8c;
   background: #fff;
   border-radius: 8px;
   margin-bottom: 20px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #c0c4cc;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 15px;
+  color: #8c8c8c;
+  margin: 0 0 4px;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #b0b4bc;
+  margin: 0;
 }
 
 .complaint-card {
@@ -428,8 +450,8 @@ onMounted(() => {
 }
 
 .complaint-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
 }
 
 .complaint-info {

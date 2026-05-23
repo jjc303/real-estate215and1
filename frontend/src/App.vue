@@ -1,7 +1,11 @@
 <template>
   <Header v-if="!route?.meta?.hideHeader" />
 
-  <router-view />
+  <router-view v-slot="{ Component }">
+    <Transition name="page" mode="out-in">
+      <component :is="Component" />
+    </Transition>
+  </router-view>
   
 </template>
 
@@ -31,14 +35,17 @@ onMounted(async () => {
 </script>
 
 <style>
-/* 美化 Element Plus 消息提示 */
-:root {
-  --el-message-success-bg-color: #f0fdf4;
-  --el-message-success-border-color: #86efac;
-  --el-message-warning-bg-color: #fffbeb;
-  --el-message-warning-border-color: #fcd34d;
-  --el-message-error-bg-color: #fef2f2;
-  --el-message-error-border-color: #fca5a5;
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  background: #f3f4f6;
+  font-family: "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  min-height: 100vh;
 }
 
 .el-message {
@@ -67,5 +74,20 @@ onMounted(async () => {
 .el-message .el-message__content {
   font-weight: 500;
   font-size: 14px;
+}
+
+.page-enter-active,
+.page-leave-active {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.page-enter-from {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+.page-leave-to {
+  opacity: 0;
+  transform: translateY(-12px);
 }
 </style>

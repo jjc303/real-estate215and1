@@ -13,7 +13,7 @@
           </el-button>
         </div>
       </div>
-      
+
       <div class="filter-tabs">
         <span 
           v-for="tab in tenantTabs" 
@@ -31,7 +31,9 @@
         <div v-if="loading" class="loading">加载中...</div>
         
         <div v-else-if="filteredReservations.length === 0" class="empty">
-          暂无{{ currentTab === 'all' ? '' : tenantTabs.find(t => t.value === currentTab)?.label }}预约
+          <div class="empty-icon"><i class="fa-solid fa-calendar-check"></i></div>
+          <p class="empty-text">暂无{{ currentTab === 'all' ? '' : tenantTabs.find(t => t.value === currentTab)?.label }}预约</p>
+          <p class="empty-hint">看房预约会在这里显示</p>
         </div>
 
         <div 
@@ -103,7 +105,7 @@
           <p class="subtitle">管理看房预约</p>
         </div>
       </div>
-      
+
       <div class="filter-tabs">
         <span 
           v-for="tab in landlordTabs" 
@@ -121,7 +123,9 @@
         <div v-if="loading" class="loading">加载中...</div>
         
         <div v-else-if="filteredReservations.length === 0" class="empty">
-          暂无{{ currentTab === 'all' ? '' : landlordTabs.find(t => t.value === currentTab)?.label }}预约
+          <div class="empty-icon"><i class="fa-solid fa-calendar-check"></i></div>
+          <p class="empty-text">暂无{{ currentTab === 'all' ? '' : landlordTabs.find(t => t.value === currentTab)?.label }}预约</p>
+          <p class="empty-hint">看房预约会在这里显示</p>
         </div>
 
         <div 
@@ -244,6 +248,80 @@
         <el-button type="primary" @click="submitReservation">提交预约</el-button>
       </template>
     </el-dialog>
+
+    <!-- 查看详情对话框 -->
+    <el-dialog
+      v-model="detailDialogVisible"
+      title="预约详情"
+      width="520px"
+    >
+      <div v-if="detailReservation" class="detail-content">
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-home"></i> 房源信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">房源名称</span>
+              <span class="detail-value">{{ detailReservation.house_title }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">房源地址</span>
+              <span class="detail-value">{{ detailReservation.house_address }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-calendar-check"></i> 预约信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">预约日期</span>
+              <span class="detail-value">{{ detailReservation.reservation_date }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">预约时间</span>
+              <span class="detail-value">{{ detailReservation.reservation_time }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">预约状态</span>
+              <span class="detail-value">
+                <span class="reservation-status" :class="detailReservation.status">{{ getStatusText(detailReservation.status) }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-user"></i> 联系信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">{{ isTenant ? '房东姓名' : '租客姓名' }}</span>
+              <span class="detail-value">{{ isTenant ? detailReservation.landlord_name : detailReservation.tenant_name }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">{{ isTenant ? '房东电话' : '租客电话' }}</span>
+              <span class="detail-value">{{ isTenant ? detailReservation.landlord_phone : detailReservation.phone }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div v-if="detailReservation.remark" class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-message-circle"></i> 备注信息
+          </div>
+          <div class="detail-remark">{{ detailReservation.remark }}</div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+    <BackToTop />
   </div>
 </template>
 
@@ -251,6 +329,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
+import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 import { useUserStore } from '@/stores/user'
 import { mockTenantReservations, mockLandlordReservations } from '@/mock/reservation'
@@ -276,6 +355,38 @@ const reservationForm = ref({
   appointment_time: '',
   remark: ''
 })
+
+// 查看详情相关
+const detailDialogVisible = ref(false)
+const detailReservation = ref(null)
+
+// 格式化日期为 YYYY-MM-DD
+const formatDate = (date) => {
+  if (!date) return ''
+  if (date instanceof Date) {
+    return date.toISOString().split('T')[0]
+  }
+  // 如果是字符串，尝试解析
+  const d = new Date(date)
+  if (!isNaN(d.getTime())) {
+    return d.toISOString().split('T')[0]
+  }
+  return date
+}
+
+// 格式化时间为 HH:MM:SS
+const formatTime = (time) => {
+  if (!time) return ''
+  if (time instanceof Date) {
+    return time.toTimeString().split(' ')[0]
+  }
+  // 如果是字符串，尝试解析
+  const d = new Date(`1970-01-01T${time}`)
+  if (!isNaN(d.getTime())) {
+    return d.toTimeString().split(' ')[0]
+  }
+  return time
+}
 
 // 判断当前用户是否是租客
 const isTenant = computed(() => userStore.userRole === 'tenant')
@@ -343,8 +454,26 @@ const fetchReservations = async () => {
       
       const res = await service.get('/v1/appointments', { params })
       
+      console.log('===== 预约列表响应 =====')
+      console.log('响应数据:', res)
+      
       if (res.code === 0) {
-        reservations.value = res.data.list
+        // 将后端返回的数据结构转换为前端期望的格式
+        reservations.value = res.data.list.map(item => ({
+          id: item.id,
+          house_id: item.house_id,
+          house_title: item.house?.title || '未知房源',
+          house_address: item.house?.address || '未知地址',
+          landlord_name: item.landlord_name || item.landlord_id || '未知房东',
+          landlord_phone: item.landlord_phone || '未知电话',
+          tenant_name: item.tenant_name || item.tenant_id || '未知租客',
+          phone: item.tenant_phone || '未知电话',
+          remark: item.remark || '',
+          status: item.status,
+          // 将 appointment_time 拆分为日期和时间
+          reservation_date: formatDate(item.appointment_time),
+          reservation_time: formatTime(item.appointment_time)
+        }))
         total.value = res.data.total
       }
     }
@@ -476,8 +605,8 @@ const cancelReservation = async (reservation) => {
 }
 
 const viewDetail = (reservation) => {
-  // 可以跳转到详情页
-  console.log('查看详情:', reservation)
+  detailReservation.value = reservation
+  detailDialogVisible.value = true
 }
 
 const handlePageChange = (newPage) => {
@@ -555,9 +684,20 @@ const submitReservation = async () => {
       ElMessage.success('预约发起成功！请等待房东确认')
       fetchReservations()
     } else {
-      const appointmentTime = `${reservationForm.value.appointment_date}T${reservationForm.value.appointment_time}`
+      // 正确格式化日期和时间
+      const dateStr = formatDate(reservationForm.value.appointment_date)
+      const timeStr = formatTime(reservationForm.value.appointment_time)
+      const appointmentTime = `${dateStr}T${timeStr}`
+      
+      // 调试信息
+      console.log('===== 发起预约请求 =====')
+      console.log('house_id:', reservationForm.value.house_id)
+      console.log('appointment_date:', reservationForm.value.appointment_date)
+      console.log('appointment_time:', appointmentTime)
+      console.log('remark:', reservationForm.value.remark)
+      
       const res = await service.post('/v1/appointments', {
-        house_id: reservationForm.value.house_id,
+        house_id: parseInt(reservationForm.value.house_id),
         appointment_time: appointmentTime,
         remark: reservationForm.value.remark || null
       })
@@ -581,7 +721,7 @@ onMounted(() => {
 <style scoped>
 .reservation-page {
   min-height: 100vh;
-  background: #f5f5f5;
+  background: linear-gradient(180deg, #f4f6f9 0%, #edf0f5 100%);
   padding: 20px 200px;
 }
 
@@ -675,11 +815,29 @@ onMounted(() => {
 
 .loading, .empty {
   text-align: center;
-  padding: 40px;
+  padding: 60px 40px;
   color: #8c8c8c;
   background: #fff;
   border-radius: 8px;
   margin-bottom: 20px;
+}
+
+.empty-icon {
+  font-size: 48px;
+  color: #c0c4cc;
+  margin-bottom: 16px;
+}
+
+.empty-text {
+  font-size: 15px;
+  color: #8c8c8c;
+  margin: 0 0 4px;
+}
+
+.empty-hint {
+  font-size: 13px;
+  color: #b0b4bc;
+  margin: 0;
 }
 
 .reservation-card {
@@ -695,8 +853,8 @@ onMounted(() => {
 }
 
 .reservation-card:hover {
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  transform: translateY(-3px);
 }
 
 .reservation-info {
@@ -835,5 +993,65 @@ onMounted(() => {
   .reservation-details {
     gap: 12px;
   }
+}
+
+.detail-content {
+  padding: 0;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-section-title i {
+  color: #1890ff;
+  margin-right: 6px;
+}
+
+.detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.detail-label {
+  font-size: 14px;
+  color: #8c8c8c;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #262626;
+  text-align: right;
+}
+
+.detail-remark {
+  font-size: 14px;
+  color: #595959;
+  line-height: 1.6;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-radius: 6px;
 }
 </style>

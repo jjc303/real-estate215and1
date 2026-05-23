@@ -297,7 +297,6 @@ onMounted(() => {
   padding: 20px;
   max-width: 800px;
   margin: 0 auto;
-  background: #fff;
   min-height: 100vh;
 }
 
