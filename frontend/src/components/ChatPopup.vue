@@ -17,7 +17,7 @@
               <span>{{ errorMessage }}</span>
             </div>
           </Transition>
-          
+
           <div class="chat-sidebar">
             <div class="search-box">
               <el-input v-model="searchKeyword" placeholder="搜索租客或房源..." clearable size="small">
@@ -27,8 +27,26 @@
               </el-input>
             </div>
             <div class="chat-list">
-              <div 
-                v-for="item in chatList" 
+              <!-- 系统通知入口 -->
+              <div
+                :class="['chat-item', { active: selectedChatId === 'system_notification' }]"
+                @click="selectSystemNotification"
+              >
+                <div class="chat-avatar system-avatar">
+                  <i class="fa-solid fa-bell"></i>
+                </div>
+                <div class="chat-info">
+                  <div class="chat-top">
+                    <span class="chat-name">系统通知</span>
+                  </div>
+                  <div class="chat-preview">查看您的各类通知</div>
+                </div>
+                <div v-if="unreadNotificationCount > 0" class="unread-badge">{{ unreadNotificationCount > 99 ? '99+' : unreadNotificationCount }}</div>
+              </div>
+
+              <!-- 普通聊天列表 -->
+              <div
+                v-for="item in chatList"
                 :key="item.id"
                 :class="['chat-item', { active: selectedChatId === item.id }]"
                 @click="selectChat(item)"
@@ -51,64 +69,149 @@
           </div>
 
           <div class="chat-main">
-            <div class="chat-header" v-if="selectedChat">
-              <div class="header-info">
-                <span class="user-name">{{ selectedChat.userName }}</span>
-              </div>
-            </div>
-
-            <!-- 空状态 -->
-            <div v-if="!selectedChat" class="empty-state">
-              <div class="empty-icon">
-                <i class="fa-solid fa-comments"></i>
-              </div>
-              <p class="empty-title">开始沟通房源详情</p>
-              <p class="empty-desc">选择一个对话，与租客交流租房事宜</p>
-            </div>
-
-            <div ref="messagesContainer" class="chat-messages" v-if="selectedChat">
-              <div v-for="(msg, index) in currentMessages" :key="index" class="message-item">
-                <div :class="['message-bubble', { 'is-mine': msg.isMine }]">
-                  {{ msg.content }}
+            <!-- 系统通知视图 -->
+            <template v-if="selectedChatId === 'system_notification'">
+              <div class="chat-header">
+                <div class="header-info">
+                  <span class="user-name">系统通知</span>
                 </div>
-                <span :class="['message-time', { 'is-mine': msg.isMine }]">{{ formatRelativeTime(msg.time) }}</span>
               </div>
-            </div>
 
-            <!-- 优化后的输入框区域 -->
-            <div class="chat-input-area" v-if="selectedChat">
-              <!-- 快捷短语栏 -->
-              <div class="quick-phrases">
-                <span 
-                  v-for="phrase in currentQuickPhrases" 
-                  :key="phrase"
-                  class="phrase-tag"
-                  @click="insertPhrase(phrase)"
-                >
-                  {{ phrase }}
-                </span>
+              <div class="notification-cards">
+                <!-- 通知详情视图 -->
+                <template v-if="selectedNotification">
+                  <div class="notification-detail">
+                    <div class="detail-back" @click="selectedNotification = null">
+                      <i class="fa-solid fa-arrow-left"></i> 返回列表
+                    </div>
+                    <div class="detail-card">
+                      <div class="detail-header">
+                        <div class="detail-icon" :class="selectedNotification.source_type">
+                          <i v-if="selectedNotification.source_type === 'appointment'" class="fa-solid fa-calendar-check"></i>
+                          <i v-else-if="selectedNotification.source_type === 'contract'" class="fa-solid fa-file-signature"></i>
+                          <i v-else-if="selectedNotification.source_type === 'bill'" class="fa-solid fa-file-invoice-dollar"></i>
+                          <i v-else-if="selectedNotification.source_type === 'repair'" class="fa-solid fa-wrench"></i>
+                          <i v-else class="fa-solid fa-bell"></i>
+                        </div>
+                        <div class="detail-title-row">
+                          <h3 class="detail-title">{{ selectedNotification.title }}</h3>
+                          <span v-if="selectedNotification.status === 'unread'" class="unread-tag">未读</span>
+                        </div>
+                      </div>
+                      <div class="detail-body">
+                        <p class="detail-message">{{ selectedNotification.message }}</p>
+                      </div>
+                      <div class="detail-footer">
+                        <span class="detail-time">{{ formatDateTime(selectedNotification.created_at) }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </template>
+
+                <!-- 通知列表 -->
+                <template v-else>
+                  <div v-if="notificationLoading" class="loading-state">
+                    <i class="fa-solid fa-spinner fa-spin"></i> 加载中...
+                  </div>
+                  <div v-else-if="notificationList.length === 0" class="empty-state">
+                    <div class="empty-icon">
+                      <i class="fa-solid fa-bell-slash"></i>
+                    </div>
+                    <p class="empty-title">暂无通知</p>
+                    <p class="empty-desc">您将在这里收到预约、合同、账单等相关通知</p>
+                  </div>
+                  <div
+                    v-else
+                    v-for="item in notificationList"
+                    :key="item.id"
+                    :class="['notification-card', { unread: item.status === 'unread' }]"
+                    @click="handleNotificationClick(item)"
+                  >
+                    <div class="card-header">
+                      <div class="card-icon" :class="item.source_type">
+                        <i v-if="item.source_type === 'appointment'" class="fa-solid fa-calendar-check"></i>
+                        <i v-else-if="item.source_type === 'contract'" class="fa-solid fa-file-signature"></i>
+                        <i v-else-if="item.source_type === 'bill'" class="fa-solid fa-file-invoice-dollar"></i>
+                        <i v-else-if="item.source_type === 'repair'" class="fa-solid fa-wrench"></i>
+                        <i v-else class="fa-solid fa-bell"></i>
+                      </div>
+                      <div class="card-title-row">
+                        <span class="card-title">{{ item.title }}</span>
+                        <span v-if="item.status === 'unread'" class="unread-tag">未读</span>
+                      </div>
+                    </div>
+                    <div class="card-body">
+                      <p class="card-message">{{ item.message }}</p>
+                    </div>
+                    <div class="card-footer">
+                      <span class="card-time">{{ formatDateTime(item.created_at) }}</span>
+                    </div>
+                  </div>
+                </template>
               </div>
-              
-              <div class="input-wrapper">
-                <div class="input-box">
-                  <textarea
-                    v-model="messageInput"
-                    placeholder="输入消息..."
-                    rows="1"
-                    @input="autoResize"
-                    @keydown.enter.prevent="handleEnter"
-                  ></textarea>
+            </template>
+
+            <!-- 普通聊天视图 -->
+            <template v-else>
+              <div class="chat-header" v-if="selectedChat">
+                <div class="header-info">
+                  <span class="user-name">{{ selectedChat.userName }}</span>
                 </div>
-                
-                <button 
-                  class="send-btn" 
-                  :class="{ 'can-send': messageInput.trim() }"
-                  @click="sendMessage"
-                >
-                  <i class="fa-solid fa-paper-plane"></i>
-                </button>
               </div>
-            </div>
+
+              <!-- 空状态 -->
+              <div v-if="!selectedChat" class="empty-state">
+                <div class="empty-icon">
+                  <i class="fa-solid fa-comments"></i>
+                </div>
+                <p class="empty-title">开始沟通房源详情</p>
+                <p class="empty-desc">选择一个对话，与租客交流租房事宜</p>
+              </div>
+
+              <div ref="messagesContainer" class="chat-messages" v-if="selectedChat">
+                <div v-for="(msg, index) in currentMessages" :key="index" class="message-item">
+                  <div :class="['message-bubble', { 'is-mine': msg.isMine }]">
+                    {{ msg.content }}
+                  </div>
+                  <span :class="['message-time', { 'is-mine': msg.isMine }]">{{ formatRelativeTime(msg.time) }}</span>
+                </div>
+              </div>
+
+              <!-- 优化后的输入框区域 -->
+              <div class="chat-input-area" v-if="selectedChat">
+                <!-- 快捷短语栏 -->
+                <div class="quick-phrases">
+                  <span
+                    v-for="phrase in currentQuickPhrases"
+                    :key="phrase"
+                    class="phrase-tag"
+                    @click="insertPhrase(phrase)"
+                  >
+                    {{ phrase }}
+                  </span>
+                </div>
+
+                <div class="input-wrapper">
+                  <div class="input-box">
+                    <textarea
+                      v-model="messageInput"
+                      placeholder="输入消息..."
+                      rows="1"
+                      @input="autoResize"
+                      @keydown.enter.prevent="handleEnter"
+                    ></textarea>
+                  </div>
+
+                  <button
+                    class="send-btn"
+                    :class="{ 'can-send': messageInput.trim() }"
+                    @click="sendMessage"
+                  >
+                    <i class="fa-solid fa-paper-plane"></i>
+                  </button>
+                </div>
+              </div>
+            </template>
           </div>
         </div>
       </div>
@@ -118,13 +221,18 @@
 
 <script setup>
 import { ref, computed, nextTick, watch } from 'vue';
-import { 
-  getConversationList, 
-  getMessageList, 
-  sendMessage as sendMessageApi, 
+import { ElMessage } from 'element-plus';
+import {
+  getConversationList,
+  getMessageList,
+  sendMessage as sendMessageApi,
   markAsRead,
-  createConversation 
+  createConversation
 } from '@/api/conversation';
+import {
+  getNotificationList,
+  markNotificationRead
+} from '@/api/notification';
 
 const props = defineProps({
   visible: {
@@ -137,7 +245,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:visible']);
+const emit = defineEmits(['update:visible', 'update:notification-count']);
 
 const searchKeyword = ref('');
 const selectedChatId = ref(null);
@@ -147,6 +255,12 @@ const errorMessage = ref('');
 const showError = ref(false);
 const loading = ref(false);
 const messagesLoading = ref(false);
+
+// 通知相关
+const notificationList = ref([]);
+const notificationLoading = ref(false);
+const unreadNotificationCount = ref(0);
+const selectedNotification = ref(null);
 
 // 当前用户信息
 const currentUser = ref(null);
@@ -270,6 +384,32 @@ const formatRelativeTime = (timeStr) => {
     }
   } catch (e) {
     console.error('时间格式化失败:', timeStr, e);
+    return timeStr;
+  }
+};
+
+// 格式化日期时间为 YYYY-MM-DD HH:mm 格式
+const formatDateTime = (timeStr) => {
+  if (!timeStr) return '';
+  try {
+    let date;
+    if (timeStr.includes('T')) {
+      if (!timeStr.includes('Z') && !timeStr.includes('+')) {
+        date = new Date(timeStr + 'Z');
+      } else {
+        date = new Date(timeStr);
+      }
+    } else {
+      date = new Date(timeStr);
+    }
+    if (isNaN(date.getTime())) return timeStr;
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}`;
+  } catch (e) {
     return timeStr;
   }
 };
@@ -549,6 +689,46 @@ const sendMessage = async () => {
   }
 };
 
+// 选择系统通知
+const selectSystemNotification = async () => {
+  selectedChatId.value = 'system_notification';
+  await fetchNotifications();
+};
+
+// 获取通知列表
+const fetchNotifications = async () => {
+  notificationLoading.value = true;
+  try {
+    const res = await getNotificationList({ page: 1, page_size: 50 });
+    if (res.code === 0) {
+      notificationList.value = res.data.list || [];
+      unreadNotificationCount.value = notificationList.value.filter(n => n.status === 'unread').length;
+      emit('update:notification-count', unreadNotificationCount.value);
+    }
+  } catch (e) {
+    console.error('获取通知列表失败:', e);
+  } finally {
+    notificationLoading.value = false;
+  }
+};
+
+// 点击通知
+const handleNotificationClick = async (notification) => {
+  // 如果未读，标记为已读
+  if (notification.status === 'unread') {
+    try {
+      await markNotificationRead(notification.id);
+      notification.status = 'read';
+      unreadNotificationCount.value = Math.max(0, unreadNotificationCount.value - 1);
+      emit('update:notification-count', unreadNotificationCount.value);
+    } catch (e) {
+      console.error('标记已读失败:', e);
+    }
+  }
+  // 显示详情
+  selectedNotification.value = notification;
+};
+
 // 关闭弹窗
 const close = async () => {
   emit('update:visible', false);
@@ -571,10 +751,13 @@ watch(() => props.visible, async (val) => {
   if (val) {
     // 先获取当前用户信息
     await fetchCurrentUser();
-    
+
     // 再加载会话列表
     await loadConversationList();
-    
+
+    // 同时获取通知未读数
+    await fetchNotifications();
+
     // 如果传入了 houseId 且没有找到现有会话，创建新会话
     if (props.houseId) {
       const existingChat = chatList.value.find(c => c.houseId === props.houseId);
@@ -1155,5 +1338,230 @@ watch(() => props.visible, async (val) => {
 
 .send-btn:active {
   transform: scale(0.95);
+}
+
+/* 系统通知视图 */
+.system-avatar {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  color: #fff;
+}
+
+.notification-cards {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+}
+
+.notification-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid #f1f5f9;
+}
+
+.notification-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transform: translateY(-1px);
+}
+
+.notification-card.unread {
+  border-left: 3px solid #3b82f6;
+  background: #f8fbff;
+}
+
+.notification-card .card-header {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 10px;
+}
+
+.notification-card .card-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.notification-card .card-icon.appointment {
+  background: #dbeafe;
+  color: #3b82f6;
+}
+
+.notification-card .card-icon.contract {
+  background: #dcfce7;
+  color: #22c55e;
+}
+
+.notification-card .card-icon.bill {
+  background: #fef3c7;
+  color: #f59e0b;
+}
+
+.notification-card .card-icon.repair {
+  background: #fce7f3;
+  color: #ec4899;
+}
+
+.notification-card .card-icon.default {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.notification-card .card-title-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.notification-card .card-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.notification-card .unread-tag {
+  font-size: 11px;
+  background: #3b82f6;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.notification-card .card-body {
+  padding-left: 50px;
+}
+
+.notification-card .card-message {
+  font-size: 14px;
+  color: #475569;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.notification-card .card-footer {
+  padding-left: 50px;
+  margin-top: 8px;
+}
+
+.notification-card .card-time {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+/* 通知详情视图 */
+.notification-detail {
+  padding: 0;
+}
+
+.detail-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 16px;
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+.detail-back:hover {
+  color: #0ea5e9;
+}
+
+.detail-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border: 1px solid #f1f5f9;
+}
+
+.detail-header {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.detail-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 14px;
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.detail-icon.appointment {
+  background: #dbeafe;
+  color: #3b82f6;
+}
+
+.detail-icon.contract {
+  background: #dcfce7;
+  color: #22c55e;
+}
+
+.detail-icon.bill {
+  background: #fef3c7;
+  color: #f59e0b;
+}
+
+.detail-icon.repair {
+  background: #fce7f3;
+  color: #ec4899;
+}
+
+.detail-icon.default {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.detail-title-row {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.detail-body {
+  padding: 16px 0;
+  border-top: 1px solid #f1f5f9;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.detail-message {
+  font-size: 15px;
+  color: #475569;
+  line-height: 1.8;
+  margin: 0;
+}
+
+.detail-footer {
+  padding-top: 12px;
+}
+
+.detail-time {
+  font-size: 13px;
+  color: #94a3b8;
 }
 </style>

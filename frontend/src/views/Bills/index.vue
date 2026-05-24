@@ -353,7 +353,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
@@ -362,6 +363,7 @@ import { useUserStore } from '@/stores/user'
 import { mockTenantBills, mockLandlordBills } from '@/mock/bills'
 
 const userStore = useUserStore()
+const route = useRoute()
 
 const USE_MOCK_DATA = false
 
@@ -644,9 +646,28 @@ const submitCreateBill = async () => {
   }
 }
 
-onMounted(() => {
+// 处理从合同跳转过来的情况
+const handleCreateFromContract = async () => {
+  const create = route.query.create
+  const contractId = route.query.contract_id
+
+  if (create === '1' && contractId) {
+    await fetchActiveContracts()
+    createForm.contract_id = parseInt(contractId)
+    onContractChange(parseInt(contractId))
+    createDialogVisible.value = true
+  }
+}
+
+onMounted(async () => {
   fetchBills()
+  await handleCreateFromContract()
 })
+
+// 监听路由变化
+watch(() => route.query, async () => {
+  await handleCreateFromContract()
+}, { flush: 'post' })
 </script>
 
 <style scoped>

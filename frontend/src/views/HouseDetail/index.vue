@@ -68,6 +68,13 @@
                         联系房东
                     </button>
                     <button 
+                        class="btn btn-reserve"
+                        @click="handleReserve"
+                    >
+                        <i class="fa-solid fa-calendar-check"></i>
+                        预约看房
+                    </button>
+                    <button 
                         class="btn btn-outline collect-btn" 
                         :class="{ active: house.isCollect }"
                         @click="handleCollect"
@@ -128,15 +135,22 @@
             :house-id="house.id"
             @update:visible="showChat = $event" 
         />
+
+        <!-- 预约看房弹窗 -->
+        <ReserveDialog
+            v-model:visible="reserveDialogVisible"
+            :house-info="houseInfo"
+        />
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user.js';
 import { ElMessage } from 'element-plus';
 import ChatPopup from '@/components/ChatPopup.vue';
+import ReserveDialog from '@/components/ReserveDialog.vue';
 import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js';
 import { getHouseDetail } from '@/api/house.js';
 
@@ -147,6 +161,20 @@ const userStore = useUserStore();
 const house = ref({});
 const currentImgIndex = ref(0);
 const showChat = ref(false);
+
+// 预约相关
+const reserveDialogVisible = ref(false);
+
+const houseInfo = computed(() => {
+    if (!house.value.id) return null;
+    return {
+        id: house.value.id,
+        title: house.value.title,
+        price: house.value.price,
+        room: house.value.room,
+        area: house.value.area
+    };
+});
 
 const goBack = () => {
     router.back();
@@ -166,6 +194,14 @@ const openChat = () => {
         return;
     }
     showChat.value = true;
+};
+
+const handleReserve = () => {
+    if (!userStore.token) {
+        ElMessage.warning('请先登录');
+        return;
+    }
+    reserveDialogVisible.value = true;
 };
 
 const fetchHouseDetail = async () => {
@@ -442,6 +478,20 @@ onMounted(() => {
 .btn-primary:hover {
     transform: translateY(-1px);
     box-shadow: 0 2px 10px rgba(0, 108, 216, 0.3);
+}
+
+.btn-reserve {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+}
+
+.btn-reserve:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+.btn-reserve i {
+    font-size: 14px;
 }
 
 .btn-outline {

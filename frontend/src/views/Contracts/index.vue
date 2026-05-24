@@ -71,7 +71,7 @@
               <i class="fa-solid fa-eye"></i> 查看详情
             </el-button>
             <el-button 
-              v-if="contract.status === 'pending'" 
+              v-if="isTenant && contract.status === 'pending'" 
               type="success" 
               size="small"
               @click.stop="confirmContract(contract)"
@@ -79,7 +79,7 @@
               <i class="fa-solid fa-check"></i> 确认合同
             </el-button>
             <el-button 
-              v-if="contract.status === 'pending'" 
+              v-if="isTenant && contract.status === 'pending'" 
               type="danger" 
               size="small"
               @click.stop="rejectContract(contract)"
@@ -160,7 +160,7 @@
             <i class="fa-solid fa-eye"></i> 查看详情
           </el-button>
           <el-button 
-            v-if="contract.status === 'pending'" 
+            v-if="isTenant && contract.status === 'pending'" 
             type="success" 
             size="small"
             @click.stop="confirmContract(contract)"
@@ -168,24 +168,32 @@
             <i class="fa-solid fa-check"></i> 确认合同
           </el-button>
           <el-button 
-            v-if="contract.status === 'pending'" 
+            v-if="isTenant && contract.status === 'pending'" 
             type="danger" 
             size="small"
             @click.stop="rejectContract(contract)"
           >
             <i class="fa-solid fa-x"></i> 拒绝
           </el-button>
-          <el-button 
-            v-if="contract.status === 'active'" 
-            type="warning" 
+          <el-button
+            v-if="!isTenant && contract.status === 'active'"
+            type="warning"
             size="small"
             @click.stop="terminateContract(contract)"
           >
             <i class="fa-solid fa-stop-circle"></i> 终止合同
           </el-button>
-          <el-button 
-            v-if="contract.status === 'active' || contract.status === 'pending'" 
-            type="info" 
+          <el-button
+            v-if="contract.status === 'active'"
+            type="success"
+            size="small"
+            @click.stop="createBill(contract)"
+          >
+            <i class="fa-solid fa-file-invoice-dollar"></i> 创建账单
+          </el-button>
+          <el-button
+            v-if="!isTenant && contract.status === 'pending'"
+            type="info"
             size="small"
             @click.stop="cancelContract(contract)"
           >
@@ -427,7 +435,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
@@ -436,6 +445,8 @@ import { useUserStore } from '@/stores/user'
 import { mockTenantContracts, mockLandlordContracts } from '@/mock/contracts'
 
 const userStore = useUserStore()
+const route = useRoute()
+const router = useRouter()
 
 const USE_MOCK_DATA = false
 
@@ -760,6 +771,13 @@ const cancelContract = async (contract) => {
   }
 }
 
+const createBill = (contract) => {
+  router.push({
+    path: '/manage/rent',
+    query: { create: '1', contract_id: contract.id }
+  })
+}
+
 const terminateContract = async (contract) => {
   try {
     await ElMessageBox.confirm(
@@ -800,9 +818,28 @@ const handlePageChange = (newPage) => {
   fetchContracts()
 }
 
-onMounted(() => {
+// 处理从预约跳转过来的情况
+const handleCreateFromReservation = async () => {
+  const create = route.query.create
+  const appointmentId = route.query.appointment_id
+
+  if (create === '1' && appointmentId) {
+    await fetchConfirmedAppointments()
+    createForm.appointment_id = parseInt(appointmentId)
+    onAppointmentChange()
+    createDialogVisible.value = true
+  }
+}
+
+onMounted(async () => {
   fetchContracts()
+  await handleCreateFromReservation()
 })
+
+// 监听路由变化，处理多次跳转
+watch(() => route.query, async () => {
+  await handleCreateFromReservation()
+}, { flush: 'post' })
 </script>
 
 <style scoped>

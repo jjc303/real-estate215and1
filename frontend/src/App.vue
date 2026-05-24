@@ -6,13 +6,15 @@
       <component :is="Component" />
     </Transition>
   </router-view>
-  
+
+  <LoginModal />
 </template>
 
 <script setup>
 import { onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import Header from '@/components/Header.vue';
+import LoginModal from '@/components/LoginModal.vue';
 import { useUserStore } from '@/stores/user.js';
 
 const route = useRoute()

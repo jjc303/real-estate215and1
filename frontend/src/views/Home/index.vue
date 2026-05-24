@@ -22,7 +22,6 @@
         </div>
     </div>
   </div>
-  <LoginModal/>
   <!-- 分类展区 -->
   <div class="sort-area">
     <div class="sort-item">
@@ -66,7 +65,6 @@ import SearchBar from '@/components/SearchBar.vue';
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import UserButton from '@/components/UserButton.vue';
-import LoginModal from '@/components/LoginModal.vue';
 import { useUserStore } from '@/stores/user.js';
 const router =useRouter();
 const userStore = useUserStore();

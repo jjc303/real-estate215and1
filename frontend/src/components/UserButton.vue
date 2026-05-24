@@ -10,7 +10,7 @@
 <template v-else>
   <button class="btn-notification" @click="showChatPopup = true">
     <i class="fa-solid fa-bell"></i>
-    <span class="notification-badge" v-if="unreadCount > 0">{{ unreadCount > 99 ? '99+' : unreadCount }}</span>
+    <span class="notification-badge" v-if="totalUnreadCount > 0">{{ totalUnreadCount > 99 ? '99+' : totalUnreadCount }}</span>
   </button>
   
   <div class="username">
@@ -24,20 +24,25 @@
     <i class="fa-solid fa-right-from-bracket"></i> 退出
   </button>
   
-  <ChatPopup v-model:visible="showChatPopup" @update:unread-count="updateUnreadCount" />
+  <ChatPopup v-model:visible="showChatPopup" @update:unread-count="updateUnreadCount" @update:notification-count="updateNotificationCount" />
 </template>
 </template>
 
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, onMounted, onUnmounted, watch, computed } from 'vue';
 import { useUserStore } from '@/stores/user.js';
 import ChatPopup from '@/components/ChatPopup.vue';
 import { getConversationList } from '@/api/conversation';
+import { getNotificationList } from '@/api/notification';
 
 const userStore = useUserStore();
 const showChatPopup = ref(false);
 const unreadCount = ref(0);
+const notificationUnreadCount = ref(0);
+let pollInterval = null;
+
+const totalUnreadCount = computed(() => unreadCount.value + notificationUnreadCount.value);
 
 const fetchUnreadCount = async () => {
   try {
@@ -51,23 +56,94 @@ const fetchUnreadCount = async () => {
   }
 };
 
+const fetchNotificationUnreadCount = async () => {
+  try {
+    const res = await getNotificationList({ page: 1, page_size: 50 });
+    if (res.code === 0 && res.data) {
+      const list = res.data.list || [];
+      notificationUnreadCount.value = list.filter(n => n.status === 'unread').length;
+    }
+  } catch (error) {
+    console.error('获取通知未读数失败:', error);
+  }
+};
+
 const updateUnreadCount = (count) => {
   // 直接使用传入的计数值
   unreadCount.value = count;
 };
 
+const updateNotificationCount = (count) => {
+  notificationUnreadCount.value = count;
+};
+
 // 监听聊天窗口打开，重新获取未读消息数
 watch(() => showChatPopup.value, async (newVal) => {
   if (newVal) {
-    // 打开聊天窗口时重新获取未读消息数
+    // 打开聊天窗口时重新获取未读消息数和通知数
     await fetchUnreadCount();
+    await fetchNotificationUnreadCount();
   }
 });
+
+// 监听用户登录状态，当登录时获取未读数
+watch(() => userStore.isLoggedIn, (newVal) => {
+  if (newVal) {
+    fetchUnreadCount();
+    fetchNotificationUnreadCount();
+    if (!pollInterval) {
+      pollInterval = setInterval(() => {
+        fetchUnreadCount();
+        fetchNotificationUnreadCount();
+      }, 30000);
+    }
+  } else {
+    unreadCount.value = 0;
+    notificationUnreadCount.value = 0;
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+});
+
+// 页面可见性变化时暂停/恢复轮询
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible') {
+    if (userStore.isLoggedIn && !pollInterval) {
+      fetchUnreadCount();
+      fetchNotificationUnreadCount();
+      pollInterval = setInterval(() => {
+        fetchUnreadCount();
+        fetchNotificationUnreadCount();
+      }, 30000);
+    }
+  } else {
+    if (pollInterval) {
+      clearInterval(pollInterval);
+      pollInterval = null;
+    }
+  }
+};
 
 onMounted(() => {
   if (userStore.isLoggedIn) {
     fetchUnreadCount();
+    fetchNotificationUnreadCount();
+    pollInterval = setInterval(() => {
+      fetchUnreadCount();
+      fetchNotificationUnreadCount();
+    }, 30000);
   }
+  document.addEventListener('visibilitychange', handleVisibilityChange);
+});
+
+onUnmounted(() => {
+  if (pollInterval) {
+    clearInterval(pollInterval);
+    pollInterval = null;
+  }
+  document.removeEventListener('visibilitychange', handleVisibilityChange);
 });
 </script>
 <style scoped>
