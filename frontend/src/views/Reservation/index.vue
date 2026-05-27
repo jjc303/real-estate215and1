@@ -165,7 +165,15 @@
           </div>
           
           <div class="reservation-actions">
-            <el-button 
+            <el-button
+              v-if="reservation.status === 'confirmed'"
+              type="primary"
+              size="small"
+              @click="createContract(reservation)"
+            >
+              <i class="fa-solid fa-file-signature"></i> 创建合同
+            </el-button>
+            <el-button
               v-if="reservation.status === 'pending'"
               type="success"
               size="small"
@@ -173,7 +181,7 @@
             >
               <i class="fa-solid fa-check"></i> 确认预约
             </el-button>
-            <el-button 
+            <el-button
               v-if="reservation.status === 'pending'"
               type="danger"
               size="small"
@@ -181,7 +189,7 @@
             >
               <i class="fa-solid fa-times"></i> 拒绝预约
             </el-button>
-            <el-button 
+            <el-button
               type="primary"
               size="small"
               @click="viewDetail(reservation)"
@@ -327,6 +335,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
@@ -335,6 +344,7 @@ import { useUserStore } from '@/stores/user'
 import { mockTenantReservations, mockLandlordReservations } from '@/mock/reservation'
 
 const userStore = useUserStore()
+const router = useRouter()
 
 // 是否开启模拟数据
 const USE_MOCK_DATA = false // 停止使用模拟数据
@@ -493,20 +503,12 @@ const confirmReservation = async (reservation) => {
       if (idx !== -1) {
         mockLandlordReservations[idx].status = 'confirmed'
       }
-      ElMessage({
-        type: 'success',
-        message: `预约确认成功！\n租客：${reservation.tenant_name}\n时间：${reservation.reservation_date} ${reservation.reservation_time}`,
-        duration: 3000
-      })
+      ElMessage.success('预约确认成功！')
       fetchReservations()
     } else {
       const res = await service.patch(`/v1/appointments/${reservation.id}/confirm`)
       if (res.code === 0) {
-        ElMessage({
-          type: 'success',
-          message: `预约确认成功！\n租客：${reservation.tenant_name}\n时间：${reservation.reservation_date} ${reservation.reservation_time}`,
-          duration: 3000
-        })
+        ElMessage.success('预约确认成功！')
         fetchReservations()
       }
     }
@@ -514,6 +516,13 @@ const confirmReservation = async (reservation) => {
     ElMessage.error('确认失败，请稍后重试')
     console.error(e)
   }
+}
+
+const createContract = (reservation) => {
+  router.push({
+    path: '/contracts',
+    query: { create: '1', appointment_id: reservation.id }
+  })
 }
 
 const rejectReservation = async (reservation) => {

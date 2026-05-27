@@ -1,6 +1,5 @@
 <template>
   <div class="repair-page">
-    <!-- 房东端视图 -->
     <div class="page-header">
       <div class="header-left">
         <h2>维修处理</h2>
@@ -34,9 +33,8 @@
         v-for="repair in filteredRepairs" 
         :key="repair.id"
         class="repair-card"
-        @click="viewDetail(repair)"
       >
-        <div class="repair-info">
+        <div class="repair-info" @click="viewDetail(repair)">
           <div class="repair-header">
             <span class="repair-no">维修 #{{ repair.id }}</span>
           </div>
@@ -109,6 +107,90 @@
       :total="total"
       @change="handlePageChange"
     />
+
+    <!-- 查看详情对话框 -->
+    <el-dialog
+      v-model="detailVisible"
+      title="维修详情"
+      width="560px"
+    >
+      <div v-if="detailRepair" class="detail-content">
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-file-text"></i> 基本信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">维修编号</span>
+              <span class="detail-value">#{{ detailRepair.id }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">维修标题</span>
+              <span class="detail-value">{{ detailRepair.title }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">维修类型</span>
+              <span class="detail-value">
+                <span class="type-tag">{{ getTypeText(detailRepair.type) }}</span>
+              </span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">维修状态</span>
+              <span class="detail-value">
+                <span class="repair-status-detail" :class="detailRepair.status">{{ getStatusText(detailRepair.status) }}</span>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-align-left"></i> 问题描述
+          </div>
+          <div class="detail-desc">{{ detailRepair.description }}</div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-home"></i> 关联信息
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">房源</span>
+              <span class="detail-value">{{ detailRepair.house?.title }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">租客</span>
+              <span class="detail-value">{{ detailRepair.tenant_name }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">合同编号</span>
+              <span class="detail-value">#{{ detailRepair.contract_id }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-section">
+          <div class="detail-section-title">
+            <i class="fa-solid fa-clock"></i> 时间记录
+          </div>
+          <div class="detail-grid">
+            <div class="detail-item-row">
+              <span class="detail-label">申请时间</span>
+              <span class="detail-value">{{ detailRepair.created_at }}</span>
+            </div>
+            <div class="detail-item-row">
+              <span class="detail-label">处理时间</span>
+              <span class="detail-value">{{ detailRepair.processed_at || '未处理' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
     <BackToTop />
   </div>
 </template>
@@ -129,8 +211,9 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const repairs = ref([])
+const detailVisible = ref(false)
+const detailRepair = ref(null)
 
-// 标签列表
 const tabs = [
   { label: '全部', value: 'all' },
   { label: '待处理', value: 'pending' },
@@ -207,7 +290,8 @@ const fetchRepairs = async () => {
 }
 
 const viewDetail = (repair) => {
-  ElMessage.info(`查看维修详情: ${repair.title}`)
+  detailRepair.value = repair
+  detailVisible.value = true
 }
 
 const handleRepair = async (repair) => {
@@ -415,6 +499,7 @@ onMounted(() => {
 .repair-info {
   flex: 1;
   min-width: 0;
+  cursor: pointer;
 }
 
 .repair-header {
@@ -518,5 +603,94 @@ onMounted(() => {
 
 .repair-actions .el-button {
   white-space: nowrap;
+}
+
+.detail-content {
+  padding: 0;
+}
+
+.detail-section {
+  margin-bottom: 20px;
+}
+
+.detail-section:last-child {
+  margin-bottom: 0;
+}
+
+.detail-section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-section-title i {
+  color: #1890ff;
+  margin-right: 6px;
+}
+
+.detail-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.detail-item-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 4px 0;
+}
+
+.detail-label {
+  font-size: 14px;
+  color: #8c8c8c;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  font-size: 14px;
+  color: #262626;
+  text-align: right;
+}
+
+.detail-desc {
+  font-size: 14px;
+  color: #595959;
+  line-height: 1.6;
+  padding: 10px 12px;
+  background: #fafafa;
+  border-radius: 6px;
+}
+
+.type-tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  background: #e6f7ff;
+  color: #1890ff;
+  border-radius: 4px;
+}
+
+.repair-status-detail {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 3px;
+}
+
+.repair-status-detail.pending {
+  background: #fff7e6;
+  color: #fa8c16;
+}
+
+.repair-status-detail.processing {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.repair-status-detail.completed {
+  background: #f6ffed;
+  color: #52c41a;
 }
 </style>

@@ -208,20 +208,19 @@
             @change="handlePageChange"
         />
     </div>
-    <LoginModal/>
   </div>
 </template>
 <script setup>
 import HouseBar from '@/components/HouseBar.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import { ref,reactive } from 'vue';
-import LoginModal from '@/components/LoginModal.vue';
 import { useUserStore } from '@/stores/user.js';
 import { useRoute,useRouter} from 'vue-router';
 import { watch } from 'vue';
 import { onMounted } from 'vue';
 import Pagination from '@/components/Pagination.vue';
 import { getHouseList } from '@/api/house.js';
+import { getFavoriteList } from '@/api/favorite.js';
 import { ElMessage } from 'element-plus';
 const userStore = useUserStore();
 const route=useRoute();
@@ -234,6 +233,7 @@ const total = ref(0)//房源总数
 const pageNum=ref(1)//当前页数
 const pageSize=ref(10)//每页条数
 const houseList = ref([])//房源信息
+const collectedHouseIds = ref(new Set()) // 收藏的房源ID集合
 const districts=['不限','雨花区','岳麓区','天心区','开福区','芙蓉区','望城区','宁乡市','浏阳区','长沙县'];
 const selectedDistrict=ref('');
 
@@ -409,19 +409,21 @@ const clearAllFilter = () => {
 const handleCollect=async(house)=>{
     //登录才能收藏
     if (!userStore.token) {
-        ElMessage.warning('请先登录')
+        userStore.openLoginModal()
         return
     }
     
     try {
         // 导入收藏 API
         const { addFavorite, removeFavorite } = await import('@/api/favorite')
+        const houseIdStr = String(house.id)
         
         if (house.isCollect) {
             // 取消收藏
             const res = await removeFavorite(house.id)
             if (res.code === 0) {
                 house.isCollect = false
+                collectedHouseIds.value.delete(houseIdStr)
                 ElMessage.success('已取消收藏')
             } else {
                 ElMessage.error(res.message || '取消收藏失败')
@@ -431,6 +433,7 @@ const handleCollect=async(house)=>{
             const res = await addFavorite(house.id)
             if (res.code === 0) {
                 house.isCollect = true
+                collectedHouseIds.value.add(houseIdStr)
                 ElMessage.success('收藏成功')
             } else {
                 ElMessage.error(res.message || '收藏失败')
@@ -441,6 +444,26 @@ const handleCollect=async(house)=>{
         ElMessage.error('收藏失败，请重试')
     }
 }
+
+// 加载用户收藏列表
+const loadCollectedHouses = async () => {
+    if (!userStore.token) {
+        collectedHouseIds.value.clear()
+        return
+    }
+    try {
+        const res = await getFavoriteList()
+        if (res && res.data) {
+            // 确保 res.data 是数组
+            const dataArray = Array.isArray(res.data) ? res.data : (res.data.list || res.data.items || [])
+            // 使用字符串类型确保一致性，将house_id或id转为字符串
+            collectedHouseIds.value = new Set(dataArray.map(item => String(item.house_id || item.id)))
+        }
+    } catch (error) {
+        console.error('加载收藏列表失败:', error)
+    }
+}
+
 /*const fetchHouseList=async()=>{
     const params={
         ...filter,//平铺filter
@@ -607,7 +630,7 @@ const fetchHouseList=async()=>{
                 images: [],
                 tags: [],
                 updateTime: house.updated_at || '',
-                isCollect: false,
+                isCollect: collectedHouseIds.value.has(String(house.id)),
                 floor: house.floor || '无',
                 decoration: house.decoration || '无',
                 description: house.description || '无',
@@ -655,7 +678,8 @@ watch(() => route.query.keyword, () => {
   fetchHouseList()
 })
 
-onMounted(() => {
+onMounted(async () => {
+  await loadCollectedHouses()
   fetchHouseList()
 })
 

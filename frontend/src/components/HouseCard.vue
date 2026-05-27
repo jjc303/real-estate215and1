@@ -1,8 +1,12 @@
 <template>
   <div class="house-card" @click="$emit('click',house)">
     <div class="house-img">
-        <img :src="house.image || getHouseImage(house.images, 0)" :alt="house.title" @error="$event.target.src = getRandomImage(300, 240)"/>
+        <img :src="house.image || getHouseImage(house.images, 0, house.id)" :alt="house.title" @error="$event.target.src = getDefaultHouseImage(house.id)"/>
         <div class="badge" v-if="house.badge">{{ house.badge }}</div>
+        <div v-if="isFavorite" class="favorite-badge">
+          <i class="fa-solid fa-heart"></i>
+          <span>已收藏</span>
+        </div>
     </div>
     <div class="house-info">
       <h3 class="house-title">{{ house.title }}</h3>
@@ -15,12 +19,16 @@
 </template>
 
 <script setup>
-import { getHouseImage, getRandomImage } from '@/utils/tools.js'
+import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js'
 
 defineProps({
   house: {
     type: Object,
     required: true,
+  },
+  isFavorite: {
+    type: Boolean,
+    default: false
   }
 })
 defineEmits(['click'])
@@ -51,6 +59,22 @@ defineEmits(['click'])
   padding: 4px 12px;
   border-radius:0 4px  4px 0;
   font-size: 14px;
+}
+.favorite-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: rgba(244, 114, 182, 0.9);
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.favorite-badge i {
+  font-size: 12px;
 }
 .house-info {
   margin-top: 12px;

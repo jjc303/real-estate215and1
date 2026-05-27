@@ -1,8 +1,16 @@
 <template>
   <div class="publish-page">
     <div class="publish-title">
-      <h1>{{ pageTitle }}</h1>
-      <p class="subtitle">{{ pageTitle === '发布新房源' ? '发布您的优质房源' : '编辑房源信息' }}</p>
+      <div class="title-row">
+        <button class="back-btn" @click="router.push('/myhouses/list')">
+          <i class="fa-solid fa-arrow-left"></i>
+          <span>返回</span>
+        </button>
+      </div>
+      <div class="title-text">
+        <h1>{{ pageTitle }}</h1>
+        <p class="subtitle">{{ pageTitle === '发布新房源' ? '发布您的优质房源' : '编辑房源信息' }}</p>
+      </div>
     </div>
 
     <div class="publish-form">
@@ -60,6 +68,7 @@
 import { reactive, ref, nextTick, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import service from '@/utils/request'
+import { updateHouse, createHouse } from '@/api/house.js'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
@@ -184,10 +193,10 @@ const handleSubmit = async () => {
     }
 
     if (isEdit.value) {
-      await service.patch(`/v1/houses/${houseId.value}`, houseData)
+      await updateHouse(houseId.value, houseData)
       ElMessage.success('房源修改成功！')
     } else {
-      await service.post('/v1/houses', houseData)
+      await createHouse(houseData)
       ElMessage.success('房源创建成功！')
     }
     
@@ -219,8 +228,40 @@ onMounted(() => {
 /* 标题 */
 .publish-title {
   background: #f5f5f5;
-  text-align: center;
   padding: 40px 0 30px;
+  text-align: center;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: calc((100vw - 700px) / 2 - 10px);
+  
+}
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #fff;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+  background: #e2e8f0;
+  color: #475569;
+  border-color: #cbd5e1;
+}
+
+.title-text {
+  text-align: center;
 }
 
 .publish-title h1 {

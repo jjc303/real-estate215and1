@@ -5,7 +5,7 @@
             <img 
               :src="getHouseImage(house.images, 0, house.id)" 
               alt="房源封面" 
-              @error="$event.target.src = getRandomImage(200, 140, house.id)"
+              @error="$event.target.src = getDefaultHouseImage(house.id)"
             />
         </div>
         <!-- 中间：房源信息 -->
@@ -41,7 +41,7 @@
 </template>
 <script setup>
 import { useRouter } from 'vue-router'
-import { getHouseImage, getRandomImage } from '@/utils/tools.js'
+import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js'
 
 const router = useRouter()
 

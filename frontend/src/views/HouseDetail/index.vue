@@ -1,19 +1,20 @@
 <template>
     <div class="house-detail">
-        <!-- 标题区域（放在最上方） -->
         <div class="title-section">
+            <button class="back-btn" @click="goBack">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>返回</span>
+            </button>
             <h1 class="house-title">{{ house.title }}</h1>
         </div>
 
-        <!-- 主内容区：左侧图片，右侧信息 -->
         <div class="main-section">
-            <!-- 左侧图片区 -->
             <div class="gallery-section">
                 <div class="gallery-main">
                     <img 
                         :src="getHouseImage(house.images, currentImgIndex, house.id)" 
                         alt="房源主图"
-                        @error="$event.target.src = getRandomImage(500, 320, house.id)"
+                        @error="$event.target.src = getDefaultHouseImage(house.id)"
                     />
                 </div>
                 <div class="gallery-thumbs">
@@ -25,15 +26,14 @@
                         @click="currentImgIndex = index"
                     >
                         <img 
-                            :src="house.images && house.images.length > 0 ? img : getRandomImage(100, 80, house.id)" 
+                            :src="house.images && house.images.length > 0 ? img : getDefaultHouseImage(house.id)" 
                             :alt="`图片${index + 1}`" 
-                            @error="$event.target.src = getRandomImage(100, 80, house.id)"
+                            @error="$event.target.src = getDefaultHouseImage(house.id)"
                         />
                     </div>
                 </div>
             </div>
 
-            <!-- 右侧信息区 -->
             <div class="info-section">
                 <div class="house-price">
                     <span class="price-value">{{ house.price }}</span>
@@ -68,6 +68,13 @@
                         联系房东
                     </button>
                     <button 
+                        class="btn btn-reserve"
+                        @click="handleReserve"
+                    >
+                        <i class="fa-solid fa-calendar-check"></i>
+                        预约看房
+                    </button>
+                    <button 
                         class="btn btn-outline collect-btn" 
                         :class="{ active: house.isCollect }"
                         @click="handleCollect"
@@ -78,7 +85,6 @@
             </div>
         </div>
 
-        <!-- 房源详情描述 -->
         <div class="detail-section">
             <h2 class="section-title">房源描述</h2>
             <div class="detail-content">
@@ -86,7 +92,6 @@
             </div>
         </div>
 
-        <!-- 房源参数 -->
         <div class="params-section">
             <h2 class="section-title">房源参数</h2>
             <div class="params-grid">
@@ -125,30 +130,55 @@
             </div>
         </div>
 
-        <!-- 聊天弹窗 -->
         <ChatPopup 
             :visible="showChat" 
             :house-id="house.id"
             @update:visible="showChat = $event" 
         />
+
+        <!-- 预约看房弹窗 -->
+        <ReserveDialog
+            v-model:visible="reserveDialogVisible"
+            :house-info="houseInfo"
+        />
     </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useUserStore } from '@/stores/user.js';
 import { ElMessage } from 'element-plus';
 import ChatPopup from '@/components/ChatPopup.vue';
-import { getHouseImage, getRandomImage } from '@/utils/tools.js';
+import ReserveDialog from '@/components/ReserveDialog.vue';
+import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js';
 import { getHouseDetail } from '@/api/house.js';
 
 const route = useRoute();
+const router = useRouter();
 const userStore = useUserStore();
 
 const house = ref({});
 const currentImgIndex = ref(0);
 const showChat = ref(false);
+
+// 预约相关
+const reserveDialogVisible = ref(false);
+
+const houseInfo = computed(() => {
+    if (!house.value.id) return null;
+    return {
+        id: house.value.id,
+        title: house.value.title,
+        price: house.value.price,
+        room: house.value.room,
+        area: house.value.area
+    };
+});
+
+const goBack = () => {
+    router.back();
+};
 
 const handleCollect = () => {
     if (!userStore.token) {
@@ -156,7 +186,6 @@ const handleCollect = () => {
         return;
     }
     house.value.isCollect = !house.value.isCollect;
-    // 后续接入收藏接口
 };
 
 const openChat = () => {
@@ -165,6 +194,14 @@ const openChat = () => {
         return;
     }
     showChat.value = true;
+};
+
+const handleReserve = () => {
+    if (!userStore.token) {
+        ElMessage.warning('请先登录');
+        return;
+    }
+    reserveDialogVisible.value = true;
 };
 
 const fetchHouseDetail = async () => {
@@ -242,11 +279,35 @@ onMounted(() => {
     padding: 20px;
 }
 
-/* 标题区域 */
 .title-section {
     margin-bottom: 16px;
     padding-bottom: 16px;
     border-bottom: 1px solid #eee;
+}
+
+.back-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    margin-bottom: 12px;
+    background: #f8fafc;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.back-btn:hover {
+    background: #e2e8f0;
+    color: #475569;
+    border-color: #cbd5e1;
+}
+
+.back-btn i {
+    font-size: 13px;
 }
 
 .house-title {
@@ -257,14 +318,12 @@ onMounted(() => {
     margin: 0;
 }
 
-/* 主内容区 - 左右布局 */
 .main-section {
     display: flex;
     gap: 30px;
     margin-bottom: 30px;
 }
 
-/* 左侧图片区 */
 .gallery-section {
     width: 500px;
     flex-shrink: 0;
@@ -326,7 +385,6 @@ onMounted(() => {
     border-color: #006cd8;
 }
 
-/* 右侧信息区 */
 .info-section {
     flex: 1;
     display: flex;
@@ -422,6 +480,20 @@ onMounted(() => {
     box-shadow: 0 2px 10px rgba(0, 108, 216, 0.3);
 }
 
+.btn-reserve {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: #fff;
+}
+
+.btn-reserve:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 10px rgba(16, 185, 129, 0.3);
+}
+
+.btn-reserve i {
+    font-size: 14px;
+}
+
 .btn-outline {
     background: #fff;
     color: #666;
@@ -444,7 +516,6 @@ onMounted(() => {
     height: 20px;
 }
 
-/* 详情描述 */
 .detail-section,
 .params-section {
     background: #fff;
@@ -469,7 +540,6 @@ onMounted(() => {
     color: #666;
 }
 
-/* 参数网格 */
 .params-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -497,21 +567,14 @@ onMounted(() => {
 }
 
 @media (max-width: 768px) {
-    .info-section {
+    .main-section {
         flex-direction: column;
-        gap: 20px;
     }
-
-    .info-actions {
-        align-items: stretch;
+    .gallery-section {
+        width: 100%;
     }
-
     .params-grid {
         grid-template-columns: repeat(2, 1fr);
-    }
-
-    .gallery-main {
-        height: 280px;
     }
 }
 </style>
