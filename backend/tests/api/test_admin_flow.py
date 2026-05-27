@@ -247,7 +247,6 @@ def test_admin_user_house_and_permissions(
             "real_name": "Managed User",
             "phone": "1234567890",
             "email": f"managed_updated_{unique_suffix}@example.com",
-            "avatar": "https://example.com/avatar.png",
         },
     )["data"]
     assert updated_user["role"] == "landlord"

@@ -37,9 +37,8 @@ class EmailRegisterSchema(BaseSchema):
     password: str | None = Field(default=None, min_length=1, max_length=255)
     real_name: str | None = Field(default=None, max_length=50)
     phone: str | None = Field(default=None, max_length=20)
-    avatar: str | None = Field(default=None, max_length=255)
 
-    @field_validator("password", "real_name", "phone", "avatar", mode="before")
+    @field_validator("password", "real_name", "phone", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> object:
         if not isinstance(value, str):

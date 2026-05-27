@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from flask import Flask
+from flask import send_from_directory
+from pathlib import Path
 
 from app.core.config import load_config
 from app.core.database import init_database
@@ -16,18 +18,22 @@ from app.modules.contract.router import bp as contract_bp
 from app.modules.conversation.router import bp as conversation_bp
 from app.modules.favorite.router import bp as favorite_bp
 from app.modules.house.router import bp as house_bp
+from app.modules.house_image.router import bp as house_image_bp
 from app.modules.news.router import bp as news_bp
 from app.modules.notification.router import bp as notification_bp
 from app.modules.payment.router import bp as payment_bp
 from app.modules.repair.router import bp as repair_bp
 from app.modules.statistics.router import bp as statistics_bp
 from app.modules.user.router import bp as user_bp
+from app.modules.user_avatar.router import bp as user_avatar_bp
 
 
 def register_blueprints(app: Flask) -> None:
     app.register_blueprint(user_bp, url_prefix="/api/v1/users")
+    app.register_blueprint(user_avatar_bp, url_prefix="/api/v1/users")
     app.register_blueprint(auth_bp, url_prefix="/api/v1/auth")
     app.register_blueprint(house_bp, url_prefix="/api/v1/houses")
+    app.register_blueprint(house_image_bp, url_prefix="/api/v1/houses")
     app.register_blueprint(news_bp, url_prefix="/api/v1/news")
     app.register_blueprint(favorite_bp, url_prefix="/api/v1/favorites")
     app.register_blueprint(appointment_bp, url_prefix="/api/v1/appointments")
@@ -47,9 +53,14 @@ def create_app(config_name: str | None = None) -> Flask:
     app = Flask(__name__)
 
     load_config(app, config_name=config_name)
+    Path(app.config["UPLOAD_DIR"]).mkdir(parents=True, exist_ok=True)
     setup_logging(app)
     init_database(app)
     register_blueprints(app)
     register_error_handlers(app)
+
+    @app.get("/uploads/<path:filename>")
+    def serve_upload_file(filename: str):
+        return send_from_directory(app.config["UPLOAD_DIR"], filename)
 
     return app

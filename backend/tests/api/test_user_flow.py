@@ -48,12 +48,10 @@ def test_user_update_me_success(
         json={
             "real_name": "Updated Name",
             "phone": "13900000001",
-            "avatar": "https://example.com/new_avatar.png",
         },
     )
     assert updated["data"]["real_name"] == "Updated Name"
     assert updated["data"]["phone"] == "13900000001"
-    assert updated["data"]["avatar"] == "https://example.com/new_avatar.png"
     assert updated["data"]["username"] == username
 
 

@@ -5,6 +5,7 @@ from pathlib import Path
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
+PROJECT_ROOT = BACKEND_DIR.parent
 DEFAULT_DATABASE_URI = (
     "mysql+pymysql://rent_user:rent_pass@mysql:3306/rent_db?charset=utf8mb4"
 )
@@ -28,6 +29,17 @@ def _get_path(name: str, default: Path) -> str:
     if candidate.is_absolute():
         return str(candidate)
     return str(BACKEND_DIR / candidate)
+
+
+def _get_upload_path(name: str, default: Path) -> str:
+    value = os.getenv(name)
+    if not value:
+        return str(default)
+
+    candidate = Path(value)
+    if candidate.is_absolute():
+        return str(candidate)
+    return str(PROJECT_ROOT / candidate)
 
 
 def _get_log_level(name: str, default: str) -> str:
@@ -64,6 +76,12 @@ class BaseConfig:
     AI_ENGINE_BASE_URL = ""
     AI_ENGINE_API_KEY = ""
     AI_ENGINE_TIMEOUT_SECONDS = 20
+    UPLOAD_DIR = str(PROJECT_ROOT / "uploads")
+    UPLOAD_URL_PREFIX = "/uploads"
+    IMAGE_MAX_BYTES = 5 * 1024 * 1024
+    ALLOWED_IMAGE_EXTENSIONS = ("jpg", "jpeg", "png", "webp")
+    HOUSE_IMAGE_MAX_COUNT = 9
+    USER_AVATAR_MAX_COUNT = 5
 
     @classmethod
     def to_mapping(cls) -> dict[str, object]:
@@ -100,6 +118,19 @@ class BaseConfig:
             "AI_ENGINE_TIMEOUT_SECONDS": int(
                 os.getenv("AI_ENGINE_TIMEOUT_SECONDS", str(cls.AI_ENGINE_TIMEOUT_SECONDS))
             ),
+            "UPLOAD_DIR": _get_upload_path("UPLOAD_DIR", Path(cls.UPLOAD_DIR)),
+            "UPLOAD_URL_PREFIX": os.getenv("UPLOAD_URL_PREFIX", cls.UPLOAD_URL_PREFIX),
+            "IMAGE_MAX_BYTES": int(os.getenv("IMAGE_MAX_BYTES", str(cls.IMAGE_MAX_BYTES))),
+            "ALLOWED_IMAGE_EXTENSIONS": tuple(
+                item.strip().lower()
+                for item in os.getenv(
+                    "ALLOWED_IMAGE_EXTENSIONS",
+                    ",".join(cls.ALLOWED_IMAGE_EXTENSIONS),
+                ).split(",")
+                if item.strip()
+            ),
+            "HOUSE_IMAGE_MAX_COUNT": int(os.getenv("HOUSE_IMAGE_MAX_COUNT", str(cls.HOUSE_IMAGE_MAX_COUNT))),
+            "USER_AVATAR_MAX_COUNT": int(os.getenv("USER_AVATAR_MAX_COUNT", str(cls.USER_AVATAR_MAX_COUNT))),
         }
 
 

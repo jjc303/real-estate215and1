@@ -30,7 +30,6 @@ class UserAdminSchema(BaseSchema):
     real_name: str | None = None
     phone: str | None = None
     email: str | None = None
-    avatar: str | None = None
     status: str
     created_at: datetime
     updated_at: datetime
@@ -43,10 +42,9 @@ class UserAdminCreateSchema(BaseSchema):
     real_name: str | None = Field(default=None, max_length=50)
     phone: str | None = Field(default=None, max_length=20)
     email: str | None = Field(default=None, max_length=100)
-    avatar: str | None = Field(default=None, max_length=255)
     status: UserStatus = "active"
 
-    @field_validator("username", "real_name", "phone", "email", "avatar", mode="before")
+    @field_validator("username", "real_name", "phone", "email", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> object:
         if not isinstance(value, str):
@@ -64,9 +62,8 @@ class UserAdminUpdateSchema(BaseSchema):
     real_name: str | None = Field(default=None, max_length=50)
     phone: str | None = Field(default=None, max_length=20)
     email: str | None = Field(default=None, max_length=100)
-    avatar: str | None = Field(default=None, max_length=255)
 
-    @field_validator("username", "password", "real_name", "phone", "email", "avatar", mode="before")
+    @field_validator("username", "password", "real_name", "phone", "email", mode="before")
     @classmethod
     def normalize_update_text(cls, value: object) -> object:
         if not isinstance(value, str):

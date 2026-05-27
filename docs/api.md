@@ -1,6 +1,6 @@
 # API 文档（当前实现）
 
-Version: v1.16.0  
+Version: v1.17.0  
 Base URL: `http://127.0.0.1:8000`  
 统一前缀：`/api/v1`
 
@@ -44,6 +44,12 @@ JSON 请求统一使用：
 
 ```http
 Content-Type: application/json
+```
+
+文件上传接口使用：
+
+```http
+Content-Type: multipart/form-data
 ```
 
 ### 2.3 统一成功响应
@@ -199,8 +205,7 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
   "role": "tenant",
   "real_name": "Alice",
   "phone": "13800000000",
-  "email": "alice@example.com",
-  "avatar": "https://example.com/avatar.png"
+  "email": "alice@example.com"
 }
 ```
 
@@ -211,7 +216,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
 - `real_name`：最长 50
 - `phone`：最长 20
 - `email`：最长 100
-- `avatar`：最长 255
 
 返回：
 - 创建成功返回用户基础信息
@@ -230,7 +234,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
     "real_name": "Alice",
     "phone": "13800000000",
     "email": "alice@example.com",
-    "avatar": "https://example.com/avatar.png",
     "status": "active",
     "created_at": "2026-05-03T12:00:00"
   }
@@ -260,7 +263,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
         "real_name": "Alice",
         "phone": "13800000000",
         "email": "alice@example.com",
-        "avatar": "https://example.com/avatar.png",
         "status": "active",
         "created_at": "2026-05-03T12:00:00"
       }
@@ -283,7 +285,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
 - `real_name`
 - `phone`
 - `email`
-- `avatar`
 - `status`
 - `created_at`
 
@@ -300,7 +301,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
     "real_name": "Alice",
     "phone": "13800000000",
     "email": "alice@example.com",
-    "avatar": "https://example.com/avatar.png",
     "status": "active",
     "created_at": "2026-05-03T12:00:00"
   }
@@ -321,7 +321,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
   "real_name": "Alice Wang",
   "phone": "13900000000",
   "email": "alice_new@example.com",
-  "avatar": "https://example.com/new_avatar.png",
   "password": "newpassword123"
 }
 ```
@@ -331,7 +330,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
 - `real_name`：最长 50，空串视为 `null`
 - `phone`：最长 20，空串视为 `null`
 - `email`：最长 100，空串视为 `null`，不能与其他用户重复
-- `avatar`：最长 255，空串视为 `null`
 - `password`：6-255，空串视为 `null`（不更新密码）
 
 成功响应示例：
@@ -347,7 +345,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
     "real_name": "Alice Wang",
     "phone": "13900000000",
     "email": "alice_new@example.com",
-    "avatar": "https://example.com/new_avatar.png",
     "status": "active",
     "created_at": "2026-05-03T12:00:00"
   }
@@ -472,8 +469,7 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
   "role": "tenant",
   "password": "12345678",
   "real_name": "Alice",
-  "phone": "13800000000",
-  "avatar": "https://example.com/avatar.png"
+  "phone": "13800000000"
 }
 ```
 
@@ -482,7 +478,7 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
 - `code`：6 位数字验证码
 - `role`：`tenant` 或 `landlord`，默认 `tenant`
 - `password`：可选；不传时后端会生成随机不可记忆密码哈希，仅用于满足旧用户表非空约束
-- `real_name / phone / avatar`：可选
+- `real_name / phone`：可选
 
 业务规则：
 - 只接受 `register` 类型、未过期、未使用的最新验证码
@@ -576,7 +572,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
 - `real_name`
 - `phone`
 - `email`
-- `avatar`
 - `status`
 - `created_at`
 
@@ -593,7 +588,6 @@ User 模块负责普通注册、用户列表查询与单个用户查询。
     "real_name": "Alice",
     "phone": "13800000000",
     "email": "alice@example.com",
-    "avatar": "https://example.com/avatar.png",
     "status": "active",
     "created_at": "2026-05-03T12:00:00"
   }
@@ -675,6 +669,8 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `orientation`
 - `description`
 - `status`
+- `cover_image_url`
+- `images`
 - `created_at`
 - `updated_at`
 
@@ -710,6 +706,37 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `publish`：草稿转 `listed`
 - `offline`：已上架房源可下架
 - `delete`：逻辑删除，不推荐前端继续展示
+
+### 6.8 房源图片接口
+
+接口列表：
+- `POST /api/v1/houses/{house_id}/images/upload`
+- `GET /api/v1/houses/{house_id}/images`
+- `PATCH /api/v1/houses/{house_id}/images/{image_id}`
+- `DELETE /api/v1/houses/{house_id}/images/{image_id}`
+
+上传约定：
+- 使用 `multipart/form-data`
+- 文件字段名：`file`
+- 仅房源所属房东可上传/修改/删除
+- 单房源最多 `9` 张有效图片
+- 默认支持：`jpg/jpeg/png/webp`
+- 默认单文件大小：`5MB`
+- 上传成功后会返回可直接访问的 `url`（`/uploads/...`）
+
+图片对象字段：
+- `id`
+- `house_id`
+- `url`
+- `mime_type`
+- `size_bytes`
+- `width`
+- `height`
+- `sort_order`
+- `is_cover`
+- `status`
+- `created_at`
+- `updated_at`
 
 ---
 
@@ -1566,9 +1593,50 @@ EMAIL_CODE_RESEND_SECONDS=60
 
 ---
 
-## 17. AI 模块
+## 17. User Avatar 模块
 
-### 17.1 模块说明
+### 17.1 接口列表
+
+- `POST /api/v1/users/me/avatar/upload`
+- `GET /api/v1/users/me/avatar`
+- `GET /api/v1/users/me/avatars`
+
+### 17.2 上传头像
+
+`POST /api/v1/users/me/avatar/upload`
+
+请求类型：
+- `multipart/form-data`
+- 文件字段名：`file`
+
+规则：
+- 仅当前登录用户可上传自己的头像
+- 每次上传会将新头像标记为 `is_current=true`
+- 历史头像有效数量最多 `5` 条，超过上限返回业务错误
+
+### 17.3 当前头像与历史
+
+- `GET /api/v1/users/me/avatar`：返回当前头像（`is_current=true`）
+- `GET /api/v1/users/me/avatars`：按时间倒序返回头像历史
+
+头像对象字段：
+- `id`
+- `user_id`
+- `url`
+- `mime_type`
+- `size_bytes`
+- `width`
+- `height`
+- `is_current`
+- `status`
+- `created_at`
+- `updated_at`
+
+---
+
+## 18. AI 模块
+
+### 18.1 模块说明
 
 AI 模块是当前房地产平台的智能问答入口。
 
@@ -1587,12 +1655,12 @@ AI 模块是当前房地产平台的智能问答入口。
 - 不在 Flask 后端实现 RAG / Memory / OCR
 - 不直接调用大模型 API
 
-### 17.2 接口列表
+### 18.2 接口列表
 
 - `POST /api/v1/ai/house-chat`
 - `POST /api/v1/ai/chat`
 
-### 17.3 房源 AI 问答
+### 18.3 房源 AI 问答
 
 `POST /api/v1/ai/house-chat`
 
@@ -1643,7 +1711,7 @@ rental:house:{house_id}:user:{current_user_id}
 }
 ```
 
-### 17.4 通用租房助手对话
+### 18.4 通用租房助手对话
 
 `POST /api/v1/ai/chat`
 
@@ -1687,7 +1755,7 @@ rental:general:user:{current_user_id}
 }
 ```
 
-### 17.5 返回字段
+### 18.5 返回字段
 
 AI 对话响应对象字段：
 - `answer`
@@ -1703,7 +1771,7 @@ AI 对话响应对象字段：
 - `suggestions`：可选建议追问列表，当前第一版通常为空
 - `metadata`：AI 引擎额外返回的结构化信息，当前主要用于区分 `house-chat / general-chat`
 
-### 17.6 常见错误
+### 18.6 常见错误
 
 - `1003`：未登录
 - `1004`：无权限访问 `draft / offline` 房源
@@ -1713,24 +1781,24 @@ AI 对话响应对象字段：
 
 ---
 
-## 18. Statistics 模块
+## 19. Statistics 模块
 
-### 18.1 模块说明
+### 19.1 模块说明
 
 统计模块面向登录用户和管理员返回看板类数据。
 
-### 18.2 接口列表
+### 19.2 接口列表
 
 - `GET /api/v1/statistics/house-utilization`
 - `GET /api/v1/statistics/rent-income`
 - `GET /api/v1/statistics/active-users`
 - `GET /api/v1/statistics/complaint-repair-count`
 
-### 18.3 权限说明
+### 19.3 权限说明
 
 - 当前统计接口均为 `admin-only`
 
-### 18.4 返回字段
+### 19.4 返回字段
 
 `GET /api/v1/statistics/house-utilization` 返回：
 - `total_houses`
@@ -1754,13 +1822,13 @@ AI 对话响应对象字段：
 
 ---
 
-## 19. Admin 模块
+## 20. Admin 模块
 
-### 19.1 模块说明
+### 20.1 模块说明
 
 Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
-### 19.2 接口列表
+### 20.2 接口列表
 
 用户管理：
 - `GET /api/v1/admin/users`
@@ -1797,7 +1865,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 操作日志：
 - `GET /api/v1/admin/logs`
 
-### 19.3 用户管理说明
+### 20.3 用户管理说明
 
 管理员可以：
 - 创建用户
@@ -1812,12 +1880,11 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `real_name`
 - `phone`
 - `email`
-- `avatar`
 - `status`
 - `created_at`
 - `updated_at`
 
-### 19.4 房源管理说明
+### 20.4 房源管理说明
 
 管理员房源列表支持：
 - `page`
@@ -1849,7 +1916,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `created_at`
 - `updated_at`
 
-### 19.5 合同管理说明
+### 20.5 合同管理说明
 
 管理员可修改合同状态，允许的状态值：
 - `active`
@@ -1858,7 +1925,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
 后台合同对象字段与普通合同详情一致。
 
-### 19.6 操作日志查询
+### 20.6 操作日志查询
 
 `GET /api/v1/admin/logs`
 
@@ -1894,9 +1961,9 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
 ---
 
-## 20. 操作日志说明
+## 21. 操作日志说明
 
-### 20.1 当前记录范围
+### 21.1 当前记录范围
 
 系统当前会对以下关键写操作记录操作日志：
 - `Repair`
@@ -1906,7 +1973,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `Payment`
 - `News`
 
-### 20.2 日志字段含义
+### 21.2 日志字段含义
 
 - `user_id`：谁触发了该操作
 - `module`：所属业务模块
@@ -1915,7 +1982,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `before_status`：操作前状态，可为空
 - `after_status`：操作后状态，可为空
 
-### 20.3 前端使用建议
+### 21.3 前端使用建议
 
 - 后台审计页可直接使用 `GET /api/v1/admin/logs`
 - 可按模块筛选，也可按操作用户筛选
@@ -1923,7 +1990,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
 ---
 
-## 21. 前端对接建议
+## 22. 前端对接建议
 
 - 登录后统一保存 JWT，所有受保护接口带 `Authorization`
 - 对所有分页接口，统一适配 `list / total / page / page_size`
@@ -1936,9 +2003,9 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
 ---
 
-## 22. 常见响应示例
+## 23. 常见响应示例
 
-### 22.1 分页列表示例
+### 23.1 分页列表示例
 
 以 `GET /api/v1/news?page=1&page_size=10` 为例：
 
@@ -1965,7 +2032,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
-### 22.2 房源详情示例
+### 23.2 房源详情示例
 
 `GET /api/v1/houses/{id}`
 
@@ -1995,7 +2062,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
-### 22.3 支付成功响应示例
+### 23.3 支付成功响应示例
 
 `POST /api/v1/payments`
 
@@ -2021,7 +2088,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
-### 22.4 通知列表示例
+### 23.4 通知列表示例
 
 `GET /api/v1/notifications`
 
@@ -2050,7 +2117,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
-### 22.5 后台日志列表示例
+### 23.5 后台日志列表示例
 
 `GET /api/v1/admin/logs`
 
@@ -2079,7 +2146,7 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 }
 ```
 
-### 22.6 AI 对话响应示例
+### 23.6 AI 对话响应示例
 
 `POST /api/v1/ai/house-chat`
 
@@ -2101,11 +2168,11 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 
 ---
 
-## 23. 前端类型定义建议
+## 24. 前端类型定义建议
 
 如果前端要先建 TypeScript 类型，可以按下面这几个核心对象优先落类型。
 
-### 23.1 User
+### 24.1 User
 
 ```ts
 type User = {
@@ -2115,13 +2182,12 @@ type User = {
   real_name: string | null;
   phone: string | null;
   email: string | null;
-  avatar: string | null;
   status: "active" | "disabled";
   created_at: string;
 };
 ```
 
-### 23.1.1 AuthUserSummary
+### 24.1.1 AuthUserSummary
 
 ```ts
 type AuthUserSummary = {
@@ -2133,7 +2199,7 @@ type AuthUserSummary = {
 };
 ```
 
-### 23.1.2 AuthTokenResponse
+### 24.1.2 AuthTokenResponse
 
 ```ts
 type AuthTokenResponse = {
@@ -2143,7 +2209,7 @@ type AuthTokenResponse = {
 };
 ```
 
-### 23.2 House
+### 24.2 House
 
 ```ts
 type House = {
@@ -2162,12 +2228,14 @@ type House = {
   orientation: string | null;
   description: string | null;
   status: "draft" | "listed" | "offline";
+  cover_image_url: string | null;
+  images: string[];
   created_at: string;
   updated_at: string;
 };
 ```
 
-### 23.3 News
+### 24.3 News
 
 ```ts
 type News = {
@@ -2181,7 +2249,7 @@ type News = {
 };
 ```
 
-### 23.4 Payment
+### 24.4 Payment
 
 ```ts
 type Payment = {
@@ -2201,7 +2269,7 @@ type Payment = {
 };
 ```
 
-### 23.5 Contract
+### 24.5 Contract
 
 ```ts
 type ContractHouseSummary = {
@@ -2236,7 +2304,7 @@ type Contract = {
 };
 ```
 
-### 23.6 Bill
+### 24.6 Bill
 
 ```ts
 type Bill = {
@@ -2255,7 +2323,7 @@ type Bill = {
 };
 ```
 
-### 23.7 Repair
+### 24.7 Repair
 
 ```ts
 type Repair = {
@@ -2277,7 +2345,7 @@ type Repair = {
 };
 ```
 
-### 23.8 Complaint
+### 24.8 Complaint
 
 ```ts
 type Complaint = {
@@ -2298,7 +2366,7 @@ type Complaint = {
 };
 ```
 
-### 23.9 Notification
+### 24.9 Notification
 
 ```ts
 type Notification = {
@@ -2314,7 +2382,25 @@ type Notification = {
 };
 ```
 
-### 23.10 AIChatResponse
+### 24.10 UserAvatar
+
+```ts
+type UserAvatar = {
+  id: number;
+  user_id: number;
+  url: string;
+  mime_type: string;
+  size_bytes: number;
+  width: number | null;
+  height: number | null;
+  is_current: boolean;
+  status: "active" | "deleted";
+  created_at: string;
+  updated_at: string;
+};
+```
+
+### 24.11 AIChatResponse
 
 ```ts
 type AIChatResponse = {
@@ -2326,7 +2412,7 @@ type AIChatResponse = {
 };
 ```
 
-### 23.11 OperationLog
+### 24.12 OperationLog
 
 ```ts
 type OperationLog = {
@@ -2342,7 +2428,7 @@ type OperationLog = {
 };
 ```
 
-### 23.12 通用分页类型
+### 24.13 通用分页类型
 
 ```ts
 type PageResult<T> = {
@@ -2355,10 +2441,13 @@ type PageResult<T> = {
 
 ---
 
-## 24. 当前已验证测试
+## 25. 当前已验证测试
 
 已经覆盖并验证过的主要测试流包括：
 - `tests/api/test_smoke_flow.py`
+- `tests/api/test_house_image_flow.py`
+- `tests/api/test_user_avatar_flow.py`
+- `tests/api/test_upload_static_access_flow.py`
 - `tests/api/test_news_flow.py`
 - `tests/api/test_payment_flow.py`
 - `tests/api/test_repair_flow.py`

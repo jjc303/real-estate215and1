@@ -1,10 +1,11 @@
 ﻿# AI Context（Backend Project）
 
-Version: v1.16.0  
-Last Updated: 2026-05-04
+Version: v1.17.0  
+Last Updated: 2026-05-27
 
 Status:
 - 当前项目已经形成完整的课程项目后端骨架，并完成 `User / Auth / House / Favorite / Appointment / Conversation / Contract / Bill / Payment / Repair / Complaint / News / Notification / Statistics / Admin` 的最小业务闭环
+- 当前 Flask 后端已新增 `HouseImage / UserAvatar` 模块，支持二进制上传、图片元数据入库与静态 URL 访问
 - 当前 Flask 后端已新增 `AI` 模块，并通过 HTTP 接入独立 `ai-engine`
 - 数据库迁移已经全面切换到 Alembic 管理
 - `Notification` 已经彻底收口为统一批量创建接口
@@ -12,6 +13,7 @@ Status:
 - 现有主要业务流都已有 HTTP 风格测试覆盖
 - `Auth` 已新增邮箱验证码发送、邮箱验证码注册、邮箱验证码登录能力
 - 项目根目录下的 `ai-engine` 已改造成房地产租赁平台专用 AI 引擎，不再对外提供教育业务能力
+- 用户头像字段已从 `users.avatar` 迁移为独立 `user_avatars` 表（`users.avatar` 已移除）
 
 ---
 
@@ -114,7 +116,6 @@ real-estate215and1/
 - WebSocket 实时消息
 - 消息推送队列 / 异步任务系统
 - 复杂 RBAC 权限系统
-- 文件上传服务
 - 搜索引擎
 - 审计快照 / 大字段变更历史
 - 微服务拆分
@@ -216,6 +217,8 @@ repository 不允许：
 按模块看，当前主要表已经包括：
 - `users`
 - `houses`
+- `house_images`
+- `user_avatars`
 - `favorites`
 - `appointments`
 - `conversations`
@@ -270,6 +273,18 @@ Flask 配置读取位置：
 - `AI_ENGINE_BASE_URL`
 - `AI_ENGINE_API_KEY`
 - `AI_ENGINE_TIMEOUT_SECONDS`
+
+图片上传相关变量：
+- `UPLOAD_DIR`
+- `UPLOAD_URL_PREFIX`
+- `IMAGE_MAX_BYTES`
+- `ALLOWED_IMAGE_EXTENSIONS`
+- `HOUSE_IMAGE_MAX_COUNT`
+- `USER_AVATAR_MAX_COUNT`
+
+上传路径约束（当前实现）：
+- `UPLOAD_DIR` 默认落在项目根目录 `uploads/`（不再与 `backend/` 子目录耦合）
+- Docker compose 默认挂载到容器内 `/app/uploads`
 
 当前约束：
 - `AI_ENGINE_BASE_URL` 必须支持本地、Docker、云端 IP 和 HTTPS 域名
@@ -411,6 +426,7 @@ Auth v1.15.0 额外事实：
 - 发布
 - 下架
 - 删除
+- 房源图片上传、列表、更新、删除（`/api/v1/houses/{house_id}/images/*`）
 
 状态流：
 - `draft`
@@ -421,6 +437,37 @@ Auth v1.15.0 额外事实：
 - 游客可看公开房源
 - 房东只能操作自己的房源
 - `House` 更偏“主业务数据”，状态流不要随意简化
+- 房源图片当前限制：
+  - 单房源最多 `9` 张有效图片
+  - `jpg/jpeg/png/webp`
+  - 默认最大 `5MB`
+
+### 6.2.1 HouseImage
+
+已实现：
+- 上传房源图片（multipart 二进制上传）
+- 房源图片列表
+- 房源图片排序/封面更新
+- 房源图片软删除
+
+设计约束：
+- 表：`house_images`
+- 状态：`active / deleted`
+- URL 通过 `/uploads/<path>` 暴露
+- 同一房源封面图由 service 保证唯一
+
+### 6.2.2 UserAvatar
+
+已实现：
+- 当前用户上传头像（multipart 二进制上传）
+- 当前头像查询
+- 头像历史列表
+
+设计约束：
+- 表：`user_avatars`
+- 状态：`active / deleted`
+- 当前头像通过 `is_current=true` 标记
+- 单用户头像历史最多 `5` 条
 
 ### 6.3 Favorite
 
@@ -861,6 +908,7 @@ Factory 当前注册的 blueprint 前缀为：
 - `/api/v1/auth`
 - `/api/v1/ai`
 - `/api/v1/houses`
+- `/uploads/<path>`（静态图片访问路由）
 - `/api/v1/news`
 - `/api/v1/favorites`
 - `/api/v1/appointments`
@@ -910,6 +958,9 @@ Factory 当前注册的 blueprint 前缀为：
 
 当前至少已经有这些测试：
 - `tests/api/test_smoke_flow.py`
+- `tests/api/test_house_image_flow.py`
+- `tests/api/test_user_avatar_flow.py`
+- `tests/api/test_upload_static_access_flow.py`
 - `tests/api/test_news_flow.py`
 - `tests/api/test_payment_flow.py`
 - `tests/api/test_repair_flow.py`

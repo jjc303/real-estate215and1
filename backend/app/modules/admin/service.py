@@ -84,7 +84,6 @@ class AdminService:
             real_name=data.real_name,
             phone=data.phone,
             email=normalized_email,
-            avatar=data.avatar,
             status=data.status,
         )
         try:
@@ -121,7 +120,6 @@ class AdminService:
         user.real_name = data.real_name
         user.phone = data.phone
         user.email = normalized_email
-        user.avatar = data.avatar
 
         try:
             db.commit()
