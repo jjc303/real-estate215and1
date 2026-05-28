@@ -427,6 +427,13 @@ Auth v1.15.0 额外事实：
 - 下架
 - 删除
 - 房源图片上传、列表、更新、删除（`/api/v1/houses/{house_id}/images/*`）
+- 房源搜索筛选：
+  - `region`
+  - `house_type`（支持逗号多值，包含匹配）
+  - `orientation`（支持逗号多值，包含匹配）
+  - `min_rent / max_rent`
+  - `min_area / max_area`
+  - `keyword`
 
 状态流：
 - `draft`
@@ -961,6 +968,7 @@ Factory 当前注册的 blueprint 前缀为：
 - `tests/api/test_house_image_flow.py`
 - `tests/api/test_user_avatar_flow.py`
 - `tests/api/test_upload_static_access_flow.py`
+- `tests/api/test_house_filter_flow.py`
 - `tests/api/test_news_flow.py`
 - `tests/api/test_payment_flow.py`
 - `tests/api/test_repair_flow.py`

@@ -562,12 +562,18 @@ const fetchHouseList=async()=>{
         if (filter.room.length > 0) {
             // 将选中的户型合并，如"1,2,3"
             houseType = filter.room.map(r => {
-                if (r === '1') return '一室';
-                if (r === '2') return '二室';
-                if (r === '3') return '三室';
-                if (r === '4+') return '四室';
+                if (r === '1') return '1室';
+                if (r === '2') return '2室';
+                if (r === '3') return '3室';
+                if (r === '4+') return '4室';
                 return r;
             }).join(',');
+        }
+        
+        // 处理朝向（多选，逗号拼接）
+        let orientation = undefined;
+        if (filter.orientation.length > 0) {
+            orientation = filter.orientation.join(',');
         }
         
         const params = {
@@ -575,6 +581,7 @@ const fetchHouseList=async()=>{
             page_size: pageSize.value,
             region: filter.district || undefined,
             house_type: houseType,
+            orientation: orientation,
             min_rent: minRent,
             max_rent: maxRent,
             min_area: minArea,
