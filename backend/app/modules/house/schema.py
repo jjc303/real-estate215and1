@@ -55,13 +55,14 @@ class HouseListQuerySchema(BaseSchema):
     mine: bool = False
     region: str | None = Field(default=None, min_length=1, max_length=100)
     house_type: str | None = Field(default=None, min_length=1, max_length=50)
+    orientation: str | None = Field(default=None, min_length=1, max_length=100)
     min_rent: Decimal | None = Field(default=None, ge=0)
     max_rent: Decimal | None = Field(default=None, ge=0)
     keyword: str | None = Field(default=None, min_length=1, max_length=255)
     min_area: Decimal | None = Field(default=None, ge=0)
     max_area: Decimal | None = Field(default=None, ge=0)
 
-    @field_validator("region", "house_type", "keyword", mode="before")
+    @field_validator("region", "house_type", "orientation", "keyword", mode="before")
     @classmethod
     def normalize_optional_text(cls, value: object) -> object:
         if not isinstance(value, str):

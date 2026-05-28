@@ -34,6 +34,7 @@ class HouseRepository(BaseRepository[House]):
         limit: int,
         region: str | None = None,
         house_type: str | None = None,
+        orientation: str | None = None,
         min_rent: Decimal | None = None,
         max_rent: Decimal | None = None,
         keyword: str | None = None,
@@ -45,6 +46,7 @@ class HouseRepository(BaseRepository[House]):
             stmt,
             region=region,
             house_type=house_type,
+            orientation=orientation,
             min_rent=min_rent,
             max_rent=max_rent,
             keyword=keyword,
@@ -59,6 +61,7 @@ class HouseRepository(BaseRepository[House]):
         db: Session,
         region: str | None = None,
         house_type: str | None = None,
+        orientation: str | None = None,
         min_rent: Decimal | None = None,
         max_rent: Decimal | None = None,
         keyword: str | None = None,
@@ -73,6 +76,7 @@ class HouseRepository(BaseRepository[House]):
             stmt,
             region=region,
             house_type=house_type,
+            orientation=orientation,
             min_rent=min_rent,
             max_rent=max_rent,
             keyword=keyword,
@@ -89,6 +93,7 @@ class HouseRepository(BaseRepository[House]):
         limit: int,
         region: str | None = None,
         house_type: str | None = None,
+        orientation: str | None = None,
         min_rent: Decimal | None = None,
         max_rent: Decimal | None = None,
         keyword: str | None = None,
@@ -100,6 +105,7 @@ class HouseRepository(BaseRepository[House]):
             stmt,
             region=region,
             house_type=house_type,
+            orientation=orientation,
             min_rent=min_rent,
             max_rent=max_rent,
             keyword=keyword,
@@ -115,6 +121,7 @@ class HouseRepository(BaseRepository[House]):
         landlord_id: int,
         region: str | None = None,
         house_type: str | None = None,
+        orientation: str | None = None,
         min_rent: Decimal | None = None,
         max_rent: Decimal | None = None,
         keyword: str | None = None,
@@ -126,6 +133,7 @@ class HouseRepository(BaseRepository[House]):
             stmt,
             region=region,
             house_type=house_type,
+            orientation=orientation,
             min_rent=min_rent,
             max_rent=max_rent,
             keyword=keyword,
@@ -139,16 +147,26 @@ class HouseRepository(BaseRepository[House]):
         stmt: Select,
         region: str | None = None,
         house_type: str | None = None,
+        orientation: str | None = None,
         min_rent: Decimal | None = None,
         max_rent: Decimal | None = None,
         keyword: str | None = None,
         min_area: Decimal | None = None,
         max_area: Decimal | None = None,
     ) -> Select:
+        def _split_csv(value: str | None) -> list[str]:
+            if value is None:
+                return []
+            return [item.strip() for item in value.split(",") if item.strip()]
+
         if region is not None:
             stmt = stmt.where(House.region == region)
-        if house_type is not None:
-            stmt = stmt.where(House.house_type == house_type)
+        house_type_tokens = _split_csv(house_type)
+        if house_type_tokens:
+            stmt = stmt.where(or_(*[House.house_type.ilike(f"%{token}%") for token in house_type_tokens]))
+        orientation_tokens = _split_csv(orientation)
+        if orientation_tokens:
+            stmt = stmt.where(or_(*[House.orientation.ilike(f"%{token}%") for token in orientation_tokens]))
         if min_rent is not None:
             stmt = stmt.where(House.rent >= min_rent)
         if max_rent is not None:

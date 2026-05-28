@@ -686,11 +686,17 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `mine`：是否只看自己的房源
 - `region`
 - `house_type`
+- `orientation`
 - `min_rent`
 - `max_rent`
 - `keyword`
 - `min_area`
 - `max_area`
+
+筛选规则补充：
+- `house_type` 支持逗号分隔多值，按“包含匹配”处理（例如：`house_type=1室,2室`）
+- `orientation` 支持逗号分隔多值，按“包含匹配”处理（例如：`orientation=南,东南`）
+- 当同时传多个筛选条件时，按 AND 组合收敛结果
 
 前端使用建议：
 - 游客和普通用户默认看公开房源

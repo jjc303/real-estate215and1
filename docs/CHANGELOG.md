@@ -49,6 +49,15 @@
 
 ### Changed
 
+#### House 搜索筛选增强
+
+- `GET /api/v1/houses` 新增 `orientation` 筛选参数
+- `house_type` 改为支持逗号分隔多值，并按包含匹配过滤
+- `orientation` 支持逗号分隔多值，并按包含匹配过滤
+- 保持原有区间校验：
+  - `min_rent <= max_rent`
+  - `min_area <= max_area`
+
 #### User 头像字段收敛到独立头像表
 
 - migration 中移除 `users.avatar` 字段
@@ -78,6 +87,7 @@
 - `backend/tests/api/test_house_image_flow.py`
 - `backend/tests/api/test_user_avatar_flow.py`
 - `backend/tests/api/test_upload_static_access_flow.py`
+- `backend/tests/api/test_house_filter_flow.py`
 
 ### Verified
 
