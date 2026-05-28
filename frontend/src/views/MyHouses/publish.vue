@@ -1,150 +1,95 @@
 <template>
   <div class="publish-page">
-    <div class="publish-header">
-      <div class="header-inner">
+    <div class="publish-title">
+      <div class="title-row">
         <button class="back-btn" @click="router.push('/myhouses/list')">
           <i class="fa-solid fa-arrow-left"></i>
+          <span>返回</span>
         </button>
-        <div class="header-title">
-          <h1>{{ pageTitle }}</h1>
-          <p class="subtitle">完善房源信息，让更多租客找到您的房子</p>
+      </div>
+      <div class="title-text">
+        <h1>{{ pageTitle }}</h1>
+        <p class="subtitle">{{ pageTitle === '发布新房源' ? '发布您的优质房源' : '编辑房源信息' }}</p>
+      </div>
+    </div>
+
+    <div class="publish-form">
+      <div 
+        v-for="field in formFields" 
+        :key="field.key"
+        :ref="el => setItemRef(el, field.key)"
+        class="form-item"
+        :class="{ 'error': errors[field.key] }"
+      >
+        <label>
+          <span v-if="field.required" class="required">*</span>
+          {{ field.label }}
+        </label>
+        
+        <!-- 输入框 -->
+        <input 
+          v-if="field.type === 'text' || field.type === 'number'"
+          :type="field.type"
+          v-model="form[field.key]"
+          :placeholder="field.placeholder"
+          @input="clearError(field.key)"
+        />
+        
+        <!-- 文本域 -->
+        <textarea 
+          v-else-if="field.type === 'textarea'"
+          v-model="form[field.key]"
+          :placeholder="field.placeholder"
+          :rows="field.rows || 3"
+          @input="clearError(field.key)"
+        />
+        
+        <!-- 带单位的输入 -->
+        <div v-else-if="field.type === 'unit'" class="input-wrap">
+          <input 
+            :type="field.inputType || 'number'"
+            v-model="form[field.key]"
+            :placeholder="field.placeholder"
+            @input="clearError(field.key)"
+          />
+          <span class="unit">{{ field.unit }}</span>
+        </div>
+        
+      </div>
+
+      <div class="form-item image-form-item">
+        <label><span class="required">*</span>房源图片</label>
+        <div class="image-upload-wrap">
+          <div 
+            class="image-upload-area"
+            :class="{ dragging: isDragging }"
+            @dragover.prevent="handleDragOver"
+            @dragleave.prevent="handleDragLeave"
+            @drop.prevent="handleDrop"
+          >
+            <div v-for="(img, index) in imageList" :key="index" class="image-preview-item">
+              <img :src="img.preview" alt="预览" />
+              <div v-if="img.isCover" class="cover-tag">封面</div>
+              <div class="image-actions">
+                <button v-if="!img.isCover" class="action-btn cover-btn" @click="setCover(index)">设封面</button>
+                <button class="action-btn delete-btn" @click="removeImage(index)">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+            <div v-if="imageList.length < 9" class="upload-trigger" @click="triggerUpload">
+              <input ref="fileInput" type="file" multiple accept="image/jpeg,image/png,image/webp" @change="handleFileChange" style="display:none" />
+              <i class="fa-solid fa-plus"></i>
+              <span>{{ isDragging ? '释放以上传' : '上传图片' }}</span>
+            </div>
+          </div>
+          <p class="image-tip">支持 jpg / jpeg / png / webp，单张不超过 5MB，最多 9 张</p>
         </div>
       </div>
     </div>
 
-    <div class="publish-body">
-      <div class="form-container">
-
-        <!-- 基本信息卡片 -->
-        <div class="form-card">
-          <div class="card-head">
-            <i class="fa-solid fa-circle-info"></i>
-            <span>基本信息</span>
-          </div>
-          <div class="card-body">
-            <template v-for="field in basicFields" :key="field.key">
-              <div
-                :ref="el => setItemRef(el, field.key)"
-                class="form-item"
-                :class="{ error: errors[field.key] }"
-              >
-                <label>
-                  <span v-if="field.required" class="required">*</span>
-                  {{ field.label }}
-                </label>
-                <component
-                  :is="field.type === 'textarea' ? 'textarea' : 'input'"
-                  :type="field.type === 'textarea' ? undefined : (field.inputType || field.type)"
-                  v-model="form[field.key]"
-                  :placeholder="field.placeholder"
-                  :rows="field.type === 'textarea' ? 4 : undefined"
-                  @input="clearError(field.key)"
-                />
-                <span v-if="field.unit" class="unit">{{ field.unit }}</span>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- 租金信息卡片 -->
-        <div class="form-card">
-          <div class="card-head">
-            <i class="fa-solid fa-coins"></i>
-            <span>租金信息</span>
-          </div>
-          <div class="card-body">
-            <template v-for="field in rentFields" :key="field.key">
-              <div
-                :ref="el => setItemRef(el, field.key)"
-                class="form-item"
-                :class="{ error: errors[field.key] }"
-              >
-                <label>
-                  <span v-if="field.required" class="required">*</span>
-                  {{ field.label }}
-                </label>
-                <component
-                  :is="'input'"
-                  :type="field.inputType || 'number'"
-                  v-model="form[field.key]"
-                  :placeholder="field.placeholder"
-                  @input="clearError(field.key)"
-                />
-                <span v-if="field.unit" class="unit">{{ field.unit }}</span>
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- 详细信息卡片 -->
-        <div class="form-card">
-          <div class="card-head">
-            <i class="fa-solid fa-clipboard-list"></i>
-            <span>详细信息</span>
-          </div>
-          <div class="card-body">
-            <template v-for="field in detailFields" :key="field.key">
-              <div
-                :ref="el => setItemRef(el, field.key)"
-                class="form-item"
-                :class="{ error: errors[field.key] }"
-              >
-                <label>
-                  <span v-if="field.required" class="required">*</span>
-                  {{ field.label }}
-                </label>
-                <component
-                  :is="field.type === 'textarea' ? 'textarea' : 'input'"
-                  :type="field.type === 'textarea' ? undefined : 'text'"
-                  v-model="form[field.key]"
-                  :placeholder="field.placeholder"
-                  :rows="field.type === 'textarea' ? 4 : undefined"
-                  @input="clearError(field.key)"
-                />
-              </div>
-            </template>
-          </div>
-        </div>
-
-        <!-- 房源图片卡片 -->
-        <div class="form-card">
-          <div class="card-head">
-            <i class="fa-solid fa-images"></i>
-            <span>房源图片</span>
-            <span class="tip-badge">最多9张</span>
-          </div>
-          <div class="card-body">
-            <div class="image-upload-area">
-              <div v-for="(img, index) in imageList" :key="index" class="image-preview-item">
-                <img :src="img.preview" alt="预览" />
-                <div v-if="img.isCover" class="cover-tag">封面</div>
-                <div class="image-actions">
-                  <button v-if="!img.isCover" class="action-btn cover-btn" @click="setCover(index)">
-                    设封面
-                  </button>
-                  <button class="action-btn delete-btn" @click="removeImage(index)">
-                    <i class="fa-solid fa-xmark"></i>
-                  </button>
-                </div>
-              </div>
-              <div v-if="imageList.length < 9" class="upload-trigger" @click="triggerUpload">
-                <input ref="fileInput" type="file" multiple accept="image/jpeg,image/png,image/webp" @change="handleFileChange" style="display:none" />
-                <i class="fa-solid fa-cloud-arrow-up"></i>
-                <span>点击上传</span>
-                <span class="upload-hint">jpg / png / webp ≤ 5MB</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="submit-section">
-          <button class="submit-btn" @click="handleSubmit">
-            <i class="fa-solid fa-paper-plane"></i>
-            {{ isEdit ? '保存修改' : '提交房源' }}
-          </button>
-        </div>
-
-      </div>
+    <div class="submit-section">
+      <button class="submit-btn" @click="handleSubmit">{{ isEdit ? '保存修改' : '提交委托' }}</button>
     </div>
   </div>
 </template>
@@ -154,7 +99,7 @@ import { reactive, ref, nextTick, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import service from '@/utils/request'
 import { updateHouse, createHouse } from '@/api/house.js'
-import { uploadHouseImage, deleteHouseImage } from '@/api/houseImage.js'
+import { uploadHouseImage, deleteHouseImage, updateHouseImage } from '@/api/houseImage.js'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
@@ -162,30 +107,23 @@ const route = useRoute()
 
 const isEdit = computed(() => !!route.params.id)
 const houseId = computed(() => route.params.id)
-const pageTitle = computed(() => isEdit.value ? '编辑房源' : '发布房源')
+const pageTitle = computed(() => isEdit.value ? '编辑出租房源' : '创建出租房源')
 
-const basicFields = [
+// 表单字段配置
+const formFields = [
   { key: 'title', label: '房源标题', type: 'text', required: true, placeholder: '如：中南大学旁精装两室一厅' },
   { key: 'region', label: '所在区域', type: 'text', required: true, placeholder: '如：岳麓区、雨花区' },
   { key: 'address', label: '详细地址', type: 'text', required: true, placeholder: '请输入完整地址' },
-  { key: 'community', label: '所属小区', type: 'text', required: false, placeholder: '选填' },
-  { key: 'house_type', label: '户型', type: 'text', required: true, placeholder: '如：1室1厅、3室2厅' },
-]
-
-const rentFields = [
-  { key: 'area', label: '面积', inputType: 'number', required: true, placeholder: '请输入面积', unit: '㎡' },
-  { key: 'rent', label: '月租金', inputType: 'number', required: true, placeholder: '请输入月租', unit: '元/月' },
-  { key: 'deposit', label: '押金', inputType: 'number', required: true, placeholder: '请输入押金', unit: '元' },
-]
-
-const detailFields = [
-  { key: 'orientation', label: '朝向', type: 'text', required: false, placeholder: '选填，如：南、南北通透' },
+  { key: 'community', label: '小区', type: 'text', required: false, placeholder: '选填' },
+  { key: 'house_type', label: '户型', type: 'text', required: true, placeholder: '如:1室1厅、3室2厅' },
+  { key: 'area', label: '面积', type: 'unit', required: true, placeholder: '请输入面积', unit: '㎡' },
+  { key: 'rent', label: '月租金', type: 'unit', required: true, placeholder: '请输入月租', unit: '元/月' },
+  { key: 'deposit', label: '押金', type: 'unit', required: true, placeholder: '请输入押金', unit: '元' },
+  { key: 'orientation', label: '朝向', type: 'text', required: false, placeholder: '选填,如：南、南北通透' },
   { key: 'decoration', label: '装修情况', type: 'text', required: false, placeholder: '选填，如：精装修' },
-  { key: 'floor', label: '楼层', type: 'text', required: false, placeholder: '选填，如：6/18层' },
-  { key: 'description', label: '房源描述', type: 'textarea', required: false, placeholder: '描述您的房源特色，如交通便利、采光好、家电齐全等' },
+  { key: 'floor', label: '楼层', type: 'text', required: false, placeholder: '选填,如:6/18' },
+  { key: 'description', label: '房源描述', type: 'textarea', required: false, placeholder: '选填，简要描述您的房子' }
 ]
-
-const allFields = [...basicFields, ...rentFields, ...detailFields]
 
 // 表单数据
 const form = reactive({
@@ -209,6 +147,7 @@ const errors = reactive({})
 // 图片上传
 const fileInput = ref(null)
 const imageList = ref([])
+const isDragging = ref(false)
 const MAX_IMAGES = 9
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 
@@ -217,7 +156,35 @@ const triggerUpload = () => {
 }
 
 const handleFileChange = (e) => {
-  const files = Array.from(e.target.files)
+  processFiles(Array.from(e.target.files))
+  e.target.value = ''
+}
+
+const handleDragOver = (e) => {
+  isDragging.value = true
+}
+
+const handleDragLeave = (e) => {
+  const rect = e.currentTarget.getBoundingClientRect()
+  if (
+    e.clientX <= rect.left ||
+    e.clientX >= rect.right ||
+    e.clientY <= rect.top ||
+    e.clientY >= rect.bottom
+  ) {
+    isDragging.value = false
+  }
+}
+
+const handleDrop = (e) => {
+  isDragging.value = false
+  const files = Array.from(e.dataTransfer.files).filter(file => 
+    file.type.startsWith('image/')
+  )
+  processFiles(files)
+}
+
+const processFiles = (files) => {
   const remaining = MAX_IMAGES - imageList.value.length
   
   if (files.length > remaining) {
@@ -245,24 +212,53 @@ const handleFileChange = (e) => {
       isCover: imageList.value.length === 0
     })
   })
+}
+
+const setCover = async (index) => {
+  const img = imageList.value[index]
+  if (!img) return
   
-  e.target.value = ''
-}
-
-const setCover = (index) => {
-  imageList.value.forEach((img, i) => {
-    img.isCover = (i === index)
+  imageList.value.forEach((item, i) => {
+    item.isCover = (i === index)
   })
+  
+  if (img.id && isEdit.value) {
+    try {
+      await updateHouseImage(houseId.value, img.id, { is_cover: true })
+    } catch (e) {
+      ElMessage.error('设置封面失败')
+      console.error(e)
+    }
+  }
 }
 
-const removeImage = (index) => {
+const removeImage = async (index) => {
   const removed = imageList.value[index]
-  if (removed?.preview) {
+  if (!removed) return
+  
+  if (removed.id && isEdit.value) {
+    try {
+      await deleteHouseImage(houseId.value, removed.id)
+    } catch (e) {
+      ElMessage.error('删除图片失败')
+      console.error(e)
+      return
+    }
+  }
+  
+  if (removed?.preview && !removed.id) {
     URL.revokeObjectURL(removed.preview)
   }
   imageList.value.splice(index, 1)
   if (removed?.isCover && imageList.value.length > 0) {
     imageList.value[0].isCover = true
+    if (imageList.value[0].id && isEdit.value) {
+      try {
+        await updateHouseImage(houseId.value, imageList.value[0].id, { is_cover: true })
+      } catch (e) {
+        console.error(e)
+      }
+    }
   }
 }
 
@@ -297,6 +293,30 @@ const fetchHouseDetail = async () => {
         floor: data.floor || '',
         description: data.description || ''
       })
+      
+      // 预填图片（从详情接口获取的图片列表）
+      if (data.images && data.images.length > 0) {
+        imageList.value = data.images.map((img, index) => ({
+          preview: img,
+          isCover: index === 0 || img === data.cover_image_url
+        }))
+      }
+      
+      // 如果是编辑模式，尝试从专门的图片列表接口获取完整信息
+      if (isEdit.value) {
+        try {
+          const imagesRes = await service.get(`/v1/houses/${houseId.value}/images`)
+          if (imagesRes.code === 0 && imagesRes.data.length > 0) {
+            imageList.value = imagesRes.data.map(img => ({
+              id: img.id,
+              preview: img.url,
+              isCover: img.is_cover
+            }))
+          }
+        } catch (e) {
+          console.error('获取图片列表失败:', e)
+        }
+      }
     }
   } catch (e) {
     ElMessage.error('加载房源详情失败')
@@ -311,7 +331,7 @@ const handleSubmit = async () => {
   // 检查必填
   let firstErrorKey = null
   
-  for (const field of allFields) {
+  for (const field of formFields) {
     if (!field.required) continue
     
     const isEmpty = !form[field.key]
@@ -395,124 +415,76 @@ onMounted(() => {
 
 .publish-page {
   min-height: 100vh;
-  background: #f5f6f8;
+  padding-bottom: 60px;
 }
 
-.publish-header {
-  background: #fff;
-  border-bottom: 1px solid #eef0f3;
-  padding: 0 40px;
+/* 标题 */
+.publish-title {
+  background: #f5f5f5;
+  padding: 40px 0 30px;
+  text-align: center;
 }
 
-.header-inner {
-  max-width: 760px;
-  margin: 0 auto;
+.title-row {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 24px;
-  padding: 24px 0;
-  position: relative;
+  justify-content: flex-start;
+  padding-left: calc((100vw - 700px) / 2 - 10px);
+  
 }
 
 .back-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  background: #f5f6f8;
-  color: #555;
-  border: 1px solid #e8eaed;
-  border-radius: 10px;
-  font-size: 16px;
+  gap: 6px;
+  padding: 6px 14px;
+  background: #fff;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 14px;
   cursor: pointer;
-  transition: all 0.2s;
-  flex-shrink: 0;
-  position: absolute;
-  left: 0;
-}
-
-.header-title {
-  text-align: center;
+  transition: all 0.2s ease;
 }
 
 .back-btn:hover {
-  background: #eef0f3;
-  color: #333;
-  border-color: #d0d4da;
+  background: #e2e8f0;
+  color: #475569;
+  border-color: #cbd5e1;
 }
 
-.header-title h1 {
-  font-size: 30px;
-  font-weight: 700;
-  color: #1a1a2e;
-  line-height: 1.3;
-}
-
-.header-title .subtitle {
-  font-size: 13px;
-  color: #8e94a0;
-  margin-top: 2px;
-}
-
-.publish-body {
-  padding: 32px 40px 80px;
-}
-
-.form-container {
-  max-width: 760px;
-  margin: 0 auto;
-}
-
-.form-card {
-  background: #fff;
-  border-radius: 12px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
-  margin-bottom: 20px;
-  overflow: hidden;
-}
-
-.card-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 16px 24px;
-  background: #fafbfc;
-  border-bottom: 1px solid #f0f1f3;
-  font-size: 15px;
-  font-weight: 600;
-  color: #1a1a2e;
-}
-
-.card-head i {
-  font-size: 16px;
-  color: #3072f6;
-  width: 20px;
+.title-text {
   text-align: center;
 }
 
-.tip-badge {
-  margin-left: auto;
-  font-size: 12px;
-  font-weight: 400;
-  color: #8e94a0;
-  background: #f0f1f3;
-  padding: 3px 10px;
-  border-radius: 10px;
+.publish-title h1 {
+  font-size: 32px;
+  font-weight: 600;
+  color: #101d37;
+  margin-bottom: 12px;
 }
 
-.card-body {
-  padding: 8px 24px;
+.publish-title p {
+  font-size: 14px;
+  color: #9399a5;
+}
+
+/* 表单 */
+.publish-form {
+  width: 700px;
+  margin: 0 auto;
+  background: #fff;
+  padding: 0px 60px;
+  border-radius: 4px;
 }
 
 .form-item {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 14px 0;
-  border-bottom: 1px solid #f5f6f8;
-  transition: all 0.2s;
+  padding: 16px 0;
+  border-bottom: 1px solid #f0f0f0;
+  gap: 20px;
+  transition: all 0.3s;
 }
 
 .form-item:last-child {
@@ -524,70 +496,10 @@ onMounted(() => {
 }
 
 .form-item:has(textarea) label {
-  padding-top: 12px;
+  padding-top: 10px;
 }
 
-.form-item label {
-  width: 72px;
-  font-size: 13px;
-  color: #555;
-  font-weight: 500;
-  flex-shrink: 0;
-  text-align: right;
-}
-
-.required {
-  color: #ff4d4f;
-  margin-right: 2px;
-}
-
-.form-item input,
-.form-item textarea {
-  flex: 1;
-  min-width: 0;
-  height: 42px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 0 14px;
-  font-size: 14px;
-  color: #333;
-  background: #fafbfc;
-  outline: none;
-  transition: all 0.2s;
-  font-family: inherit;
-}
-
-.form-item input::placeholder,
-.form-item textarea::placeholder {
-  color: #b0b5bd;
-}
-
-.form-item input:hover,
-.form-item textarea:hover {
-  border-color: #ccd0d6;
-}
-
-.form-item input:focus,
-.form-item textarea:focus {
-  border-color: #3072f6;
-  background: #fff;
-  box-shadow: 0 0 0 3px rgba(48, 114, 246, 0.08);
-}
-
-.form-item textarea {
-  min-height: 90px;
-  padding: 10px 14px;
-  resize: vertical;
-  line-height: 1.6;
-}
-
-.unit {
-  font-size: 13px;
-  color: #8e94a0;
-  white-space: nowrap;
-  font-weight: 500;
-}
-
+/* 错误状态：标红 */
 .form-item.error input,
 .form-item.error textarea {
   border-color: #ff4d4f;
@@ -597,37 +509,150 @@ onMounted(() => {
 .form-item.error input:focus,
 .form-item.error textarea:focus {
   border-color: #ff4d4f;
-  box-shadow: 0 0 0 3px rgba(255, 77, 79, 0.08);
+  box-shadow: 0 0 0 2px rgba(255, 77, 79, 0.2);
 }
 
+/* 抖动动画 */
 @keyframes shake {
   0%, 100% { transform: translateX(0); }
-  10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-  20%, 40%, 60%, 80% { transform: translateX(4px); }
+  10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
+  20%, 40%, 60%, 80% { transform: translateX(5px); }
 }
 
 .shake {
   animation: shake 0.5s ease;
 }
 
+/* label */
+.form-item label {
+  width: 80px;
+  font-size: 14px;
+  color: #101d37;
+  font-weight: 500;
+  flex-shrink: 0;
+  text-align: end;
+}
+
+.required {
+  color: #ff4d4f;
+  margin-right: 4px;
+}
+
+/* 输入框 */
+.form-item input,
+.form-item textarea {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0 12px;
+  font-size: 14px;
+  color: #333;
+  background: #f5f5f5;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.form-item input:focus,
+.form-item textarea:focus {
+  border-color: #3072f6;
+  background: #fff;
+}
+
+.form-item input::placeholder,
+.form-item textarea::placeholder {
+  color: #999;
+}
+
+.form-item textarea {
+  min-height: 80px;
+  padding: 10px 12px;
+  resize: vertical;
+  line-height: 1.5;
+}
+
+/* 输入框包装 */
+.input-wrap {
+  flex: 1;
+  display: flex;
+  gap: 12px;
+  min-width: 0;
+}
+
+.input-wrap input {
+  flex: 1;
+  min-width: 0;
+}
+
+.unit {
+  font-size: 14px;
+  color: #666;
+  white-space: nowrap;
+}
+
+/* 提交 */
+.submit-section {
+  width: 700px;
+  margin: 30px auto 0;
+  text-align: center;
+}
+
+.submit-btn {
+  width: 240px;
+  height: 48px;
+  background: #3072f6;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.submit-btn:hover {
+  background: #2860d6;
+}
+
+.image-form-item {
+  align-items: flex-start;
+}
+
+.image-form-item label {
+  padding-top: 10px;
+}
+
+.image-upload-wrap {
+  flex: 1;
+}
+
+.image-tip {
+  margin: 8px 0 0;
+  color: #9399a5;
+  font-size: 12px;
+}
+
 .image-upload-area {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  padding: 4px 0;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  min-height: 120px;
+  padding: 16px;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.image-upload-area.dragging {
+  background: #f0f7ff;
+  border: 2px dashed #3072f6;
 }
 
 .image-preview-item {
   position: relative;
-  aspect-ratio: 4 / 3;
-  border-radius: 10px;
+  aspect-ratio: 16 / 11;
+  border-radius: 8px;
   overflow: hidden;
-  border: 2px solid #eef0f3;
-  transition: all 0.2s;
-}
-
-.image-preview-item:hover {
-  border-color: #3072f6;
+  border: 1px solid #e0e0e0;
 }
 
 .image-preview-item img {
@@ -638,15 +663,13 @@ onMounted(() => {
 
 .cover-tag {
   position: absolute;
-  top: 10px;
-  left: 10px;
+  top: 8px;
+  left: 8px;
   background: #3072f6;
   color: #fff;
-  padding: 4px 10px;
-  border-radius: 5px;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-size: 12px;
-  font-weight: 500;
-  box-shadow: 0 2px 6px rgba(48, 114, 246, 0.35);
 }
 
 .image-actions {
@@ -655,42 +678,29 @@ onMounted(() => {
   left: 0;
   right: 0;
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px;
-  background: linear-gradient(transparent, rgba(0, 0, 0, 0.6));
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.image-preview-item:hover .image-actions {
-  opacity: 1;
+  justify-content: flex-end;
+  padding: 6px;
+  background: transparent;
 }
 
 .action-btn {
-  padding: 4px 12px;
+  padding: 4px 10px;
   border: none;
-  border-radius: 5px;
+  border-radius: 4px;
   font-size: 12px;
   cursor: pointer;
-  transition: all 0.15s;
 }
 
 .cover-btn {
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.9);
   color: #333;
-  font-weight: 500;
-}
-
-.cover-btn:hover {
-  background: #fff;
 }
 
 .delete-btn {
-  background: rgba(255, 77, 79, 0.88);
+  background: rgba(255, 77, 79, 0.9);
   color: #fff;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
   padding: 0;
   display: flex;
   align-items: center;
@@ -699,29 +709,24 @@ onMounted(() => {
   margin-left: auto;
 }
 
-.delete-btn:hover {
-  background: #ff4d4f;
-}
-
 .upload-trigger {
   aspect-ratio: 4 / 3;
-  border: 2px dashed #d4d7de;
-  border-radius: 10px;
+  border: 2px dashed #d0d0d0;
+  border-radius: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  color: #b0b5bd;
-  background: #fafbfc;
+  color: #999;
 }
 
 .upload-trigger:hover {
   border-color: #3072f6;
   color: #3072f6;
-  background: #f0f4ff;
+  background: #f8faff;
 }
 
 .upload-trigger i {
@@ -730,42 +735,5 @@ onMounted(() => {
 
 .upload-trigger span {
   font-size: 14px;
-  font-weight: 500;
-}
-
-.upload-hint {
-  font-size: 11px;
-  font-weight: 400;
-  color: #ccd0d6;
-}
-
-.submit-section {
-  text-align: center;
-  padding: 16px 0 0;
-}
-
-.submit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 48px;
-  background: linear-gradient(135deg, #3072f6 0%, #1a5be0 100%);
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 14px rgba(48, 114, 246, 0.3);
-}
-
-.submit-btn:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 20px rgba(48, 114, 246, 0.4);
-}
-
-.submit-btn i {
-  font-size: 15px;
 }
 </style>

@@ -57,8 +57,7 @@ export const getHouseImage = (images, index = 0, houseId = 0) => {
     if (images && images.length > index && images[index]) {
         return images[index]
     }
-    const photoId = getArchitecturePhotoId(houseId)
-    return `https://images.unsplash.com/photo-${photoId}?w=800&h=600&fit=crop`
+    return getDefaultHouseImage(houseId)
 }
 
 export const getRandomImage = (width = 800, height = 600, houseId = 0) => {

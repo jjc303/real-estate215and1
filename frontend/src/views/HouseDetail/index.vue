@@ -12,7 +12,7 @@
             <div class="gallery-section">
                 <div class="gallery-main">
                     <img 
-                        :src="house.cover_image_url || getHouseImage(house.images, currentImgIndex, house.id)" 
+                        :src="getCurrentMainImage()" 
                         alt="房源主图"
                         @error="$event.target.src = getDefaultHouseImage(house.id)"
                     />
@@ -175,6 +175,17 @@ const houseInfo = computed(() => {
         area: house.value.area
     };
 });
+
+const getCurrentMainImage = () => {
+    const images = house.value.images || [];
+    if (images.length > 0 && currentImgIndex.value < images.length && images[currentImgIndex.value]) {
+        return images[currentImgIndex.value];
+    }
+    if (house.value.cover_image_url) {
+        return house.value.cover_image_url;
+    }
+    return getDefaultHouseImage(house.value.id);
+};
 
 const goBack = () => {
     router.back();
