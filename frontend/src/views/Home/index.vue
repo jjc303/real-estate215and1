@@ -62,79 +62,129 @@
 import HouseCard from '@/components/HouseCard.vue';
 import NavBar from '@/components/NavBar.vue';
 import SearchBar from '@/components/SearchBar.vue';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import UserButton from '@/components/UserButton.vue';
 import { useUserStore } from '@/stores/user.js';
-const router =useRouter();
+import { getHouseList } from '@/api/house.js';
+import { getDefaultHouseImage } from '@/utils/tools.js';
+
+const router = useRouter();
 const userStore = useUserStore();
 
-const goToDetail=(house)=>{
+// 两个区域的房源数据
+const houseTypes = ref([]);
+const houseEstates = ref([]);
 
+// 点击跳转详情
+const goToDetail = (house) => {
+  router.push(`/houseDetail/${house.id}`)
 }
 
-//户型
-const houseTypes = ref([
-  { id: 1, 
-    title: '一室一厅' ,
-    image:'/images/type1.jpg',
-    spec:'约60㎡ | 1室1厅1卫',
-    price:'￥1000/月起',
-    badge:'热销'
-  },
-  { id: 2, 
-    title: '两室一厅' ,
-    image:'/images/type2.jpg',
-    spec:'约100㎡ | 2室1厅1卫',
-    price:'￥2000/月起',
-    badge:'特价'
-  },
-  { id: 3, 
-    title: '三室一厅' ,
-    image:'/images/type3.jpg',
-    spec:'约140㎡ | 3室1厅2卫',
-    price:'￥3000/月起',
-    badge:'推荐'
-  },
-  { id: 4, 
-    title: '四室一厅' ,
-    image:'/images/type4.jpg',
-    spec:'约180㎡ | 4室1厅2卫',
-    price:'￥4000/月起',
-    badge:'新上'
-  },
-]);
-//住宅区
-const houseEstates = ref([
-  { id: 1, 
-    title: '白沙苑' ,
-    image:'/images/house1.jpg',
-    spec:'舒适宜居住宅',
-    price:'￥2000/月起',
-
-  },
-  { id: 2, 
-    title: '山语城' ,
-    image:'/images/house2.jpg',
-    spec:'品质生活住宅',
-    price:'￥3500/月起',
-  },
-  {
-    id: 3, 
-    title: '明昇壹城',
-    image:'/images/house3.jpg',
-    spec:'高端人气住宅',
-    price:'￥5000/月起',
-  },
-  {
-    id: 4, 
-    title: '润和滨江湾',
-    image:'/images/house4.jpg',
-    spec:'豪华顶级住宅',
-    price:'￥7000/月起',
+// 数据映射函数：将API数据转为卡片格式
+const mapHouseToCard = (house, index) => {
+  return {
+    id: house.id,
+    title: house.title || '未知房源',
+    image: house.images?.[0] || null,
+    spec: `${house.area || 0}㎡ | ${house.house_type || '未知户型'}`,
+    price: `¥${house.price || 0}/月`,
+    badge: index === 0 ? '精选' : (index === 1 ? '推荐' : (index === 2 ? '热销' : ''))
   }
-]);
+}
 
+// 加载户型专区房源（按户型分组）
+const loadHouseTypes = async () => {
+  try {
+    // 获取足够多的房源进行分组
+    const res = await getHouseList({ 
+      page: 1, 
+      page_size: 20 
+    });
+    
+    if (res && res.data && res.data.items) {
+      const houses = res.data.items;
+      
+      // 按户型分组，每个户型取1个
+      const typeGroups = {};
+      houses.forEach(house => {
+        const typeMatch = house.house_type?.match(/(\d)室/);
+        const type = typeMatch ? `${typeMatch[1]}室` : '其他';
+        if (!typeGroups[type]) {
+          typeGroups[type] = house;
+        }
+      });
+      
+      // 取前4种户型
+      const types = Object.keys(typeGroups).slice(0, 4);
+      houseTypes.value = types.map((type, index) => {
+        const house = typeGroups[type];
+        return {
+          ...mapHouseToCard(house, index),
+          title: type,  // 户型标题如"一室"、"两室"
+          spec: `${house.area || 0}㎡ | ${house.house_type || type}`,
+          badge: index === 0 ? '热销' : (index === 1 ? '特价' : (index === 2 ? '推荐' : '新上'))
+        };
+      });
+      
+      console.log('户型专区数据:', houseTypes.value);
+    }
+  } catch (error) {
+    console.error('加载户型房源失败', error);
+  }
+}
+
+// 加载小区精选房源（按区域分组）
+const loadHouseEstates = async () => {
+  try {
+    // 获取足够多的房源进行分组
+    const res = await getHouseList({ 
+      page: 1, 
+      page_size: 20 
+    });
+    
+    if (res && res.data && res.data.items) {
+      const houses = res.data.items;
+      
+      // 按区域分组，每个区域取1个
+      const regionGroups = {};
+      houses.forEach(house => {
+        const region = house.region || house.district || '其他';
+        if (!regionGroups[region]) {
+          regionGroups[region] = house;
+        }
+      });
+      
+      // 取前4个区域
+      const regions = Object.keys(regionGroups).slice(0, 4);
+      houseEstates.value = regions.map((region, index) => {
+        const house = regionGroups[region];
+        return {
+          ...mapHouseToCard(house, index),
+          title: house.title || region,
+          spec: region  // 显示区域名
+        };
+      });
+      
+      console.log('小区精选数据:', houseEstates.value);
+    }
+  } catch (error) {
+    console.error('加载小区房源失败', error);
+  }
+}
+
+// 统一加载所有数据
+const loadAllHouses = async () => {
+  await Promise.all([
+    loadHouseTypes(),
+    loadHouseEstates()
+  ]);
+}
+
+// 页面加载时获取数据
+onMounted(() => {
+  loadAllHouses();
+});
 </script>
 
 <style>
