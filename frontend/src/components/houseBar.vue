@@ -3,7 +3,7 @@
         <!-- 左侧房源图片 -->
         <div class="house-img">
             <img 
-              :src="getHouseImage(house.images, 0, house.id)" 
+              :src="house.cover_image_url || getHouseImage(house.images, 0, house.id)" 
               alt="房源封面" 
               @error="$event.target.src = getDefaultHouseImage(house.id)"
             />

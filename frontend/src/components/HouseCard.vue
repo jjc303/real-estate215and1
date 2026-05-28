@@ -1,7 +1,7 @@
 <template>
   <div class="house-card" @click="$emit('click',house)">
     <div class="house-img">
-        <img :src="house.image || getHouseImage(house.images, 0, house.id)" :alt="house.title" @error="$event.target.src = getDefaultHouseImage(house.id)"/>
+        <img :src="house.image || house.cover_image_url || getHouseImage(house.images, 0, house.id)" :alt="house.title" @error="$event.target.src = getDefaultHouseImage(house.id)"/>
         <div class="badge" v-if="house.badge">{{ house.badge }}</div>
         <div v-if="isFavorite" class="favorite-badge">
           <i class="fa-solid fa-heart"></i>
@@ -36,7 +36,6 @@ defineEmits(['click'])
 <style scoped>
 .house-card {
   cursor: pointer;
-  flex: 1;
 }
 .house-img {
   position: relative;

@@ -12,7 +12,7 @@
             <div class="gallery-section">
                 <div class="gallery-main">
                     <img 
-                        :src="getHouseImage(house.images, currentImgIndex, house.id)" 
+                        :src="house.cover_image_url || getHouseImage(house.images, currentImgIndex, house.id)" 
                         alt="房源主图"
                         @error="$event.target.src = getDefaultHouseImage(house.id)"
                     />
@@ -226,7 +226,8 @@ const fetchHouseDetail = async () => {
                 description: data.description || '无',
                 status: data.status || '无',
                 address: data.address || '无',
-                images: [],
+                images: data.images || [],
+                cover_image_url: data.cover_image_url || null,
                 tags: [],
                 isCollect: false
             };

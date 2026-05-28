@@ -86,10 +86,10 @@ const mapHouseToCard = (house, index) => {
   return {
     id: house.id,
     title: house.title || '未知房源',
-    image: house.images?.[0] || null,
+    image: house.cover_image_url || house.images?.[0] || null,
     spec: `${house.area || 0}㎡ | ${house.house_type || '未知户型'}`,
-    price: `¥${house.price || 0}/月`,
-    badge: index === 0 ? '精选' : (index === 1 ? '推荐' : (index === 2 ? '热销' : ''))
+    price: `¥${house.rent || 0}/月`,
+    badge: index === 0 ? '热销' : (index === 1 ? '特价' : (index === 2 ? '推荐' : '新上'))
   }
 }
 
@@ -102,8 +102,8 @@ const loadHouseTypes = async () => {
       page_size: 20 
     });
     
-    if (res && res.data && res.data.items) {
-      const houses = res.data.items;
+    if (res && res.data && res.data.list) {
+      const houses = res.data.list;
       
       // 按户型分组，每个户型取1个
       const typeGroups = {};
@@ -143,8 +143,8 @@ const loadHouseEstates = async () => {
       page_size: 20 
     });
     
-    if (res && res.data && res.data.items) {
-      const houses = res.data.items;
+    if (res && res.data && res.data.list) {
+      const houses = res.data.list;
       
       // 按区域分组，每个区域取1个
       const regionGroups = {};
@@ -301,8 +301,8 @@ onMounted(() => {
 }
 .sort-content {
   margin-top: 30px;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 20px;
-  align-items: stretch;
 }
 </style>
