@@ -265,10 +265,14 @@ const customArea = reactive({
 })
 
 const rooms = ref([
-  { label: '一室', value: '1' },
-  { label: '二室', value: '2' },
-  { label: '三室', value: '3' },
-  { label: '四室以上', value: '4+' },
+  { label: '1室', value: '1室' },
+  { label: '2室', value: '2室' },
+  { label: '3室', value: '3室' },
+  { label: '4室以上', value: '4室' },
+  { label: '1室1厅', value: '1室1厅' },
+  { label: '2室1厅', value: '2室1厅' },
+  { label: '3室1厅', value: '3室1厅' },
+  { label: '3室2厅', value: '3室2厅' },
 ])
 const orientations = ref([ '东', '南', '西', '北', '南北'])
 const times=ref(['月租','年租'])
@@ -560,14 +564,7 @@ const fetchHouseList=async()=>{
         // 处理户型
         let houseType = undefined;
         if (filter.room.length > 0) {
-            // 将选中的户型合并，如"1,2,3"
-            houseType = filter.room.map(r => {
-                if (r === '1') return '一室';
-                if (r === '2') return '二室';
-                if (r === '3') return '三室';
-                if (r === '4+') return '四室';
-                return r;
-            }).join(',');
+            houseType = filter.room.join(',');
         }
         
         const params = {
