@@ -42,7 +42,6 @@ service.interceptors.response.use(
       if (!isAuthPath) {
         localStorage.removeItem('token')
         localStorage.removeItem('userInfo')
-        window.location.href = '/login'
       }
     }
     return Promise.reject(error)
