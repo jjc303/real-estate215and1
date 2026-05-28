@@ -60,11 +60,19 @@ services:
       AI_ENGINE_BASE_URL: ${AI_ENGINE_BASE_URL:-http://ai-engine:9000}
       AI_ENGINE_API_KEY: ${AI_ENGINE_API_KEY:-change-me}
       AI_ENGINE_TIMEOUT_SECONDS: ${AI_ENGINE_TIMEOUT_SECONDS:-30}
+      UPLOAD_DIR: ${UPLOAD_DIR:-/app/uploads}
+      UPLOAD_URL_PREFIX: ${UPLOAD_URL_PREFIX:-/uploads}
+      IMAGE_MAX_BYTES: ${IMAGE_MAX_BYTES:-5242880}
+      ALLOWED_IMAGE_EXTENSIONS: ${ALLOWED_IMAGE_EXTENSIONS:-jpg,jpeg,png,webp}
+      HOUSE_IMAGE_MAX_COUNT: ${HOUSE_IMAGE_MAX_COUNT:-9}
+      USER_AVATAR_MAX_COUNT: ${USER_AVATAR_MAX_COUNT:-5}
     ports:
       - "8000:8000"
     volumes:
       - ../backend:/app/backend
+      - backend_uploads:/app/uploads
     command: gunicorn -w 4 --reload -b 0.0.0.0:8000 app.main:app
 
 volumes:
   mysql_data:
+  backend_uploads:

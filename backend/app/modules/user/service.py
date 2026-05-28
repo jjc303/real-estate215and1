@@ -39,7 +39,6 @@ class UserService:
             real_name=data.real_name,
             phone=data.phone,
             email=normalized_email,
-            avatar=data.avatar,
             status=data.status,
         )
 
@@ -81,8 +80,6 @@ class UserService:
             user.phone = data.phone
         if data.email is not None:
             user.email = normalized_email
-        if data.avatar is not None:
-            user.avatar = data.avatar
         if data.password is not None:
             user.password = hash_password(data.password)
 

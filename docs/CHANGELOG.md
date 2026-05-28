@@ -1,5 +1,92 @@
 # Changelog
 
+## v1.17.0 - 2026-05-27
+
+### Added
+
+#### 图片数据库与上传能力
+
+- 新增 `HouseImage` 模块：
+  - `app/modules/house_image/model.py`
+  - `app/modules/house_image/schema.py`
+  - `app/modules/house_image/repository.py`
+  - `app/modules/house_image/service.py`
+  - `app/modules/house_image/router.py`
+- 新增 `UserAvatar` 模块：
+  - `app/modules/user_avatar/model.py`
+  - `app/modules/user_avatar/schema.py`
+  - `app/modules/user_avatar/repository.py`
+  - `app/modules/user_avatar/service.py`
+  - `app/modules/user_avatar/router.py`
+- 新增表：
+  - `house_images`
+  - `user_avatars`
+- 新增接口：
+  - `POST /api/v1/houses/{house_id}/images/upload`
+  - `GET /api/v1/houses/{house_id}/images`
+  - `PATCH /api/v1/houses/{house_id}/images/{image_id}`
+  - `DELETE /api/v1/houses/{house_id}/images/{image_id}`
+  - `POST /api/v1/users/me/avatar/upload`
+  - `GET /api/v1/users/me/avatar`
+  - `GET /api/v1/users/me/avatars`
+- 新增文件上传工具：
+  - `app/common/file_upload.py`
+
+#### 上传访问与部署配置
+
+- Flask 新增静态上传访问路由：
+  - `GET /uploads/<path:filename>`
+- 后端新增上传配置项：
+  - `UPLOAD_DIR`
+  - `UPLOAD_URL_PREFIX`
+  - `IMAGE_MAX_BYTES`
+  - `ALLOWED_IMAGE_EXTENSIONS`
+  - `HOUSE_IMAGE_MAX_COUNT`
+  - `USER_AVATAR_MAX_COUNT`
+- `deploy/docker-compose.yml` 为 backend 增加上传卷：
+  - `backend_uploads:/app/uploads`
+- `UPLOAD_DIR` 相对路径解析基准调整为项目根目录（不再与 `backend/` 目录耦合）
+
+### Changed
+
+#### User 头像字段收敛到独立头像表
+
+- migration 中移除 `users.avatar` 字段
+- `User / Auth / Admin` 相关 schema 与 service 不再接收/返回 `avatar` 字段
+- `HouseReadSchema` 新增：
+  - `cover_image_url`
+  - `images`
+
+#### 数量限制与上传约束
+
+- 房源图片有效数量上限：`9`
+- 用户头像历史上限：`5`
+- 上传文件类型限制：`jpg/jpeg/png/webp`
+- 默认单文件大小限制：`5MB`
+
+#### API 测试上传行为修正
+
+- `backend/tests/api/conftest.py` 移除全局 `Content-Type: application/json`
+- 避免 multipart 上传测试被错误 header 影响（`request.files` 为空）
+
+### Added Migration
+
+- `d9f8e7c6b5a4_add_house_images_and_user_avatars.py`
+
+### Added Tests
+
+- `backend/tests/api/test_house_image_flow.py`
+- `backend/tests/api/test_user_avatar_flow.py`
+- `backend/tests/api/test_upload_static_access_flow.py`
+
+### Verified
+
+- 已新增图片与头像 API 流程测试文件
+- 已修复上传测试中 multipart Content-Type 冲突问题
+- 可通过以下命令执行回归：
+  - `pytest tests/api/test_house_image_flow.py -q`
+  - `pytest tests/api/test_user_avatar_flow.py -q`
+
 ## v1.16.1 - 2026-05-04
 
 ### Changed

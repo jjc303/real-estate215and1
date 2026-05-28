@@ -9,6 +9,7 @@ from app.modules.contract.repository import ContractRepository
 from app.modules.conversation.repository import ConversationRepository, MessageRepository
 from app.modules.favorite.repository import FavoriteRepository
 from app.modules.house.repository import HouseRepository
+from app.modules.house_image.repository import HouseImageRepository
 from app.modules.news.repository import NewsRepository
 from app.modules.notification.repository import NotificationRepository
 from app.modules.operation_log.repository import OperationLogRepository
@@ -16,10 +17,12 @@ from app.modules.payment.repository import PaymentRepository
 from app.modules.repair.repository import RepairRepository
 from app.modules.statistics.repository import StatisticsRepository
 from app.modules.user.repository import UserRepository
+from app.modules.user_avatar.repository import UserAvatarRepository
 
 
 _user_repository = UserRepository()
 _house_repository = HouseRepository()
+_house_image_repository = HouseImageRepository()
 _favorite_repository = FavoriteRepository()
 _appointment_repository = AppointmentRepository()
 _email_verification_code_repository = EmailVerificationCodeRepository()
@@ -35,6 +38,7 @@ _notification_repository = NotificationRepository()
 _operation_log_repository = OperationLogRepository()
 _statistics_repository = StatisticsRepository()
 _admin_repository = AdminRepository()
+_user_avatar_repository = UserAvatarRepository()
 
 
 def get_user_repository() -> UserRepository:
@@ -43,6 +47,10 @@ def get_user_repository() -> UserRepository:
 
 def get_house_repository() -> HouseRepository:
     return _house_repository
+
+
+def get_house_image_repository() -> HouseImageRepository:
+    return _house_image_repository
 
 
 def get_favorite_repository() -> FavoriteRepository:
@@ -103,3 +111,7 @@ def get_statistics_repository() -> StatisticsRepository:
 
 def get_admin_repository() -> AdminRepository:
     return _admin_repository
+
+
+def get_user_avatar_repository() -> UserAvatarRepository:
+    return _user_avatar_repository

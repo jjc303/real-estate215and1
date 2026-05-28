@@ -1,6 +1,6 @@
 # 项目架构文档 · 房屋租赁平台
 
-> 版本：v1.16.1  
+> 版本：v1.17.0  
 > 架构模式：前后端分离 · 模块化单体  
 > 技术栈：Flask + Vue 3 + FastAPI（AI 引擎）
 
@@ -32,6 +32,7 @@
 
 - 用户注册、登录、身份区分
 - 房源发布、编辑、下架、展示
+- 房源图片与用户头像上传、管理、静态访问
 - 房源搜索与推荐
 - 房东和租客在线消息沟通
 - 看房预约
@@ -223,6 +224,8 @@ backend/app/
 | **User** | `/api/v1/users` | 用户注册、列表、详情 |
 | **Auth** | `/api/v1/auth` | 登录、JWT、邮箱验证码注册/登录 |
 | **House** | `/api/v1/houses` | 房源 CRUD、上下架 |
+| **HouseImage** | `/api/v1/houses/{id}/images` | 房源图片上传与管理 |
+| **UserAvatar** | `/api/v1/users/me/avatar` | 用户头像上传与历史 |
 | **Favorite** | `/api/v1/favorites` | 收藏/取消收藏 |
 | **Appointment** | `/api/v1/appointments` | 预约看房 |
 | **Conversation** | `/api/v1/conversations` | 站内消息会话 |
@@ -310,12 +313,14 @@ module_name/
 
 ### 3.10 数据库表清单
 
-当前共有 **15 张业务表**（不含 alembic 版本表）：
+当前共有 **17 张业务表**（不含 alembic 版本表）：
 
 | 表名 | 所属模块 | 说明 |
 |------|---------|------|
 | `users` | User/Auth | 用户表 |
 | `houses` | House | 房源表 |
+| `house_images` | HouseImage | 房源图片表 |
+| `user_avatars` | UserAvatar | 用户头像表 |
 | `favorites` | Favorite | 收藏表 |
 | `appointments` | Appointment | 预约表 |
 | `conversations` | Conversation | 会话表 |
@@ -695,6 +700,9 @@ uvicorn api.main:app --host 0.0.0.0 --port 9000
 /api/v1/auth               # Auth 模块
 /api/v1/ai                 # AI 模块
 /api/v1/houses             # House 模块
+/api/v1/houses/{id}/images # HouseImage 子资源
+/api/v1/users/me/avatar    # UserAvatar 子资源
+/uploads/<path>            # 上传文件静态访问
 /api/v1/news               # News 模块
 /api/v1/favorites          # Favorite 模块
 /api/v1/appointments       # Appointment 模块
@@ -793,6 +801,8 @@ real-estate215and1/
 │   │       ├── user/                  # 用户
 │   │       ├── auth/                  # 认证
 │   │       ├── house/                 # 房源
+│   │       ├── house_image/           # 房源图片
+│   │       ├── user_avatar/           # 用户头像
 │   │       ├── favorite/              # 收藏
 │   │       ├── appointment/           # 预约
 │   │       ├── conversation/          # 消息

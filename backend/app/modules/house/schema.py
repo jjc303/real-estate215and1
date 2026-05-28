@@ -98,5 +98,7 @@ class HouseReadSchema(BaseSchema):
     orientation: str | None = None
     description: str | None = None
     status: HouseStatus
+    cover_image_url: str | None = None
+    images: list[str] = Field(default_factory=list)
     created_at: datetime
     updated_at: datetime

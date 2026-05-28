@@ -19,7 +19,9 @@ def base_url() -> str:
 @pytest.fixture
 def http() -> requests.Session:
     session = requests.Session()
-    session.headers.update({"Content-Type": "application/json"})
+    # Do not set a global Content-Type header here.
+    # - JSON requests should use `json=...` so requests sets Content-Type automatically.
+    # - File uploads use multipart/form-data and must not be forced to application/json.
     try:
         yield session
     finally:

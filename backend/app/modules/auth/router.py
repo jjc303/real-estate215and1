@@ -43,7 +43,6 @@ def email_register():
         role=data.role,
         real_name=data.real_name,
         phone=data.phone,
-        avatar=data.avatar,
         password=data.password,
     )
     return success(data=result)

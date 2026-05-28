@@ -11,11 +11,13 @@ from app.core.exceptions import BadRequestException, HouseNotFoundException
 from app.modules.house.model import House
 from app.modules.house.repository import HouseRepository
 from app.modules.house.schema import HouseCreateSchema, HouseReadSchema, HouseUpdateSchema
+from app.modules.house_image.repository import HouseImageRepository
 
 
 class HouseService:
-    def __init__(self, house_repository: HouseRepository) -> None:
+    def __init__(self, house_repository: HouseRepository, house_image_repository: HouseImageRepository) -> None:
         self.house_repository = house_repository
+        self.house_image_repository = house_image_repository
 
     def create_house(
         self,
@@ -48,7 +50,7 @@ class HouseService:
             db.rollback()
             raise
 
-        return self._serialize(house)
+        return self._serialize(db, house)
 
     def list_houses(
         self,
@@ -119,7 +121,7 @@ class HouseService:
             )
 
         return build_page_result(
-            items=[self._serialize(house) for house in houses],
+            items=[self._serialize(db, house) for house in houses],
             total=total,
             page=page,
             page_size=page_size,
@@ -138,12 +140,12 @@ class HouseService:
                 landlord_id=current_user_id,
             )
             if owned_house is not None:
-                return self._serialize(owned_house)
+                return self._serialize(db, owned_house)
 
         house = self.house_repository.get_by_id(db, house_id)
         if house is None or house.deleted_at is not None or house.status != HouseStatus.LISTED:
             raise HouseNotFoundException()
-        return self._serialize(house)
+        return self._serialize(db, house)
 
     def update_house(
         self,
@@ -180,7 +182,7 @@ class HouseService:
             db.rollback()
             raise
 
-        return self._serialize(house)
+        return self._serialize(db, house)
 
     def publish_house(self, db: Session, house_id: int, landlord_id: int) -> dict[str, object]:
         house = self.house_repository.get_by_id_and_landlord_id(
@@ -200,7 +202,7 @@ class HouseService:
         except Exception:
             db.rollback()
             raise
-        return self._serialize(house)
+        return self._serialize(db, house)
 
     def offline_house(self, db: Session, house_id: int, landlord_id: int) -> dict[str, object]:
         house = self.house_repository.get_by_id_and_landlord_id(
@@ -220,7 +222,7 @@ class HouseService:
         except Exception:
             db.rollback()
             raise
-        return self._serialize(house)
+        return self._serialize(db, house)
 
     def delete_house(self, db: Session, house_id: int, landlord_id: int) -> None:
         house = self.house_repository.get_by_id_and_landlord_id(
@@ -240,5 +242,10 @@ class HouseService:
             db.rollback()
             raise
 
-    def _serialize(self, house: House) -> dict[str, object]:
-        return HouseReadSchema.model_validate(house).model_dump(mode="json")
+    def _serialize(self, db: Session, house: House) -> dict[str, object]:
+        payload = HouseReadSchema.model_validate(house).model_dump(mode="json")
+        images = self.house_image_repository.list_active_by_house_id(db=db, house_id=house.id)
+        image_urls = [item.url for item in images]
+        payload["images"] = image_urls
+        payload["cover_image_url"] = next((item.url for item in images if item.is_cover), None)
+        return payload

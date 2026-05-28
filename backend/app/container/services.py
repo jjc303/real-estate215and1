@@ -10,6 +10,7 @@ from app.container.repositories import (
     get_conversation_repository,
     get_favorite_repository,
     get_house_repository,
+    get_house_image_repository,
     get_message_repository,
     get_news_repository,
     get_notification_repository,
@@ -18,6 +19,7 @@ from app.container.repositories import (
     get_repair_repository,
     get_statistics_repository,
     get_user_repository,
+    get_user_avatar_repository,
 )
 from app.modules.admin.service import AdminService
 from app.modules.ai.service import AIService
@@ -29,6 +31,7 @@ from app.modules.contract.service import ContractService
 from app.modules.conversation.service import ConversationService
 from app.modules.favorite.service import FavoriteService
 from app.modules.house.service import HouseService
+from app.modules.house_image.service import HouseImageService
 from app.modules.news.service import NewsService
 from app.modules.notification.service import NotificationService
 from app.modules.operation_log.service import OperationLogService
@@ -36,6 +39,7 @@ from app.modules.payment.service import PaymentService
 from app.modules.repair.service import RepairService
 from app.modules.statistics.service import StatisticsService
 from app.modules.user.service import UserService
+from app.modules.user_avatar.service import UserAvatarService
 from app.common.ai_engine_client import AIEngineClient
 
 
@@ -44,7 +48,8 @@ _auth_service = AuthService(
     get_user_repository(),
     get_email_verification_code_repository(),
 )
-_house_service = HouseService(get_house_repository())
+_house_service = HouseService(get_house_repository(), get_house_image_repository())
+_house_image_service = HouseImageService(get_house_repository(), get_house_image_repository())
 _favorite_service = FavoriteService(get_favorite_repository(), get_house_repository())
 _appointment_service = AppointmentService(get_appointment_repository(), get_house_repository())
 _conversation_service = ConversationService(
@@ -116,6 +121,10 @@ _ai_service = AIService(
     get_house_repository(),
     AIEngineClient(),
 )
+_user_avatar_service = UserAvatarService(
+    get_user_repository(),
+    get_user_avatar_repository(),
+)
 
 
 def get_user_service() -> UserService:
@@ -128,6 +137,10 @@ def get_auth_service() -> AuthService:
 
 def get_house_service() -> HouseService:
     return _house_service
+
+
+def get_house_image_service() -> HouseImageService:
+    return _house_image_service
 
 
 def get_favorite_service() -> FavoriteService:
@@ -184,3 +197,7 @@ def get_admin_service() -> AdminService:
 
 def get_ai_service() -> AIService:
     return _ai_service
+
+
+def get_user_avatar_service() -> UserAvatarService:
+    return _user_avatar_service

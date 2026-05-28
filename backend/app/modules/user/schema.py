@@ -15,7 +15,6 @@ class UserReadSchema(BaseSchema):
     real_name: str | None = None
     phone: str | None = None
     email: str | None = None
-    avatar: str | None = None
     status: str
     created_at: datetime
 
@@ -29,7 +28,6 @@ class UserCreateSchema(BaseSchema):
     real_name: str | None = Field(default=None, max_length=50)
     phone: str | None = Field(default=None, max_length=20)
     email: str | None = Field(default=None, max_length=100)
-    avatar: str | None = Field(default=None, max_length=255)
     status: str = Field(default="active", min_length=1, max_length=20)
 
 
@@ -46,10 +44,9 @@ class UserUpdateSchema(BaseSchema):
     real_name: str | None = Field(default=None, max_length=50)
     phone: str | None = Field(default=None, max_length=20)
     email: str | None = Field(default=None, max_length=100)
-    avatar: str | None = Field(default=None, max_length=255)
     password: str | None = Field(default=None, min_length=6, max_length=255)
 
-    @field_validator("real_name", "phone", "email", "avatar", "password", mode="before")
+    @field_validator("real_name", "phone", "email", "password", mode="before")
     @classmethod
     def normalize_update_text(cls, value: object) -> object:
         if not isinstance(value, str):

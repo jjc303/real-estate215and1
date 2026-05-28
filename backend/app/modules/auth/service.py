@@ -116,7 +116,6 @@ class AuthService:
         role: str,
         real_name: str | None = None,
         phone: str | None = None,
-        avatar: str | None = None,
         password: str | None = None,
     ) -> dict[str, object]:
         normalized_email = self._require_normalized_email(email)
@@ -144,7 +143,6 @@ class AuthService:
                 real_name=real_name,
                 phone=phone,
                 email=normalized_email,
-                avatar=avatar,
                 status="active",
             )
             self.user_repository.create(db, user)
