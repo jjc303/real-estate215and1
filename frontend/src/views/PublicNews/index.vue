@@ -12,7 +12,7 @@
       </div>
 
       <div class="news-list-wrapper" v-if="newsList.length > 0">
-        <div class="news-card fade-in" v-for="(item, idx) in newsList" :key="item.id" :style="{ animationDelay: `${0.6 + idx * 0.12}s` }">
+        <div class="news-card fade-in" v-for="(item, idx) in newsList" :key="item.id" :style="{ animationDelay: `${0.6 + idx * 0.12}s` }" @click="openDetail(item)">
           <div class="news-badge" v-if="item.isTop">置顶</div>
           <div class="news-card-body">
             <div class="news-meta">
@@ -34,6 +34,31 @@
         <p>暂无新闻公告</p>
       </div>
     </div>
+
+    <el-dialog v-model="showDetail" width="680px" top="6vh" :close-on-click-modal="true" destroy-on-close>
+      <div v-if="detailItem" class="news-detail-content">
+        <button class="detail-close" @click="showDetail = false">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+        <div class="detail-banner">
+          <div class="detail-meta">
+            <span class="detail-category">{{ detailItem.category }}</span>
+            <span class="detail-date">
+              <i class="fa-regular fa-calendar"></i> {{ detailItem.date }}
+            </span>
+          </div>
+          <h2 class="detail-title">{{ detailItem.title }}</h2>
+          <div class="detail-author">
+            <span class="author-avatar"><i class="fa-solid fa-user-circle"></i></span>
+            <span class="author-name">{{ detailItem.author }}</span>
+          </div>
+        </div>
+        <div class="detail-body">
+          <div class="detail-divider"></div>
+          <p class="detail-text">{{ detailItem.content }}</p>
+        </div>
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -44,6 +69,13 @@ import { listNews } from '@/api/news.js'
 
 const newsList = ref([])
 const titleChars = '新闻通知'.split('')
+const showDetail = ref(false)
+const detailItem = ref(null)
+
+const openDetail = (item) => {
+  detailItem.value = item
+  showDetail.value = true
+}
 
 const loadNews = async () => {
   try {
@@ -55,6 +87,7 @@ const loadNews = async () => {
       newsList.value = list.map(item => ({
         id: item.id,
         title: item.title || '无标题',
+        content: item.content || '暂无内容',
         summary: (item.content && item.content.length > 150) ? item.content.substring(0, 150) + '...' : (item.content || '暂无内容'),
         category: '平台公告',
         date: item.created_at ? item.created_at.substring(0, 10) : '',
@@ -178,6 +211,10 @@ onMounted(() => {
   position: relative;
   border: 1px solid #f0f0f0;
   transition: transform 0.25s, box-shadow 0.25s;
+  display: flex;
+  flex-direction: column;
+  height: 290px;
+  cursor: pointer;
 }
 
 .news-card:hover {
@@ -196,16 +233,22 @@ onMounted(() => {
   font-weight: 600;
   padding: 4px 12px;
   border-radius: 12px;
+  z-index: 1;
 }
 
 .news-card-body {
   padding: 24px;
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .news-meta {
   display: flex;
   gap: 12px;
   margin-bottom: 14px;
+  flex-shrink: 0;
 }
 
 .news-category {
@@ -225,11 +268,16 @@ onMounted(() => {
 }
 
 .news-title {
-  font-size: 20px;
+  font-size: 17px;
   font-weight: 700;
   color: #262626;
   margin: 0 0 10px;
   line-height: 1.4;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .news-desc {
@@ -237,6 +285,11 @@ onMounted(() => {
   color: #595959;
   line-height: 1.7;
   margin: 0;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+  flex: 1;
 }
 
 .news-card-footer {
@@ -245,6 +298,7 @@ onMounted(() => {
   display: flex;
   justify-content: flex-start;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .news-author {
@@ -270,5 +324,131 @@ onMounted(() => {
 .empty-state p {
   font-size: 16px;
   margin: 0;
+}
+
+.news-detail-content {
+  position: relative;
+  padding: 0;
+}
+
+.detail-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.04);
+  color: #8c8c8c;
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.detail-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: #262626;
+  transform: rotate(90deg);
+}
+
+.detail-banner {
+  padding: 20px 24px 16px;
+  background: linear-gradient(135deg, #fafafe 0%, #f0f5ff 100%);
+  border-radius: 12px 12px 0 0;
+}
+
+.detail-meta {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+.detail-category {
+  background: linear-gradient(135deg, #1890ff, #096dd9);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 6px;
+  letter-spacing: 0.5px;
+}
+
+.detail-date {
+  font-size: 13px;
+  color: #8c8c8c;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+  margin: 0 0 8px;
+  line-height: 1.4;
+  letter-spacing: 0.3px;
+}
+
+.detail-author {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.author-avatar {
+  font-size: 16px;
+  color: #bfbfbf;
+}
+
+.author-name {
+  font-size: 13px;
+  color: #595959;
+  font-weight: 500;
+}
+
+.detail-body {
+  padding: 16px 24px 24px;
+  max-height: 55vh;
+  overflow-y: auto;
+}
+
+.detail-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, #e8e8e8 20%, #e8e8e8 80%, transparent);
+  margin-bottom: 16px;
+}
+
+.detail-text {
+  font-size: 14px;
+  color: #434343;
+  line-height: 1.8;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+:deep(.el-dialog) {
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+}
+
+:deep(.el-dialog__header) {
+  display: none;
+}
+
+:deep(.el-dialog__body) {
+  padding: 0;
+}
+
+:deep(.el-overlay) {
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(4px);
 }
 </style>
