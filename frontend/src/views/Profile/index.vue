@@ -277,6 +277,7 @@ import { useRouter } from 'vue-router'
 import { getFavoriteList, removeFavorite } from '@/api/favorite.js'
 import { getContractList } from '@/api/contract.js'
 import { getHouseDetail } from '@/api/house.js'
+import { uploadAvatar, getCurrentAvatar } from '@/api/avatar.js'
 import { mockFavorites } from '@/mock/favorites'
 import service from '@/utils/request'
 
@@ -517,7 +518,18 @@ const loadUserInfo = async () => {
       basicForm.nickname = userStore.userInfo.real_name || ''
       basicForm.phone = userStore.userInfo.phone || ''
       basicForm.email = userStore.userInfo.email || ''
-      avatarUrl.value = userStore.userAvatar || 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
+      
+      try {
+        const avatarRes = await getCurrentAvatar()
+        if (avatarRes.code === 0 && avatarRes.data && avatarRes.data.url) {
+          avatarUrl.value = avatarRes.data.url
+        } else {
+          avatarUrl.value = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
+        }
+      } catch (avatarErr) {
+        console.warn('获取头像失败，使用默认头像', avatarErr)
+        avatarUrl.value = 'https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png'
+      }
     }
   } catch (e) {
     console.error('加载用户信息失败', e)
@@ -530,29 +542,40 @@ const handleAvatarUpload = () => {
   avatarInput.value.click()
 }
 
-const handleAvatarChange = (e) => {
+const handleAvatarChange = async (e) => {
   const file = e.target.files[0]
-  if (file) {
-    const reader = new FileReader()
-    reader.onload = async (event) => {
-      avatarUrl.value = event.target.result
-      
-      const avatarBase64 = event.target.result
-      if (avatarBase64.length > 255) {
-        ElMessage.warning('头像链接超过255字符限制，请使用短链接头像')
-        console.warn('头像base64长度超过限制:', avatarBase64.length, '字符')
-        return
-      }
-      
-      try {
-        await userStore.updateCurrentUser({ avatar: avatarBase64 })
-        await loadUserInfo()
-      } catch (err) {
-        console.error('头像更新失败', err)
-      }
-    }
-    reader.readAsDataURL(file)
+  if (!file) return
+  
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  if (!allowedTypes.includes(file.type)) {
+    ElMessage.warning('请上传 jpg/png/webp/gif 格式的图片')
+    return
   }
+  
+  if (file.size > 5 * 1024 * 1024) {
+    ElMessage.warning('图片大小不能超过 5MB')
+    return
+  }
+  
+  const formData = new FormData()
+  formData.append('file', file)
+  
+  try {
+    ElMessage.info('正在上传头像...')
+    const res = await uploadAvatar(formData)
+    if (res.code === 0 && res.data) {
+      avatarUrl.value = res.data.url
+      ElMessage.success('头像上传成功')
+      await userStore.fetchCurrentUser()
+    } else {
+      ElMessage.error(res.message || '头像上传失败')
+    }
+  } catch (err) {
+    console.error('头像上传失败', err)
+    ElMessage.error(err.response?.data?.message || '头像上传失败')
+  }
+  
+  e.target.value = ''
 }
 
 const validatePhone = (phone) => {

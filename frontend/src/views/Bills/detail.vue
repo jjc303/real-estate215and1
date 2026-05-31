@@ -21,8 +21,8 @@
           <span class="bill-no">账单 #{{ bill.id }}</span>
           <span class="bill-status" :class="bill.status">{{ getStatusText(bill.status) }}</span>
         </div>
-        <div class="house-title">{{ bill.house?.title }}</div>
-        <div class="house-address">{{ bill.house?.region }} - {{ bill.house?.address }}</div>
+        <div class="house-title">房源 #{{ bill.house_id }}</div>
+        <div class="house-address">{{ bill.contract_id ? '合同 #' + bill.contract_id : '' }}</div>
       </div>
 
       <div class="bill-info-section">
@@ -32,7 +32,11 @@
         <div class="info-grid">
           <div class="info-item">
             <span class="info-label">账期</span>
-            <span class="info-value">{{ bill.period }}</span>
+            <span class="info-value">{{ formatPeriod(bill.due_date) }}</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">账单类型</span>
+            <span class="info-value">{{ bill.bill_type }}</span>
           </div>
           <div class="info-item">
             <span class="info-label">应付金额</span>
@@ -43,8 +47,8 @@
             <span class="info-value">{{ bill.due_date }}</span>
           </div>
           <div class="info-item">
-            <span class="info-label">支付时间</span>
-            <span class="info-value">{{ bill.paid_date || '-' }}</span>
+            <span class="info-label">备注</span>
+            <span class="info-value">{{ bill.remark || '-' }}</span>
           </div>
         </div>
       </div>
@@ -55,16 +59,8 @@
         </div>
         <div class="info-grid">
           <div class="info-item">
-            <span class="info-label">房源名称</span>
-            <span class="info-value">{{ bill.house?.title }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">所在区域</span>
-            <span class="info-value">{{ bill.house?.region }}</span>
-          </div>
-          <div class="info-item">
-            <span class="info-label">详细地址</span>
-            <span class="info-value">{{ bill.house?.address }}</span>
+            <span class="info-label">房源 ID</span>
+            <span class="info-value">#{{ bill.house_id }}</span>
           </div>
         </div>
       </div>
@@ -127,88 +123,15 @@ import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import service from '@/utils/request'
 
-const USE_MOCK_DATA = true
-
 const loading = ref(true)
 const bill = ref({})
-
-const mockBills = [
-  {
-    id: 1,
-    contract_id: 1,
-    house_id: 1,
-    tenant_id: 2,
-    landlord_id: 3,
-    period: '2024年1月',
-    amount: '5000.00',
-    status: 'paid',
-    due_date: '2024-01-10',
-    paid_date: '2024-01-05',
-    created_at: '2024-01-01T00:00:00',
-    updated_at: '2024-01-05T10:00:00',
-    house: {
-      id: 1,
-      title: '麓山南精装两室',
-      region: '岳麓区',
-      address: '麓山南路100号',
-      house_type: '两室一厅',
-      area: '85.00',
-      rent: '5000.00'
-    }
-  },
-  {
-    id: 2,
-    contract_id: 1,
-    house_id: 1,
-    tenant_id: 2,
-    landlord_id: 3,
-    period: '2024年2月',
-    amount: '5000.00',
-    status: 'unpaid',
-    due_date: '2024-02-10',
-    paid_date: null,
-    created_at: '2024-02-01T00:00:00',
-    updated_at: '2024-02-01T00:00:00',
-    house: {
-      id: 1,
-      title: '麓山南精装两室',
-      region: '岳麓区',
-      address: '麓山南路100号',
-      house_type: '两室一厅',
-      area: '85.00',
-      rent: '5000.00'
-    }
-  },
-  {
-    id: 3,
-    contract_id: 2,
-    house_id: 2,
-    tenant_id: 4,
-    landlord_id: 5,
-    period: '2024年1月',
-    amount: '3500.00',
-    status: 'overdue',
-    due_date: '2024-01-15',
-    paid_date: null,
-    created_at: '2024-01-01T00:00:00',
-    updated_at: '2024-01-01T00:00:00',
-    house: {
-      id: 2,
-      title: '天马小区3栋',
-      region: '岳麓区',
-      address: '天马小区3栋',
-      house_type: '一室一厅',
-      area: '50.00',
-      rent: '3500.00'
-    }
-  }
-]
 
 const getStatusText = (status) => {
   const map = {
     unpaid: '待支付',
     paid: '已支付',
-    overdue: '已逾期'
+    overdue: '已逾期',
+    cancelled: '已取消'
   }
   return map[status] || status
 }
@@ -225,18 +148,19 @@ const formatDateTime = (dateTime) => {
   })
 }
 
+const formatPeriod = (dateStr) => {
+  if (!dateStr) return '-'
+  const d = new Date(dateStr)
+  return `${d.getFullYear()}年${d.getMonth() + 1}月`
+}
+
 const fetchBillDetail = async () => {
   loading.value = true
   try {
     const billId = window.location.pathname.split('/').pop()
-    
-    if (USE_MOCK_DATA) {
-      bill.value = mockBills.find(b => b.id == billId) || {}
-    } else {
-      const res = await service.get(`/v1/bills/${billId}`)
-      if (res.code === 0) {
-        bill.value = res.data
-      }
+    const res = await service.get(`/v1/bills/${billId}`)
+    if (res.code === 0) {
+      bill.value = res.data
     }
   } catch (e) {
     ElMessage.error('加载账单详情失败')
@@ -249,7 +173,7 @@ const fetchBillDetail = async () => {
 const payBill = async () => {
   try {
     await ElMessageBox.confirm(
-      `确定要支付账单吗？\n账单 #${bill.value.id}\n房源：${bill.value.house?.title}\n金额：¥${bill.value.amount}`,
+      `确定要支付账单吗？\n账单 #${bill.value.id}\n金额：¥${bill.value.amount}`,
       '确认支付',
       {
         confirmButtonText: '确认支付',
@@ -258,22 +182,15 @@ const payBill = async () => {
       }
     )
     
-    if (USE_MOCK_DATA) {
-      bill.value.status = 'paid'
-      bill.value.paid_date = new Date().toISOString().split('T')[0]
+    const res = await service.post('/v1/payments', {
+      bill_id: bill.value.id,
+      amount: bill.value.amount,
+      payment_method: 'mock',
+      remark: '在线支付'
+    })
+    if (res.code === 0) {
       ElMessage.success(`账单 #${bill.value.id} 支付成功！`)
-    } else {
-      const res = await service.post('/v1/payments', {
-        bill_id: bill.value.id,
-        amount: bill.value.amount,
-        payment_method: 'mock',
-        remark: '在线支付'
-      })
-      if (res.code === 0) {
-        bill.value.status = 'paid'
-        bill.value.paid_date = new Date().toISOString().split('T')[0]
-        ElMessage.success(`账单 #${bill.value.id} 支付成功！`)
-      }
+      fetchBillDetail()
     }
   } catch (e) {
     if (e !== 'cancel') {
@@ -413,6 +330,11 @@ onMounted(() => {
 .bill-status.overdue {
   background: #fff2f0;
   color: #ff4d4f;
+}
+
+.bill-status.cancelled {
+  background: #f5f5f5;
+  color: #8c8c8c;
 }
 
 .house-title {

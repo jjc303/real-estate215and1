@@ -399,7 +399,8 @@ const tabs = [
   { label: '全部', value: 'all' },
   { label: '待支付', value: 'unpaid' },
   { label: '已支付', value: 'paid' },
-  { label: '已逾期', value: 'overdue' }
+  { label: '已逾期', value: 'overdue' },
+  { label: '已取消', value: 'cancelled' }
 ]
 
 const filteredBills = computed(() => {
@@ -418,7 +419,8 @@ const getStatusText = (status) => {
   const map = {
     unpaid: '待支付',
     paid: '已支付',
-    overdue: '已逾期'
+    overdue: '已逾期',
+    cancelled: '已取消'
   }
   return map[status] || status
 }
@@ -857,6 +859,11 @@ watch(() => route.query, async () => {
 .bill-status.overdue {
   background: #fff2f0;
   color: #ff4d4f;
+}
+
+.bill-status.cancelled {
+  background: #f5f5f5;
+  color: #8c8c8c;
 }
 
 .bill-title {
