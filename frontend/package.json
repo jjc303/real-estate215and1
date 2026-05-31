@@ -11,6 +11,7 @@
   "dependencies": {
     "@fortawesome/fontawesome-free": "^7.2.0",
     "axios": "^1.15.0",
+    "echarts": "^6.1.0",
     "element-plus": "^2.13.7",
     "pinia": "^3.0.4",
     "vue": "^3.5.31",

@@ -60,13 +60,4 @@ export const menus = {
     { name: '新闻通知', path: '/news', icon: 'Message' },
     { name: '个人中心', path: '/profile', icon: 'User' }
   ],
-
-  admin: [  // 管理员
-    { name: '用户管理', path: '/admin/users', icon: 'Users' },
-    { name: '房源监管', path: '/admin/houses', icon: 'Home' },
-    { name: '投诉处理', path: '/admin/complaints', icon: 'Tool' },
-    { name: '报表统计', path: '/admin/reports', icon: 'BarChart' },
-    { name: '系统监控', path: '/admin/monitor', icon: 'Monitor' },
-    { name: '新闻管理', path: '/message/news' }
-  ]
 }

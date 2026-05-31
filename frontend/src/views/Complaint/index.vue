@@ -46,16 +46,11 @@
             <span class="complaint-status" :class="complaint.status">{{ getStatusText(complaint.status) }}</span>
           </div>
           
-          <div class="complaint-title">{{ complaint.title }}</div>
+          <div class="complaint-title">{{ complaint.description.length > 50 ? complaint.description.substring(0, 50) + '...' : complaint.description }}</div>
           
           <div class="complaint-house">
             <i class="fa-solid fa-home"></i>
-            <span>房源：{{ complaint.house?.title }}</span>
-          </div>
-          
-          <div class="complaint-type">
-            <i class="fa-solid fa-tag"></i>
-            <span>类型：{{ getTypeText(complaint.type) }}</span>
+            <span>合同ID：#{{ complaint.contract_id }}</span>
           </div>
           
           <div class="complaint-desc">
@@ -66,17 +61,12 @@
           <div class="complaint-dates">
             <div class="date-item">
               <i class="fa-solid fa-clock"></i>
-              <span>提交时间：{{ complaint.created_at }}</span>
+              <span>提交时间：{{ formatDate(complaint.created_at) }}</span>
             </div>
             <div v-if="complaint.processed_at" class="date-item">
               <i class="fa-solid fa-check-circle"></i>
-              <span>处理时间：{{ complaint.processed_at }}</span>
+              <span>处理时间：{{ formatDate(complaint.processed_at) }}</span>
             </div>
-          </div>
-          
-          <div v-if="complaint.response" class="complaint-response">
-            <i class="fa-solid fa-reply"></i>
-            <span>回复：{{ complaint.response }}</span>
           </div>
         </div>
         
@@ -97,6 +87,46 @@
     />
 
     <el-dialog
+      v-model="detailDialogVisible"
+      title="投诉详情"
+      width="600px"
+    >
+      <div v-if="selectedComplaint" class="detail-content">
+        <div class="detail-row">
+          <span class="detail-label">投诉编号</span>
+          <span class="detail-value">#{{ selectedComplaint.id }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">状态</span>
+          <span :class="`complaint-status ${selectedComplaint.status}`">{{ getStatusText(selectedComplaint.status) }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">合同ID</span>
+          <span class="detail-value">#{{ selectedComplaint.contract_id }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">投诉内容</span>
+          <span class="detail-value" style="white-space: pre-wrap;">{{ selectedComplaint.description }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">提交时间</span>
+          <span class="detail-value">{{ formatDate(selectedComplaint.created_at) }}</span>
+        </div>
+        <div class="detail-row" v-if="selectedComplaint.processed_at">
+          <span class="detail-label">处理时间</span>
+          <span class="detail-value">{{ formatDate(selectedComplaint.processed_at) }}</span>
+        </div>
+        <div class="detail-row" v-if="selectedComplaint.resolved_at">
+          <span class="detail-label">解决时间</span>
+          <span class="detail-value">{{ formatDate(selectedComplaint.resolved_at) }}</span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
+
+    <el-dialog
       v-model="dialogVisible"
       title="提交投诉"
       width="500px"
@@ -112,18 +142,7 @@
             />
           </el-select>
         </el-form-item>
-        <el-form-item label="投诉类型">
-          <el-select v-model="complaintForm.type" placeholder="请选择类型" style="width: 100%">
-            <el-option label="服务态度" value="service" />
-            <el-option label="房屋问题" value="house" />
-            <el-option label="合同纠纷" value="contract" />
-            <el-option label="费用问题" value="fee" />
-            <el-option label="其他" value="other" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="投诉标题">
-          <el-input v-model="complaintForm.title" placeholder="请输入投诉标题" />
-        </el-form-item>
+        
         <el-form-item label="投诉内容">
           <el-input 
             v-model="complaintForm.description" 
@@ -147,10 +166,10 @@ import { ref, computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
-import { mockComplaints, mockMyHouses } from '@/mock/complaints'
 import { getComplaintList, createComplaint } from '@/api/complaint'
+import { getContractList } from '@/api/contract'
 
-const USE_MOCK_DATA = true
+const USE_MOCK_DATA = false
 
 const loading = ref(false)
 const currentTab = ref('all')
@@ -159,12 +178,12 @@ const pageSize = ref(10)
 const total = ref(0)
 const complaints = ref([])
 const dialogVisible = ref(false)
+const detailDialogVisible = ref(false)
+const selectedComplaint = ref(null)
 const myHouses = ref([])
 
 const complaintForm = ref({
   contract_id: '',
-  type: '',
-  title: '',
   description: ''
 })
 
@@ -172,7 +191,7 @@ const tabs = [
   { label: '全部', value: 'all' },
   { label: '待处理', value: 'pending' },
   { label: '处理中', value: 'processing' },
-  { label: '已完成', value: 'completed' }
+  { label: '已解决', value: 'resolved' }
 ]
 
 const filteredComplaints = computed(() => {
@@ -191,50 +210,63 @@ const getStatusText = (status) => {
   const map = {
     pending: '待处理',
     processing: '处理中',
-    completed: '已完成'
+    resolved: '已解决',
+    closed: '已关闭',
+    rejected: '已拒绝'
   }
   return map[status] || status
 }
 
-const getTypeText = (type) => {
-  const map = {
-    service: '服务态度',
-    house: '房屋问题',
-    contract: '合同纠纷',
-    fee: '费用问题',
-    other: '其他'
+const formatDate = (dateStr) => {
+  if (!dateStr) return ''
+  try {
+    const date = new Date(dateStr)
+    return date.toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    })
+  } catch {
+    return dateStr
   }
-  return map[type] || type
 }
 
 const fetchComplaints = async () => {
   loading.value = true
   try {
-    if (USE_MOCK_DATA) {
-      const start = (pageNum.value - 1) * pageSize.value
-      const end = start + pageSize.value
-      complaints.value = mockComplaints.slice(start, end)
-      total.value = mockComplaints.length
-    } else {
-      const res = await getComplaintList({ page: pageNum.value, page_size: pageSize.value })
-      if (res.code === 0) {
-        complaints.value = res.data.list
-        total.value = res.data.total
-      }
+    const res = await getComplaintList({ page: pageNum.value, page_size: pageSize.value })
+    if (res.code === 0) {
+      complaints.value = res.data.items || res.data.list || []
+      total.value = res.data.total || 0
     }
   } catch (error) {
     console.error('获取投诉列表失败', error)
     complaints.value = []
+    total.value = 0
   } finally {
     loading.value = false
   }
 }
 
 const fetchMyHouses = async () => {
-  if (USE_MOCK_DATA) {
-    myHouses.value = mockMyHouses
-  } else {
-    // 真实API调用
+  try {
+    const res = await getContractList({ page: 1, page_size: 100 })
+    if (res.code === 0) {
+      const contracts = res.data.items || res.data.list || []
+      // 只保留已生效的合同（状态为 active）
+      const activeContracts = contracts.filter(c => c.status === 'active')
+      myHouses.value = activeContracts.map(c => ({
+        id: c.id,
+        title: c.house?.title || `合同 #${c.id}`,
+        contract_no: c.contract_no
+      }))
+    }
+  } catch (error) {
+    console.error('获取合同列表失败', error)
+    myHouses.value = []
   }
 }
 
@@ -253,47 +285,22 @@ const submitComplaint = async () => {
     ElMessage.warning('请选择合同')
     return
   }
-  if (!complaintForm.value.type) {
-    ElMessage.warning('请选择投诉类型')
-    return
-  }
-  if (!complaintForm.value.title) {
-    ElMessage.warning('请输入投诉标题')
-    return
-  }
   if (!complaintForm.value.description) {
     ElMessage.warning('请输入投诉内容')
     return
   }
 
   try {
-    if (USE_MOCK_DATA) {
-      const newComplaint = {
-        id: complaints.value.length + 1,
-        contract_id: complaintForm.value.contract_id,
-        house: myHouses.value.find(h => h.id === complaintForm.value.contract_id),
-        type: complaintForm.value.type,
-        title: complaintForm.value.title,
-        description: complaintForm.value.description,
-        status: 'pending',
-        created_at: new Date().toLocaleString(),
-        processed_at: null,
-        response: null
-      }
-      complaints.value.unshift(newComplaint)
-      total.value++
+    const res = await createComplaint({
+      contract_id: complaintForm.value.contract_id,
+      description: complaintForm.value.description
+    })
+    if (res.code === 0) {
       dialogVisible.value = false
       ElMessage.success('投诉提交成功')
+      fetchComplaints()
     } else {
-      const res = await createComplaint({
-        contract_id: complaintForm.value.contract_id,
-        description: complaintForm.value.description
-      })
-      if (res.code === 0) {
-        dialogVisible.value = false
-        ElMessage.success('投诉提交成功')
-        fetchComplaints()
-      }
+      ElMessage.error(res.message || '提交失败')
     }
   } catch (error) {
     ElMessage.error('提交失败，请稍后重试')
@@ -301,7 +308,8 @@ const submitComplaint = async () => {
 }
 
 const viewDetail = (complaint) => {
-  ElMessage.info(`查看投诉详情: ${complaint.title}`)
+  selectedComplaint.value = complaint
+  detailDialogVisible.value = true
 }
 
 const handlePageChange = (page) => {
@@ -461,9 +469,9 @@ onMounted(() => {
 
 .complaint-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  gap: 12px;
 }
 
 .complaint-no {
@@ -489,6 +497,11 @@ onMounted(() => {
 }
 
 .complaint-status.completed {
+  background: #f6ffed;
+  color: #52c41a;
+}
+
+.complaint-status.resolved {
   background: #f6ffed;
   color: #52c41a;
 }
@@ -565,5 +578,31 @@ onMounted(() => {
   justify-content: center;
   gap: 10px;
   margin-left: 20px;
+}
+
+.detail-content {
+  padding: 10px;
+}
+
+.detail-row {
+  display: flex;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  width: 100px;
+  color: #666;
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+.detail-value {
+  flex: 1;
+  color: #333;
 }
 </style>

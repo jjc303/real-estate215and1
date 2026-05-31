@@ -11,7 +11,7 @@
         <p class="subtitle">浏览最新平台公告和新闻资讯</p>
       </div>
 
-      <div class="news-list-wrapper">
+      <div class="news-list-wrapper" v-if="newsList.length > 0">
         <div class="news-card fade-in" v-for="(item, idx) in newsList" :key="item.id" :style="{ animationDelay: `${0.6 + idx * 0.12}s` }">
           <div class="news-badge" v-if="item.isTop">置顶</div>
           <div class="news-card-body">
@@ -29,58 +29,54 @@
           </div>
         </div>
       </div>
+      <div v-else class="empty-state">
+        <i class="fa-solid fa-newspaper"></i>
+        <p>暂无新闻公告</p>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, nextTick } from 'vue'
 import ParticlesBg from '@/components/ParticlesBg/index.vue'
+import { listNews } from '@/api/news.js'
 
-const newsList = ref([
-  {
-    id: 1,
-    title: '2026年第二季度租房补贴政策正式上线',
-    summary: '为进一步支持新市民安居，本市第二季度租房补贴申请通道已正式开放，符合条件的租客可通过平台直接在线申报。',
-    category: '政策通知',
-    date: '2026-05-08',
-    author: '平台运营',
-    isTop: true
-  },
-  {
-    id: 2,
-    title: '中南找房系统全面升级，全新功能上线',
-    summary: '本次升级新增智能推荐、VR看房、电子合同自动签署等多项重磅功能，大幅提升您的租房体验。',
-    category: '平台公告',
-    date: '2026-05-05',
-    author: '技术部',
-    isTop: true
-  },
-  {
-    id: 3,
-    title: '夏季租房高峰来临，教您如何快速选到好房',
-    summary: '毕业季即将到来，为帮助租客高效筛选高性价比房源，我们整理了夏季租房避坑指南和看房注意事项。',
-    category: '租房指南',
-    date: '2026-05-02',
-    author: '运营团队',
-    isTop: false
-  },
-  {
-    id: 4,
-    title: '五一限时活动圆满结束，中奖名单公布',
-    summary: '为期7天的五一租房优惠券活动已顺利落幕，现将幸运中奖用户名单公示，奖品将在3个工作日内陆续发放。',
-    category: '活动资讯',
-    date: '2026-05-01',
-    author: '市场部',
-    isTop: false
-  }
-])
-
+const newsList = ref([])
 const titleChars = '新闻通知'.split('')
 
+const loadNews = async () => {
+  try {
+    const res = await listNews({ page: 1, page_size: 50 })
+    console.log('新闻接口返回:', res)
+    if (res && res.code === 0) {
+      const list = res.data?.list || res.data?.items || []
+      console.log('实际列表数据:', list)
+      newsList.value = list.map(item => ({
+        id: item.id,
+        title: item.title || '无标题',
+        summary: (item.content && item.content.length > 150) ? item.content.substring(0, 150) + '...' : (item.content || '暂无内容'),
+        category: '平台公告',
+        date: item.created_at ? item.created_at.substring(0, 10) : '',
+        author: '平台运营',
+        isTop: item.is_top === true || item.status === 'published'
+      }))
+      console.log('处理后newsList:', newsList.value)
+    } else {
+      console.log('接口返回错误:', res)
+    }
+  } catch (e) {
+    console.error('加载新闻列表失败', e)
+  }
+}
+
 onMounted(() => {
-  document.querySelectorAll('.fade-in').forEach((el, idx) => {
-    setTimeout(() => el.classList.add('visible'), parseFloat(el.style.animationDelay) * 1000 + 200)
+  loadNews().then(() => {
+    nextTick(() => {
+      document.querySelectorAll('.fade-in').forEach((el, idx) => {
+        setTimeout(() => el.classList.add('visible'), idx * 120)
+      })
+    })
   })
 })
 </script>
@@ -257,5 +253,22 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 80px 20px;
+  color: #8c8c8c;
+}
+
+.empty-state i {
+  font-size: 64px;
+  margin-bottom: 20px;
+  opacity: 0.5;
+}
+
+.empty-state p {
+  font-size: 16px;
+  margin: 0;
 }
 </style>

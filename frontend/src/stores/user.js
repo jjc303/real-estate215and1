@@ -382,6 +382,9 @@ export const useUserStore = defineStore('user', () => {
 
             ElMessage.success(`登录成功！欢迎 ${userName.value}`);
             closeAllModal();
+            if (userRole.value === 'admin') {
+                router.push('/admin')
+            }
         } catch (e) {
             // 优先显示后端返回的message，如"用户名或密码错误"、"用户不存在"等
             handleError(e, '用户名或密码错误')

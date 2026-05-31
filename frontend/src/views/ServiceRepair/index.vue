@@ -563,9 +563,9 @@ onMounted(() => {
 
 .repair-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  gap: 12px;
 }
 
 .repair-no {

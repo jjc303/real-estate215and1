@@ -37,6 +37,7 @@ const routes = [
   {
     path: '/admin',
     name: 'admin',
+    meta: { hideHeader: true },
     component: Admin
   },
   {
