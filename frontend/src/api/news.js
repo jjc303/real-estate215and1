@@ -37,3 +37,11 @@ export const deleteNews = (id) => {
     method: 'delete'
   })
 }
+
+export const publishNews = (id) => {
+  return request({
+    url: `v1/news/${id}`,
+    method: 'patch',
+    data: { status: 'published' }
+  })
+}

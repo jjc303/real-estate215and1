@@ -300,14 +300,14 @@
       <template v-if="activeMenu === 'news'">
         <div class="content-card">
           <div style="margin-bottom: 20px;">
-            <el-button type="primary" @click="editNewsId = null; newsForm.title = ''; newsForm.content = ''; newsForm.status = 'draft'; showNewsModal = true">
+            <el-button type="primary" @click="editNewsId = null; newsForm.title = ''; newsForm.content = ''; showNewsModal = true">
               <i class="fa-solid fa-plus"></i>
               添加新闻
             </el-button>
           </div>
           <el-table :data="news" border stripe v-loading="newsLoading" fit>
             <el-table-column prop="id" label="ID" width="70" align="center" fixed></el-table-column>
-            <el-table-column prop="title" label="标题" min-width="300" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip></el-table-column>
             <el-table-column prop="status" label="状态" width="100" align="center">
               <template #default="scope">
                 <span :class="['news-status-tag', scope.row.status === 'published' ? 'published' : 'draft']">
@@ -316,9 +316,10 @@
               </template>
             </el-table-column>
             <el-table-column prop="created_at" label="创建时间" width="175"></el-table-column>
-            <el-table-column label="操作" width="180" align="center" fixed="right">
+            <el-table-column label="操作" width="260" align="center" fixed="right">
               <template #default="scope">
                 <el-button size="small" @click="viewNews(scope.row)">查看</el-button>
+                <el-button v-if="scope.row.status === 'draft'" size="small" type="success" @click="handlePublishNews(scope.row)">发布</el-button>
                 <el-button size="small" type="primary" @click="editNews(scope.row)">编辑</el-button>
                 <el-button size="small" type="danger" @click="deleteNews(scope.row)">删除</el-button>
               </template>
@@ -647,12 +648,6 @@
         <el-form-item label="内容">
           <el-input v-model="newsForm.content" type="textarea" :rows="8" placeholder="请输入新闻内容"></el-input>
         </el-form-item>
-        <el-form-item label="状态">
-          <el-select v-model="newsForm.status">
-            <el-option label="草稿" value="draft"></el-option>
-            <el-option label="已发布" value="published"></el-option>
-          </el-select>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="showNewsModal = false">取消</el-button>
@@ -684,7 +679,7 @@ import {
   getComplaintRepairCount
 } from '@/api/statistics.js'
 import {
-  listNews, getNewsDetail, createNews, updateNews, deleteNews as apiDeleteNews
+  listNews, getNewsDetail, createNews, updateNews, deleteNews as apiDeleteNews, publishNews
 } from '@/api/news.js'
 
 const userStore = useUserStore()
@@ -779,8 +774,7 @@ const showNewsDetail = ref(false)
 const selectedNews = ref(null)
 const newsForm = reactive({
   title: '',
-  content: '',
-  status: 'draft'
+  content: ''
 })
 
 const getRoleLabel = (role) => {
@@ -1314,7 +1308,6 @@ const editNews = (newsItem) => {
   editNewsId.value = newsItem.id
   newsForm.title = newsItem.title
   newsForm.content = newsItem.content || ''
-  newsForm.status = newsItem.status
   showNewsModal.value = true
 }
 
@@ -1330,8 +1323,7 @@ const saveNews = async () => {
   try {
     const data = {
       title: newsForm.title,
-      content: newsForm.content,
-      status: newsForm.status
+      content: newsForm.content
     }
     let res
     if (editNewsId.value) {
@@ -1345,7 +1337,6 @@ const saveNews = async () => {
       editNewsId.value = null
       newsForm.title = ''
       newsForm.content = ''
-      newsForm.status = 'draft'
       loadNews()
     } else {
       ElMessage.error(res.message || '操作失败')
@@ -1375,6 +1366,29 @@ const deleteNews = async (newsItem) => {
     if (e !== 'cancel') {
       console.error('删除新闻失败', e)
       ElMessage.error('删除新闻失败')
+    }
+  }
+}
+
+const handlePublishNews = async (newsItem) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要发布新闻 #${newsItem.id} 吗？`,
+      '确认发布',
+      { type: 'info' }
+    )
+    
+    const res = await publishNews(newsItem.id)
+    if (res.code === 0) {
+      ElMessage.success('发布成功')
+      loadNews()
+    } else {
+      ElMessage.error(res.message || '发布失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel') {
+      console.error('发布新闻失败', e)
+      ElMessage.error('发布新闻失败')
     }
   }
 }
@@ -2029,7 +2043,7 @@ watch(activeMenu, (newMenu, oldMenu) => {
 }
 
 .stat-value {
-  font-size: 28px;
+  font-size: 22px;
   font-weight: 600;
   color: #1f2937;
 }
