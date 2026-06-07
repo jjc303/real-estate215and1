@@ -81,6 +81,13 @@
                     >
                         {{ house.isCollect ? '★ 已收藏' : '☆ 收藏' }}
                     </button>
+                    <button 
+                        class="btn btn-ai"
+                        @click="showAiChat = true"
+                    >
+                        <i class="fa-solid fa-robot"></i>
+                        问问AI
+                    </button>
                 </div>
             </div>
         </div>
@@ -141,6 +148,12 @@
             v-model:visible="reserveDialogVisible"
             :house-info="houseInfo"
         />
+
+        <!-- AI 聊天弹窗 -->
+        <AiChatDialog
+            v-model:visible="showAiChat"
+            :house-id="house.id"
+        />
     </div>
 </template>
 
@@ -151,6 +164,7 @@ import { useUserStore } from '@/stores/user.js';
 import { ElMessage } from 'element-plus';
 import ChatPopup from '@/components/ChatPopup.vue';
 import ReserveDialog from '@/components/ReserveDialog.vue';
+import AiChatDialog from '@/components/AiChatDialog.vue';
 import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js';
 import { getHouseDetail } from '@/api/house.js';
 
@@ -161,6 +175,7 @@ const userStore = useUserStore();
 const house = ref({});
 const currentImgIndex = ref(0);
 const showChat = ref(false);
+const showAiChat = ref(false);
 
 // 预约相关
 const reserveDialogVisible = ref(false);
@@ -521,6 +536,20 @@ onMounted(() => {
     background: #006cd8;
     color: #fff;
     border-color: #006cd8;
+}
+
+.btn-ai {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #fff;
+}
+
+.btn-ai:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 10px rgba(102, 126, 234, 0.3);
+}
+
+.btn-ai i {
+    margin-right: 6px;
 }
 
 .btn-icon {

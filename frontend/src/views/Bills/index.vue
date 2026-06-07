@@ -360,12 +360,9 @@ import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 import { useUserStore } from '@/stores/user'
-import { mockTenantBills, mockLandlordBills } from '@/mock/bills'
 
 const userStore = useUserStore()
 const route = useRoute()
-
-const USE_MOCK_DATA = false
 
 const loading = ref(false)
 const currentTab = ref('all')
@@ -440,34 +437,25 @@ const formatPeriod = (dateStr) => {
 const fetchBills = async () => {
   loading.value = true
   try {
-    if (USE_MOCK_DATA) {
-      // 根据角色使用不同的模拟数据
-      const currentMockData = isTenant.value ? mockTenantBills : mockLandlordBills
-      const start = (pageNum.value - 1) * pageSize.value
-      const end = start + pageSize.value
-      bills.value = currentMockData.slice(start, end)
-      total.value = currentMockData.length
-    } else {
-      const params = {
-        page: pageNum.value,
-        page_size: pageSize.value
-      }
-      const res = await service.get('/v1/bills', { params })
-      if (res.code === 0) {
-        bills.value = res.data.list.map(item => ({
-          ...item,
-          house: {
-            title: `房源 #${item.house_id}`,
-            region: '-',
-            address: '-'
-          },
-          period: formatPeriod(item.due_date || item.created_at),
-          paid_date: null,
-          tenant_name: `租客 #${item.tenant_id}`,
-          landlord_name: `房东 #${item.landlord_id}`
-        }))
-        total.value = res.data.total
-      }
+    const params = {
+      page: pageNum.value,
+      page_size: pageSize.value
+    }
+    const res = await service.get('/v1/bills', { params })
+    if (res.code === 0) {
+      bills.value = res.data.list.map(item => ({
+        ...item,
+        house: {
+          title: `房源 #${item.house_id}`,
+          region: '-',
+          address: '-'
+        },
+        period: formatPeriod(item.due_date || item.created_at),
+        paid_date: null,
+        tenant_name: `租客 #${item.tenant_id}`,
+        landlord_name: `房东 #${item.landlord_id}`
+      }))
+      total.value = res.data.total
     }
   } catch (e) {
     ElMessage.error('加载账单列表失败')
@@ -494,29 +482,17 @@ const payBill = async (bill) => {
       }
     )
     
-    if (USE_MOCK_DATA) {
-      // 根据角色使用不同的模拟数据
-      const currentMockData = isTenant.value ? mockTenantBills : mockLandlordBills
-      const idx = currentMockData.findIndex(b => b.id === bill.id)
-      if (idx !== -1) {
-        currentMockData[idx].status = 'paid'
-        currentMockData[idx].paid_date = new Date().toISOString().split('T')[0]
-      }
+    const res = await service.post('/v1/payments', {
+      bill_id: bill.id,
+      amount: bill.amount,
+      payment_method: 'mock',
+      remark: '在线支付'
+    })
+    if (res.code === 0) {
       ElMessage.success(`账单 #${bill.id} 支付成功！`)
       fetchBills()
     } else {
-      const res = await service.post('/v1/payments', {
-        bill_id: bill.id,
-        amount: bill.amount,
-        payment_method: 'mock',
-        remark: '在线支付'
-      })
-      if (res.code === 0) {
-        ElMessage.success(`账单 #${bill.id} 支付成功！`)
-        fetchBills()
-      } else {
-        ElMessage.error(res.message || '支付失败')
-      }
+      ElMessage.error(res.message || '支付失败')
     }
   } catch (e) {
     if (e !== 'cancel' && e !== 'close') {
