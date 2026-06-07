@@ -32,7 +32,7 @@ class RentalHouseChatPrompt:
                     "7. 涉及合同、押金纠纷、投诉、报修等问题时，只提供一般性说明，并提醒用户以平台记录和人工处理为准。\n"
                     "8. 回答要简洁、自然，适合普通租客阅读。\n"
                     "9. 你必须只返回 JSON，不要输出 JSON 之外的任何内容。\n"
-                    '10. JSON 格式固定为：{"answer":"回答内容"}。\n'
+                    '10. JSON 格式固定为：{{"answer":"回答内容"}}。\n'
                     "11. answer 必须是字符串，且能被 json.loads 正确解析。\n"
                     "12. 不要使用 Markdown 标题、列表、表格或代码块。\n\n"
                     "【平台上下文】\n{platform_context}\n\n"

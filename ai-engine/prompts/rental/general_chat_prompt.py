@@ -29,7 +29,7 @@ class RentalGeneralChatPrompt:
                     "5. 必要时提醒用户以平台规则、合同记录和人工处理为准。\n"
                     "6. 回答要简洁、清楚、可执行。\n"
                     "7. 你必须只返回 JSON，不要输出 JSON 之外的任何内容。\n"
-                    '8. JSON 格式固定为：{"answer":"回答内容"}。\n'
+                    '8. JSON 格式固定为：{{"answer":"回答内容"}}。\n'
                     "9. answer 必须是字符串，且能被 json.loads 正确解析。\n"
                     "10. 不要使用 Markdown 标题、列表、表格或代码块。\n\n"
                     "【平台上下文】\n{platform_context}\n\n"
