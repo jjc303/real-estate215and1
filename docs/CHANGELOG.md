@@ -25,6 +25,15 @@
 - `BillService` 新增：`get_landlord_income_summary()`、`check_overdue_bills()`
 - 新增 `scripts/check_overdue_bills.py` — 自动逾期检测脚本（可 crontab 定时执行）
 
+#### 合同与账单 PDF 下载
+
+- 新增 `app/common/pdf_generator.py` — PDF 生成模块（基于 fpdf2，支持中文）
+- 新增接口：
+  - `GET /api/v1/contracts/{id}/download` — 下载合同 PDF
+  - `GET /api/v1/bills/{id}/download` — 下载账单 PDF
+- 新增依赖：`fpdf2>=2.8`
+- Dockerfile 安装中文字体 `fonts-wqy-microhei`
+
 ### Added Tests
 
 - `backend/tests/api/test_house_video_flow.py` — 3 个测试（上传/列表/删除、无token、非房东）

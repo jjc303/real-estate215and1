@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from flask import Blueprint, g, request
+import io
+
+from flask import Blueprint, g, request, send_file
 
 from app.common.dependencies import get_required_current_user_id
 from app.container.services import get_bill_service
@@ -80,3 +82,16 @@ def check_overdue():
     service = get_bill_service()
     count = service.check_overdue_bills(g.db)
     return success(data={"processed": count})
+
+
+@bp.get("/<int:bill_id>/download")
+def download_bill(bill_id: int):
+    current_user_id = get_required_current_user_id()
+    service = get_bill_service()
+    pdf_bytes = service.download_bill(g.db, current_user_id=current_user_id, bill_id=bill_id)
+    return send_file(
+        io.BytesIO(pdf_bytes),
+        mimetype="application/pdf",
+        as_attachment=True,
+        download_name=f"bill_{bill_id}.pdf",
+    )
