@@ -276,7 +276,9 @@ import { computed } from 'vue';
 import { useRouter } from 'vue-router'
 import { getFavoriteList, removeFavorite } from '@/api/favorite.js'
 import { getContractList } from '@/api/contract.js'
-import { getHouseDetail } from '@/api/house.js'
+import { getHouseDetail, getHouseList } from '@/api/house.js'
+import { getConversationList } from '@/api/conversation.js'
+import { getAppointmentList } from '@/api/appointment.js'
 import { uploadAvatar, getCurrentAvatar } from '@/api/avatar.js'
 import { mockFavorites } from '@/mock/favorites'
 import service from '@/utils/request'
@@ -315,10 +317,34 @@ const menuItems = computed(() => {
 const avatarUrl = ref('https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png')
 
 const stats = reactive({
-  houses: 3,
-  inquiries: 12,
-  contracts: 1
+  houses: 0,
+  inquiries: 0,
+  contracts: 0
 })
+
+const loadStats = async () => {
+  try {
+    const [housesRes, conversationsRes, contractsRes] = await Promise.allSettled([
+      getHouseList({ mine: true, page: 1, page_size: 1 }),
+      getConversationList({ page: 1, page_size: 1 }),
+      getContractList({ page: 1, page_size: 1 })
+    ])
+
+    if (housesRes.status === 'fulfilled' && housesRes.value.code === 0) {
+      stats.houses = housesRes.value.data?.total || 0
+    }
+
+    if (conversationsRes.status === 'fulfilled' && conversationsRes.value.code === 0) {
+      stats.inquiries = conversationsRes.value.data?.total || 0
+    }
+
+    if (contractsRes.status === 'fulfilled' && contractsRes.value.code === 0) {
+      stats.contracts = contractsRes.value.data?.total || 0
+    }
+  } catch (e) {
+    console.error('加载统计数据失败', e)
+  }
+}
 
 const basicForm = reactive({
   username: '',
@@ -671,6 +697,7 @@ const changePassword = async () => {
 
 onMounted(() => {
   loadUserInfo()
+  loadStats()
   loadRentals()
   loadCollections()
 })

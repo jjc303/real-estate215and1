@@ -59,8 +59,8 @@ defineEmits(['collect'])
 const statusText = (status) => {
     const map = {
         draft: '草稿',
-        listed: '已上架',
-        rented: '已出租',
+        listed: '可租',
+        rented: '已租',
         offline: '已下架',
         maintenance: '维修中'
     }
@@ -145,6 +145,7 @@ const goToDetail = () => {
   color: #52c41a;
   border-color: #52c41a;
   background: #f6ffed;
+  font-weight: 500;
 }
 .status-tag.draft {
   color: #faad14;

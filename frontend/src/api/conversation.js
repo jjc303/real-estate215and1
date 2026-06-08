@@ -6,8 +6,8 @@ export const createConversation = (houseId) => {
 }
 
 // 获取会话列表
-export const getConversationList = () => {
-  return service.get('/v1/conversations')
+export const getConversationList = (params = {}) => {
+  return service.get('/v1/conversations', { params })
 }
 
 // 获取会话详情
