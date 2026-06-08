@@ -116,6 +116,9 @@
           <el-button type="primary" @click="openCreateDialog">
             <i class="fa-solid fa-plus"></i> 创建账单
           </el-button>
+          <el-button type="warning" @click="remindBill()">
+            <i class="fa-solid fa-bell"></i> 批量催缴
+          </el-button>
         </div>
       </div>
 
@@ -226,14 +229,6 @@
               @click.stop="markOverdue(bill)"
             >
               <i class="fa-solid fa-clock"></i> 标记逾期
-            </el-button>
-            <el-button
-              v-if="bill.status === 'unpaid' || bill.status === 'overdue'"
-              type="primary"
-              size="small"
-              @click.stop="remindBill(bill)"
-            >
-              <i class="fa-solid fa-bell"></i> 催缴
             </el-button>
           </div>
         </div>
@@ -394,7 +389,7 @@ import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 import { useUserStore } from '@/stores/user'
-import { getLandlordIncomeSummary, remindBill as remindBillApi } from '@/api/bill.js'
+import { getLandlordIncomeSummary, checkOverdueBills } from '@/api/bill.js'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -606,24 +601,24 @@ const markOverdue = async (bill) => {
   }
 }
 
-const remindBill = async (bill) => {
+const remindBill = async () => {
   try {
     await ElMessageBox.confirm(
-      `确定向租客发送催缴提醒吗？\n账单 #${bill.id}（¥${bill.amount}）`,
-      '催缴提醒',
-      { confirmButtonText: '发送', cancelButtonText: '取消', type: 'warning' }
+      '将检测所有逾期账单并发送催缴通知给对应租客，确定继续？',
+      '批量催缴',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
     )
-    const res = await remindBillApi(bill.id)
+    const res = await checkOverdueBills()
     if (res.code === 0) {
-      ElMessage.success('催缴提醒已发送')
+      ElMessage.success(`催缴处理完成，共处理 ${res.data?.processed || 0} 笔`)
       fetchBills()
       fetchSummary()
     } else {
-      ElMessage.error(res.message || '发送失败')
+      ElMessage.error(res.message || '催缴失败')
     }
   } catch (e) {
     if (e !== 'cancel' && e !== 'close') {
-      ElMessage.error(e.response?.data?.message || '发送失败，请稍后重试')
+      ElMessage.error(e.response?.data?.message || '催缴失败，请稍后重试')
       console.error(e)
     }
   }

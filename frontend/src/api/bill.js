@@ -25,9 +25,9 @@ export const markBillOverdue = (id) => {
   return service.patch(`/v1/bills/${id}/mark-overdue`)
 }
 
-// 催缴提醒
-export const remindBill = (id) => {
-  return service.patch(`/v1/bills/${id}/remind`)
+// 催缴提醒（批量检测逾期并通知）
+export const checkOverdueBills = () => {
+  return service.post('/v1/bills/check-overdue')
 }
 
 // 房东收入汇总
