@@ -74,3 +74,12 @@ export const deleteContract = (id) => {
     method: 'delete'
   })
 }
+
+// 下载合同 PDF
+export const downloadContract = (id) => {
+  return request({
+    url: `v1/contracts/${id}/download`,
+    method: 'get',
+    responseType: 'blob'
+  })
+}

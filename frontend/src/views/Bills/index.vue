@@ -92,6 +92,9 @@
             >
               <i class="fa-solid fa-exclamation-circle"></i> 逾期支付
             </el-button>
+            <el-button size="small" @click.stop="downloadBill(bill)">
+              <i class="fa-solid fa-download"></i> 下载
+            </el-button>
           </div>
         </div>
       </div>
@@ -230,6 +233,9 @@
             >
               <i class="fa-solid fa-clock"></i> 标记逾期
             </el-button>
+            <el-button size="small" @click.stop="downloadBill(bill)">
+              <i class="fa-solid fa-download"></i> 下载
+            </el-button>
           </div>
         </div>
       </div>
@@ -329,6 +335,7 @@
         </div>
       </div>
       <template #footer>
+        <el-button @click="downloadBill(detailBill)" v-if="detailBill">下载账单</el-button>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
@@ -389,7 +396,7 @@ import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 import { useUserStore } from '@/stores/user'
-import { getLandlordIncomeSummary, checkOverdueBills } from '@/api/bill.js'
+import { getLandlordIncomeSummary, checkOverdueBills, downloadBill as downloadBillApi } from '@/api/bill.js'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -621,6 +628,23 @@ const remindBill = async () => {
       ElMessage.error(e.response?.data?.message || '催缴失败，请稍后重试')
       console.error(e)
     }
+  }
+}
+
+const downloadBill = async (bill) => {
+  try {
+    const res = await downloadBillApi(bill.id)
+    const blob = new Blob([res], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `账单_${bill.id}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('账单下载成功')
+  } catch (e) {
+    ElMessage.error('账单下载失败')
+    console.error(e)
   }
 }
 

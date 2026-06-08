@@ -86,6 +86,9 @@
             >
               <i class="fa-solid fa-x"></i> 拒绝
             </el-button>
+            <el-button size="small" @click.stop="downloadContract(contract)">
+              <i class="fa-solid fa-download"></i> 下载
+            </el-button>
           </div>
         </div>
       </div>
@@ -198,6 +201,9 @@
             @click.stop="cancelContract(contract)"
           >
             <i class="fa-solid fa-ban"></i> 取消合同
+          </el-button>
+          <el-button size="small" @click.stop="downloadContract(contract)">
+            <i class="fa-solid fa-download"></i> 下载
           </el-button>
         </div>
       </div>
@@ -333,6 +339,7 @@
         </div>
       </div>
       <template #footer>
+        <el-button @click="downloadContract(detailContract)" v-if="detailContract">下载合同</el-button>
         <el-button @click="detailDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
@@ -442,6 +449,7 @@ import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 import { useUserStore } from '@/stores/user'
+import { downloadContract as downloadContractApi } from '@/api/contract.js'
 import { updateHouse } from '@/api/house'
 import { mockTenantContracts, mockLandlordContracts } from '@/mock/contracts'
 
@@ -665,6 +673,23 @@ const fetchContracts = async () => {
 const viewDetail = (contract) => {
   detailContract.value = contract
   detailDialogVisible.value = true
+}
+
+const downloadContract = async (contract) => {
+  try {
+    const res = await downloadContractApi(contract.id)
+    const blob = new Blob([res], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `合同_${contract.id}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('合同下载成功')
+  } catch (e) {
+    ElMessage.error('合同下载失败')
+    console.error(e)
+  }
 }
 
 const confirmContract = async (contract) => {

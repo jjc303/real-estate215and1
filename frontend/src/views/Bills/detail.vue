@@ -113,6 +113,9 @@
         <el-button size="large" @click="goBack">
           <i class="fa-solid fa-arrow-left"></i> 返回列表
         </el-button>
+        <el-button type="primary" size="large" @click="downloadBill">
+          <i class="fa-solid fa-download"></i> 下载账单
+        </el-button>
       </div>
     </div>
   </div>
@@ -122,6 +125,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import service from '@/utils/request'
+import { downloadBill as downloadBillApi } from '@/api/bill.js'
 
 const loading = ref(true)
 const bill = ref({})
@@ -202,6 +206,23 @@ const payBill = async () => {
 
 const goBack = () => {
   window.history.back()
+}
+
+const downloadBill = async () => {
+  try {
+    const res = await downloadBillApi(bill.value.id)
+    const blob = new Blob([res], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `账单_${bill.value.id}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('账单下载成功')
+  } catch (e) {
+    ElMessage.error('账单下载失败')
+    console.error(e)
+  }
 }
 
 onMounted(() => {

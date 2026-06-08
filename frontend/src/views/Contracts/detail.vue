@@ -180,8 +180,14 @@
 import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import service from '@/utils/request'
+import { downloadContract as downloadContractApi } from '@/api/contract.js'
+import { useUserStore } from '@/stores/user'
+import { useRouter } from 'vue-router'
 
-const USE_MOCK_DATA = true
+const userStore = useUserStore()
+const router = useRouter()
+
+const USE_MOCK_DATA = false
 
 const loading = ref(true)
 const contract = ref({
@@ -405,8 +411,21 @@ const terminateContract = async () => {
   }
 }
 
-const downloadContract = () => {
-  ElMessage.success(`合同 #${contract.value.id} 下载成功！`)
+const downloadContract = async () => {
+  try {
+    const res = await downloadContractApi(contract.value.id)
+    const blob = new Blob([res], { type: 'application/pdf' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `合同_${contract.value.id}.pdf`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('合同下载成功')
+  } catch (e) {
+    ElMessage.error('合同下载失败')
+    console.error(e)
+  }
 }
 
 const goBack = () => {

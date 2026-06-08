@@ -34,3 +34,10 @@ export const checkOverdueBills = () => {
 export const getLandlordIncomeSummary = () => {
   return service.get('/v1/bills/landlord/summary')
 }
+
+// 下载账单 PDF
+export const downloadBill = (id) => {
+  return service.get(`/v1/bills/${id}/download`, {
+    responseType: 'blob'
+  })
+}
