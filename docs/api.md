@@ -1105,6 +1105,8 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `GET /api/v1/bills/{id}`
 - `PATCH /api/v1/bills/{id}/cancel`
 - `PATCH /api/v1/bills/{id}/overdue`
+- `GET /api/v1/bills/landlord/summary` — 房东收入看板
+- `POST /api/v1/bills/check-overdue` — 逾期检测（自动标记逾期并通知）
 
 ### 11.3 创建账单
 
@@ -1167,6 +1169,60 @@ EMAIL_CODE_RESEND_SECONDS=60
     "remark": "2026年6月房租",
     "created_at": "2026-05-03T10:00:00",
     "updated_at": "2026-05-03T10:00:00"
+  }
+}
+```
+
+### 11.8 房东收入看板
+
+`GET /api/v1/bills/landlord/summary`
+
+需登录（自动取当前用户为房东），返回收入汇总数据，含：
+- `total_income` — 已收租金总额
+- `pending_amount` — 待收金额（unpaid）
+- `overdue_amount` — 逾期金额
+- `unpaid_count` — 未付账单数
+- `monthly_income` — 近 12 个月每月收入
+
+**权限：** `landlord` 角色
+
+**响应示例：**
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "total_income": 15000.0,
+    "pending_amount": 3000.0,
+    "overdue_amount": 0.0,
+    "unpaid_count": 1,
+    "monthly_income": [
+      { "month": "2026-06", "amount": 6000.0 },
+      { "month": "2026-07", "amount": 9000.0 }
+    ]
+  }
+}
+```
+
+### 11.9 触发逾期检测（手动按钮）
+
+`POST /api/v1/bills/check-overdue`
+
+房东手动点击"检测逾期"按钮时调用。扫描所有 `due_date < today` 且 `status = unpaid` 的账单，自动标记为 `overdue`，同时发送催缴通知给租客、发送提醒给房东。
+
+**前端用法：** 在房东收入看板页面放一个"检测逾期"按钮，点击后调此接口，`processed > 0` 时弹提示"已处理 X 笔逾期账单"并刷新看板数据。
+
+**权限：** `landlord` 或 `admin` 角色
+
+**请求：** 无 body
+
+**响应示例：**
+```json
+{
+  "code": 0,
+  "message": "success",
+  "data": {
+    "processed": 2
   }
 }
 ```

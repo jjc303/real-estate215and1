@@ -61,3 +61,16 @@ class BillReadSchema(BaseSchema):
     remark: str | None = None
     created_at: datetime
     updated_at: datetime
+
+
+class MonthlyIncomeItem(BaseSchema):
+    month: str
+    amount: float
+
+
+class LandlordIncomeSummarySchema(BaseSchema):
+    total_income: float
+    pending_amount: float
+    overdue_amount: float
+    unpaid_count: int
+    monthly_income: list[MonthlyIncomeItem]

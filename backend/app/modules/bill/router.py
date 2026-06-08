@@ -64,3 +64,19 @@ def mark_bill_overdue(bill_id: int):
     service = get_bill_service()
     result = service.mark_bill_overdue(g.db, current_user_id=current_user_id, bill_id=bill_id)
     return success(data=result)
+
+
+@bp.get("/landlord/summary")
+def landlord_income_summary():
+    current_user_id = get_required_current_user_id()
+    service = get_bill_service()
+    result = service.get_landlord_income_summary(g.db, landlord_id=current_user_id)
+    return success(data=result)
+
+
+@bp.post("/check-overdue")
+def check_overdue():
+    current_user_id = get_required_current_user_id()
+    service = get_bill_service()
+    count = service.check_overdue_bills(g.db)
+    return success(data={"processed": count})
