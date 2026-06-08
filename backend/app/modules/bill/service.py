@@ -20,8 +20,11 @@ from app.modules.bill.model import Bill
 from app.modules.bill.repository import BillRepository
 from app.modules.bill.schema import BillReadSchema, LandlordIncomeSummarySchema, MonthlyIncomeItem
 from app.modules.contract.repository import ContractRepository
+from app.modules.house.model import House
 from app.modules.notification.service import NotificationService
 from app.modules.operation_log.service import OperationLogService
+
+from app.common.pdf_generator import build_bill_pdf
 
 
 class BillService:
@@ -254,6 +257,24 @@ class BillService:
             db.rollback()
             raise
         return len(overdue_bills)
+
+    def download_bill(self, db: Session, current_user_id: int, bill_id: int) -> bytes:
+        bill = self.bill_repository.get_by_id_and_user_id(db, bill_id, current_user_id)
+        if bill is None:
+            raise BillNotFoundException()
+
+        house = db.get(House, bill.house_id)
+        bill_type_label = {"rent": "租金", "deposit": "押金", "other": "其他"}.get(bill.bill_type, bill.bill_type)
+
+        return build_bill_pdf(
+            bill.id,
+            house_title=house.title if house else "—",
+            bill_type=bill_type_label,
+            amount=bill.amount,
+            due_date=bill.due_date,
+            status=bill.status,
+            created_at=str(bill.created_at) if bill.created_at else "—",
+        )
 
     def _serialize(self, bill: Bill) -> dict[str, object]:
         return BillReadSchema.model_validate(bill).model_dump(mode="json")

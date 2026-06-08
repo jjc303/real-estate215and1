@@ -985,6 +985,7 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `PATCH /api/v1/contracts/{id}/reject`
 - `PATCH /api/v1/contracts/{id}/cancel`
 - `PATCH /api/v1/contracts/{id}/terminate`
+- `GET /api/v1/contracts/{id}/download` — 下载合同 PDF
 
 ### 10.3 创建合同
 
@@ -1079,6 +1080,12 @@ EMAIL_CODE_RESEND_SECONDS=60
 }
 ```
 
+### 10.6 下载合同 PDF
+
+`GET /api/v1/contracts/{id}/download`
+
+返回 `application/pdf` 文件流，浏览器自动下载。合同参与方（房东或租客）可下载。
+
 ---
 
 ## 11. Bill 模块
@@ -1107,6 +1114,7 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `PATCH /api/v1/bills/{id}/overdue`
 - `GET /api/v1/bills/landlord/summary` — 房东收入看板
 - `POST /api/v1/bills/check-overdue` — 逾期检测（自动标记逾期并通知）
+- `GET /api/v1/bills/{id}/download` — 下载账单 PDF
 
 ### 11.3 创建账单
 
@@ -1226,6 +1234,12 @@ EMAIL_CODE_RESEND_SECONDS=60
   }
 }
 ```
+
+### 11.10 下载账单 PDF
+
+`GET /api/v1/bills/{id}/download`
+
+返回 `application/pdf` 文件流，浏览器自动下载。账单参与方（房东或租客）可下载。
 
 ---
 

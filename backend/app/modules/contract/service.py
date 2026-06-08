@@ -27,6 +27,9 @@ from app.modules.house.model import House
 from app.modules.house.repository import HouseRepository
 from app.modules.notification.service import NotificationService
 from app.modules.operation_log.service import OperationLogService
+from app.modules.user.model import User
+
+from app.common.pdf_generator import build_contract_pdf
 
 
 class ContractService:
@@ -317,6 +320,31 @@ class ContractService:
             raise
 
         return self._serialize(contract, house)
+
+    def download_contract(self, db: Session, current_user_id: int, contract_id: int) -> bytes:
+        contract = self.contract_repository.get_by_id_and_user_id(db, contract_id, current_user_id)
+        if contract is None:
+            raise ContractNotFoundException()
+
+        house = self._get_house_or_not_found(db, contract.house_id)
+        landlord = db.get(User, contract.landlord_id)
+        tenant = db.get(User, contract.tenant_id)
+
+        return build_contract_pdf(
+            contract.id,
+            house_title=house.title,
+            house_address=house.address,
+            house_type=house.house_type,
+            house_area=house.area,
+            landlord_name=landlord.username if landlord else "—",
+            tenant_name=tenant.username if tenant else "—",
+            monthly_rent=contract.monthly_rent,
+            deposit=contract.deposit,
+            start_date=contract.start_date,
+            end_date=contract.end_date,
+            status=contract.status,
+            created_at=str(contract.created_at) if contract.created_at else "—",
+        )
 
     def _get_house_or_not_found(self, db: Session, house_id: int) -> House:
         house = self.house_repository.get_by_id(db, house_id)
