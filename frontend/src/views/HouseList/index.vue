@@ -590,7 +590,7 @@ const fetchHouseList=async()=>{
             max_rent: maxRent,
             min_area: minArea,
             max_area: maxArea,
-            keyword: searchKeyword || undefined
+            keyword: searchKeyword || undefined,
         }
         
         // 移除 undefined 值

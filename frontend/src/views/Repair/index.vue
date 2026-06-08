@@ -202,6 +202,7 @@ import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import { mockRepairs } from '@/mock/repairs'
 import { getRepairList, processRepair, completeRepair as completeRepairApi } from '@/api/repair'
+import { restoreHouseFromMaintenance } from '@/api/house'
 
 const USE_MOCK_DATA = false
 
@@ -338,6 +339,10 @@ const completeRepair = async (repair) => {
     } else {
       const res = await completeRepairApi(repair.id)
       if (res.code === 0) {
+        // 恢复房源状态为可租
+        if (repair.house_id) {
+          await restoreHouseFromMaintenance(repair.house_id)
+        }
         ElMessage.success('维修已完成')
         fetchRepairs()
       }
@@ -346,7 +351,6 @@ const completeRepair = async (repair) => {
     ElMessage.info('已取消')
   }
 }
-
 const handlePageChange = (page) => {
   pageNum.value = page
   fetchRepairs()

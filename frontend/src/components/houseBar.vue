@@ -17,6 +17,7 @@
             </div>
             <div class="house-tags">
                 <span v-for="tag in house.tags" :key="tag" class="tag">{{ tag }}</span>
+                <span v-if="house.status" class="tag status-tag" :class="house.status">{{ statusText(house.status) }}</span>
             </div>
             <div class="house-time">
                 {{ house.updateTime }}
@@ -54,6 +55,17 @@ const props = defineProps({
 })
 
 defineEmits(['collect'])
+
+const statusText = (status) => {
+    const map = {
+        draft: '草稿',
+        listed: '已上架',
+        rented: '已出租',
+        offline: '已下架',
+        maintenance: '维修中'
+    }
+    return map[status] || status
+}
 
 const goToDetail = () => {
     router.push(`/houseDetail/${props.house.id}`)
@@ -120,6 +132,39 @@ const goToDetail = () => {
 .house-time {
   font-size: 12px;
   color: #999;
+}
+
+/* 状态标签 */
+.status-tag {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 3px;
+  border: 1px solid;
+}
+.status-tag.listed {
+  color: #52c41a;
+  border-color: #52c41a;
+  background: #f6ffed;
+}
+.status-tag.draft {
+  color: #faad14;
+  border-color: #faad14;
+  background: #fffbe6;
+}
+.status-tag.offline {
+  color: #999;
+  border-color: #d9d9d9;
+  background: #fafafa;
+}
+.status-tag.rented {
+  color: #1890ff;
+  border-color: #1890ff;
+  background: #e6f7ff;
+}
+.status-tag.maintenance {
+  color: #ff7a45;
+  border-color: #ff7a45;
+  background: #fff7e6;
 }
 
 /* 右侧价格+收藏 */

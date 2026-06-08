@@ -45,9 +45,16 @@ export const publishHouse = (houseId) => {
   })
 }
 
-export const offlineHouse = (houseId) => {
+export const setHouseMaintenance = (houseId) => {
   return request({
-    url: `v1/houses/${houseId}/offline`,
+    url: `v1/houses/${houseId}/maintenance`,
+    method: 'patch'
+  })
+}
+
+export const restoreHouseFromMaintenance = (houseId) => {
+  return request({
+    url: `v1/houses/${houseId}/restore`,
     method: 'patch'
   })
 }

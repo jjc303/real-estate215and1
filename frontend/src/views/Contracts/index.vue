@@ -442,6 +442,7 @@ import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 import { useUserStore } from '@/stores/user'
+import { updateHouse } from '@/api/house'
 import { mockTenantContracts, mockLandlordContracts } from '@/mock/contracts'
 
 const userStore = useUserStore()
@@ -689,6 +690,10 @@ const confirmContract = async (contract) => {
     } else {
       const res = await service.patch(`/v1/contracts/${contract.id}/confirm`)
       if (res.code === 0) {
+        // 更新房源状态为租用中
+        if (contract.house_id) {
+          await updateHouse(contract.house_id, { status: 'rented' })
+        }
         ElMessage.success(`合同 #${contract.id} 已确认生效！`)
         fetchContracts()
       }

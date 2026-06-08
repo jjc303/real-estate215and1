@@ -11,25 +11,36 @@
         <div class="main-section">
             <div class="gallery-section">
                 <div class="gallery-main">
-                    <img 
+                    <img v-if="activeMediaType === 'image'" 
                         :src="getCurrentMainImage()" 
                         alt="房源主图"
                         @error="$event.target.src = getDefaultHouseImage(house.id)"
                     />
+                    <video v-else :src="house.videoList[currentVideoIndex]?.url" controls class="gallery-video" key="video-player"></video>
                 </div>
                 <div class="gallery-thumbs">
                     <div 
                         v-for="(img, index) in (house.images && house.images.length > 0 ? house.images : [1])" 
-                        :key="index"
+                        :key="'img-' + index"
                         class="thumb-item"
-                        :class="{ active: currentImgIndex === index }"
-                        @click="currentImgIndex = index"
+                        :class="{ active: activeMediaType === 'image' && currentImgIndex === index }"
+                        @click="activeMediaType = 'image'; currentImgIndex = index"
                     >
                         <img 
                             :src="house.images && house.images.length > 0 ? img : getDefaultHouseImage(house.id)" 
                             :alt="`图片${index + 1}`" 
                             @error="$event.target.src = getDefaultHouseImage(house.id)"
                         />
+                    </div>
+                    <div 
+                        v-for="(video, index) in house.videoList" 
+                        :key="'vid-' + index"
+                        class="thumb-item thumb-video" 
+                        :class="{ active: activeMediaType === 'video' && currentVideoIndex === index }" 
+                        @click="activeMediaType = 'video'; currentVideoIndex = index"
+                    >
+                        <i class="fa-solid fa-play"></i>
+                        <span>视频{{ house.videoList.length > 1 ? index + 1 : '' }}</span>
                     </div>
                 </div>
             </div>
@@ -167,6 +178,7 @@ import ReserveDialog from '@/components/ReserveDialog.vue';
 import AiChatDialog from '@/components/AiChatDialog.vue';
 import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js';
 import { getHouseDetail } from '@/api/house.js';
+import { getHouseVideos } from '@/api/houseVideo.js';
 
 const route = useRoute();
 const router = useRouter();
@@ -174,6 +186,8 @@ const userStore = useUserStore();
 
 const house = ref({});
 const currentImgIndex = ref(0);
+const activeMediaType = ref('image'); // 'image' | 'video'
+const currentVideoIndex = ref(0);
 const showChat = ref(false);
 const showAiChat = ref(false);
 
@@ -254,9 +268,23 @@ const fetchHouseDetail = async () => {
                 address: data.address || '无',
                 images: data.images || [],
                 cover_image_url: data.cover_image_url || null,
+                videoList: [],
                 tags: [],
                 isCollect: false
             };
+
+            // 加载房源视频列表
+            try {
+                const videosRes = await getHouseVideos(houseId)
+                if (videosRes.code === 0) {
+                    house.value.videoList = (videosRes.data || []).map(v => ({
+                        url: v.url,
+                        name: v.url.split('/').pop()
+                    }))
+                }
+            } catch (e) {
+                console.error('获取视频列表失败:', e)
+            }
         } else {
             ElMessage.error(res.message || '获取房源详情失败');
             house.value = {
@@ -617,5 +645,39 @@ onMounted(() => {
     .params-grid {
         grid-template-columns: repeat(2, 1fr);
     }
+}
+
+/* 图库视频 */
+.gallery-video {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    border-radius: 8px;
+    outline: none;
+    background: #000;
+}
+
+/* 视频缩略图 */
+.thumb-video {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    background: #f5f5f5;
+    cursor: pointer;
+    font-size: 12px;
+    color: #666;
+    border: 2px solid transparent;
+}
+
+.thumb-video i {
+    font-size: 20px;
+    color: #3072f6;
+}
+
+.thumb-video.active {
+    border-color: #3072f6;
+    color: #3072f6;
 }
 </style>

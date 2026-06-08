@@ -86,6 +86,29 @@
           <p class="image-tip">支持 jpg / jpeg / png / webp，单张不超过 5MB，最多 9 张</p>
         </div>
       </div>
+
+      <div class="form-item image-form-item">
+        <label>房源视频</label>
+        <div class="video-upload-wrap">
+          <div class="video-list">
+            <div v-for="(video, index) in videoList" :key="index" class="video-preview-item">
+              <video :src="video.preview" controls></video>
+              <div class="video-actions">
+                <span class="video-name">{{ video.name }}</span>
+                <button class="action-btn delete-btn" @click="removeVideo(index)">
+                  <i class="fa-solid fa-xmark"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div v-if="videoList.length < maxVideos" class="upload-trigger" @click="triggerVideoUpload">
+            <input ref="videoInput" type="file" accept="video/mp4" @change="handleVideoChange" style="display:none" />
+            <i class="fa-solid fa-video"></i>
+            <span>上传视频</span>
+          </div>
+          <p class="image-tip">支持 mp4 格式，单个不超过 200MB，最多 {{ maxVideos }} 个</p>
+        </div>
+      </div>
     </div>
 
     <div class="submit-section">
@@ -100,6 +123,7 @@ import { ElMessage } from 'element-plus'
 import service from '@/utils/request'
 import { updateHouse, createHouse } from '@/api/house.js'
 import { uploadHouseImage, deleteHouseImage, updateHouseImage } from '@/api/houseImage.js'
+import { uploadHouseVideo, getHouseVideos, deleteHouseVideo } from '@/api/houseVideo.js'
 import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
@@ -262,6 +286,62 @@ const removeImage = async (index) => {
   }
 }
 
+// 视频上传
+const videoInput = ref(null)
+const videoList = ref([])
+const maxVideos = 5
+const MAX_VIDEO_SIZE = 200 * 1024 * 1024
+
+const triggerVideoUpload = () => {
+  videoInput.value?.click()
+}
+
+const handleVideoChange = (e) => {
+  const files = Array.from(e.target.files)
+  e.target.value = ''
+
+  const remaining = maxVideos - videoList.value.length
+
+  files.slice(0, remaining).forEach(file => {
+    if (file.size > MAX_VIDEO_SIZE) {
+      ElMessage.warning(`${file.name} 超过200MB限制`)
+      return
+    }
+    const ext = file.name.split('.').pop().toLowerCase()
+    if (ext !== 'mp4') {
+      ElMessage.warning(`${file.name} 格式不支持，仅支持mp4`)
+      return
+    }
+    const preview = URL.createObjectURL(file)
+    videoList.value.push({
+      file,
+      preview,
+      name: file.name
+    })
+  })
+
+  if (files.length > remaining) {
+    ElMessage.warning(`最多还能上传${remaining}个视频`)
+  }
+}
+
+const removeVideo = (index) => {
+  const removed = videoList.value[index]
+  if (!removed) return
+
+  if (removed.id) {
+    deleteHouseVideo(houseId.value, removed.id).catch(e => {
+      ElMessage.error('删除视频失败')
+      console.error(e)
+    })
+  }
+
+  if (removed?.preview && !removed.id) {
+    URL.revokeObjectURL(removed.preview)
+  }
+  videoList.value.splice(index, 1)
+}
+
 // 元素引用
 const itemRefs = {}
 
@@ -315,6 +395,20 @@ const fetchHouseDetail = async () => {
           }
         } catch (e) {
           console.error('获取图片列表失败:', e)
+        }
+
+        // 加载已有视频
+        try {
+          const videosRes = await getHouseVideos(houseId.value)
+          if (videosRes.code === 0 && videosRes.data.length > 0) {
+            videoList.value = videosRes.data.map(v => ({
+              id: v.id,
+              preview: v.url,
+              name: v.url.split('/').pop()
+            }))
+          }
+        } catch (e) {
+          console.error('获取视频列表失败:', e)
         }
       }
     }
@@ -377,6 +471,9 @@ const handleSubmit = async () => {
     if (targetHouseId && imageList.value.length > 0) {
       await uploadImages(targetHouseId)
     }
+    if (targetHouseId && videoList.value.length > 0) {
+      await uploadVideos(targetHouseId)
+    }
     
     router.push('/myhouses/list')
   } catch (e) {
@@ -396,6 +493,19 @@ const uploadImages = async (houseId) => {
       await uploadHouseImage(houseId, formData)
     } catch (e) {
       console.error('上传图片失败:', e)
+    }
+  }
+}
+
+const uploadVideos = async (houseId) => {
+  for (const video of videoList.value) {
+    if (video.id) continue // 已上传过的跳过
+    const formData = new FormData()
+    formData.append('file', video.file)
+    try {
+      await uploadHouseVideo(houseId, formData)
+    } catch (e) {
+      console.error('上传视频失败:', e)
     }
   }
 }
@@ -735,5 +845,54 @@ onMounted(() => {
 
 .upload-trigger span {
   font-size: 14px;
+}
+
+/* 视频上传 */
+.video-upload-wrap {
+  flex: 1;
+}
+
+.video-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.video-preview-item {
+  width: 260px;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.video-preview-item video {
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  display: block;
+}
+
+.video-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: #fafafa;
+}
+
+.video-name {
+  font-size: 12px;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  margin-right: 8px;
+}
+
+.video-upload-wrap .upload-trigger {
+  width: 260px;
+  aspect-ratio: 16 / 9;
 }
 </style>
