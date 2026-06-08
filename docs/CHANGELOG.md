@@ -16,6 +16,15 @@
 - 限制：mp4、200MB、每房源最多 5 个
 - 新增配置项：`HOUSE_VIDEO_MAX_COUNT`、`HOUSE_VIDEO_MAX_BYTES`、`ALLOWED_VIDEO_EXTENSIONS`
 
+#### 房东租金收入监控与逾期提醒
+
+- 新增接口：
+  - `GET /api/v1/bills/landlord/summary` — 房东收入看板
+  - `POST /api/v1/bills/check-overdue` — 触发逾期检测
+- `BillRepository` 新增：`sum_paid_by_landlord`、`sum_unpaid_by_landlord`、`sum_overdue_by_landlord`、`count_by_status`、`list_monthly_income_by_landlord`、`list_overdue_unpaid`
+- `BillService` 新增：`get_landlord_income_summary()`、`check_overdue_bills()`
+- 新增 `scripts/check_overdue_bills.py` — 自动逾期检测脚本（可 crontab 定时执行）
+
 ### Added Tests
 
 - `backend/tests/api/test_house_video_flow.py` — 3 个测试（上传/列表/删除、无token、非房东）

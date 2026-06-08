@@ -18,7 +18,7 @@ from app.core.exceptions import (
 )
 from app.modules.bill.model import Bill
 from app.modules.bill.repository import BillRepository
-from app.modules.bill.schema import BillReadSchema
+from app.modules.bill.schema import BillReadSchema, LandlordIncomeSummarySchema, MonthlyIncomeItem
 from app.modules.contract.repository import ContractRepository
 from app.modules.notification.service import NotificationService
 from app.modules.operation_log.service import OperationLogService
@@ -204,6 +204,56 @@ class BillService:
             raise
 
         return self._serialize(bill)
+
+    def get_landlord_income_summary(
+        self,
+        db: Session,
+        landlord_id: int,
+    ) -> dict[str, object]:
+        total_income = self.bill_repository.sum_paid_by_landlord(db, landlord_id)
+        pending_amount = self.bill_repository.sum_unpaid_by_landlord(db, landlord_id)
+        overdue_amount = self.bill_repository.sum_overdue_by_landlord(db, landlord_id)
+        count_by_status = self.bill_repository.count_by_status(db, landlord_id)
+        monthly = self.bill_repository.list_monthly_income_by_landlord(db, landlord_id)
+
+        return LandlordIncomeSummarySchema(
+            total_income=total_income,
+            pending_amount=pending_amount,
+            overdue_amount=overdue_amount,
+            unpaid_count=count_by_status.get("unpaid", 0),
+            monthly_income=[
+                MonthlyIncomeItem(month=m, amount=a) for m, a in monthly
+            ],
+        ).model_dump(mode="json")
+
+    def check_overdue_bills(self, db: Session) -> int:
+        overdue_bills = self.bill_repository.list_overdue_unpaid(db)
+        now = date.today()
+        for bill in overdue_bills:
+            if bill.due_date >= now:
+                continue
+            bill.status = BillStatus.OVERDUE
+            self._notify_tenant(
+                db,
+                bill,
+                title="账单逾期",
+                message=f"账单 #{bill.id} 已逾期，请尽快支付 ¥{bill.amount}。",
+            )
+            self.notification_service.create_notification(
+                db,
+                user_ids=[bill.landlord_id],
+                source_type="bill",
+                source_id=bill.id,
+                title="租客逾期提醒",
+                message=f"租客 #{bill.tenant_id} 的账单 #{bill.id} 已逾期，金额 ¥{bill.amount}。",
+                auto_commit=False,
+            )
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
+            raise
+        return len(overdue_bills)
 
     def _serialize(self, bill: Bill) -> dict[str, object]:
         return BillReadSchema.model_validate(bill).model_dump(mode="json")
