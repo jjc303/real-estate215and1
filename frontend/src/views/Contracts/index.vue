@@ -70,18 +70,20 @@
             <el-button link @click.stop="viewDetail(contract)">
               <i class="fa-solid fa-eye"></i> 查看详情
             </el-button>
-            <el-button 
-              v-if="isTenant && contract.status === 'pending'" 
-              type="success" 
+            <el-button
+              v-if="isTenant && contract.status === 'pending'"
+              type="success"
               size="small"
+              :disabled="actionLoading"
               @click.stop="confirmContract(contract)"
             >
               <i class="fa-solid fa-check"></i> 确认合同
             </el-button>
-            <el-button 
-              v-if="isTenant && contract.status === 'pending'" 
-              type="danger" 
+            <el-button
+              v-if="isTenant && contract.status === 'pending'"
+              type="danger"
               size="small"
+              :disabled="actionLoading"
               @click.stop="rejectContract(contract)"
             >
               <i class="fa-solid fa-x"></i> 拒绝
@@ -162,18 +164,20 @@
           <el-button type="text" @click.stop="viewDetail(contract)">
             <i class="fa-solid fa-eye"></i> 查看详情
           </el-button>
-          <el-button 
-            v-if="isTenant && contract.status === 'pending'" 
-            type="success" 
+          <el-button
+            v-if="isTenant && contract.status === 'pending'"
+            type="success"
             size="small"
+            :disabled="actionLoading"
             @click.stop="confirmContract(contract)"
           >
             <i class="fa-solid fa-check"></i> 确认合同
           </el-button>
-          <el-button 
-            v-if="isTenant && contract.status === 'pending'" 
-            type="danger" 
+          <el-button
+            v-if="isTenant && contract.status === 'pending'"
+            type="danger"
             size="small"
+            :disabled="actionLoading"
             @click.stop="rejectContract(contract)"
           >
             <i class="fa-solid fa-x"></i> 拒绝
@@ -182,6 +186,7 @@
             v-if="!isTenant && contract.status === 'active'"
             type="warning"
             size="small"
+            :disabled="actionLoading"
             @click.stop="terminateContract(contract)"
           >
             <i class="fa-solid fa-stop-circle"></i> 终止合同
@@ -190,6 +195,7 @@
             v-if="contract.status === 'active'"
             type="success"
             size="small"
+            :disabled="actionLoading"
             @click.stop="createBill(contract)"
           >
             <i class="fa-solid fa-file-invoice-dollar"></i> 创建账单
@@ -198,6 +204,7 @@
             v-if="!isTenant && contract.status === 'pending'"
             type="info"
             size="small"
+            :disabled="actionLoading"
             @click.stop="cancelContract(contract)"
           >
             <i class="fa-solid fa-ban"></i> 取消合同
@@ -461,6 +468,7 @@ const USE_MOCK_DATA = false
 
 const loading = ref(false)
 const createLoading = ref(false)
+const actionLoading = ref(false)
 const currentTab = ref('all')
 const pageNum = ref(1)
 const pageSize = ref(10)
@@ -703,7 +711,8 @@ const confirmContract = async (contract) => {
         type: 'info'
       }
     )
-    
+
+    actionLoading.value = true
     if (USE_MOCK_DATA) {
       const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
       const idx = currentMockData.findIndex(c => c.id === contract.id)
@@ -711,7 +720,7 @@ const confirmContract = async (contract) => {
         currentMockData[idx].status = 'active'
       }
       ElMessage.success(`合同 #${contract.id} 已确认生效！`)
-      fetchContracts()
+      await fetchContracts()
     } else {
       const res = await service.patch(`/v1/contracts/${contract.id}/confirm`)
       if (res.code === 0) {
@@ -720,14 +729,20 @@ const confirmContract = async (contract) => {
           await updateHouse(contract.house_id, { status: 'rented' })
         }
         ElMessage.success(`合同 #${contract.id} 已确认生效！`)
-        fetchContracts()
+        await fetchContracts()
+      } else {
+        ElMessage.error(res.message || '确认失败')
       }
     }
   } catch (e) {
     if (e !== 'cancel') {
-      ElMessage.error('确认失败，请稍后重试')
-      console.error(e)
+      console.error('确认合同失败:', e)
+      // 显示后端返回的具体错误原因
+      const msg = e.response?.data?.message || e.message || '确认失败，请稍后重试'
+      ElMessage.error(msg)
     }
+  } finally {
+    actionLoading.value = false
   }
 }
 
@@ -742,7 +757,8 @@ const rejectContract = async (contract) => {
         type: 'warning'
       }
     )
-    
+
+    actionLoading.value = true
     if (USE_MOCK_DATA) {
       const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
       const idx = currentMockData.findIndex(c => c.id === contract.id)
@@ -750,12 +766,12 @@ const rejectContract = async (contract) => {
         currentMockData[idx].status = 'rejected'
       }
       ElMessage.success(`合同 #${contract.id} 已拒绝！`)
-      fetchContracts()
+      await fetchContracts()
     } else {
       const res = await service.patch(`/v1/contracts/${contract.id}/reject`)
       if (res.code === 0) {
         ElMessage.success(`合同 #${contract.id} 已拒绝！`)
-        fetchContracts()
+        await fetchContracts()
       }
     }
   } catch (e) {
@@ -763,6 +779,8 @@ const rejectContract = async (contract) => {
       ElMessage.error('操作失败，请稍后重试')
       console.error(e)
     }
+  } finally {
+    actionLoading.value = false
   }
 }
 
@@ -777,7 +795,8 @@ const cancelContract = async (contract) => {
         type: 'warning'
       }
     )
-    
+
+    actionLoading.value = true
     if (USE_MOCK_DATA) {
       const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
       const idx = currentMockData.findIndex(c => c.id === contract.id)
@@ -785,12 +804,12 @@ const cancelContract = async (contract) => {
         currentMockData[idx].status = 'cancelled'
       }
       ElMessage.success(`合同 #${contract.id} 已取消！`)
-      fetchContracts()
+      await fetchContracts()
     } else {
       const res = await service.patch(`/v1/contracts/${contract.id}/cancel`)
       if (res.code === 0) {
         ElMessage.success(`合同 #${contract.id} 已取消！`)
-        fetchContracts()
+        await fetchContracts()
       }
     }
   } catch (e) {
@@ -798,6 +817,8 @@ const cancelContract = async (contract) => {
       ElMessage.error('操作失败，请稍后重试')
       console.error(e)
     }
+  } finally {
+    actionLoading.value = false
   }
 }
 
@@ -819,7 +840,8 @@ const terminateContract = async (contract) => {
         type: 'danger'
       }
     )
-    
+
+    actionLoading.value = true
     if (USE_MOCK_DATA) {
       const currentMockData = isTenant.value ? mockTenantContracts : mockLandlordContracts
       const idx = currentMockData.findIndex(c => c.id === contract.id)
@@ -827,12 +849,12 @@ const terminateContract = async (contract) => {
         currentMockData[idx].status = 'terminated'
       }
       ElMessage.success(`合同 #${contract.id} 已终止！`)
-      fetchContracts()
+      await fetchContracts()
     } else {
       const res = await service.patch(`/v1/contracts/${contract.id}/terminate`)
       if (res.code === 0) {
         ElMessage.success(`合同 #${contract.id} 已终止！`)
-        fetchContracts()
+        await fetchContracts()
       }
     }
   } catch (e) {
@@ -840,6 +862,8 @@ const terminateContract = async (contract) => {
       ElMessage.error('操作失败，请稍后重试')
       console.error(e)
     }
+  } finally {
+    actionLoading.value = false
   }
 }
 

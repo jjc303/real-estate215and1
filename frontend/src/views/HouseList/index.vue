@@ -412,7 +412,7 @@ const clearAllFilter = () => {
 
 const handleCollect=async(house)=>{
     //登录才能收藏
-    if (!userStore.token) {
+    if (!userStore.isLoggedIn) {
         userStore.openLoginModal()
         return
     }
@@ -451,7 +451,7 @@ const handleCollect=async(house)=>{
 
 // 加载用户收藏列表
 const loadCollectedHouses = async () => {
-    if (!userStore.token) {
+    if (!userStore.isLoggedIn) {
         collectedHouseIds.value.clear()
         return
     }
