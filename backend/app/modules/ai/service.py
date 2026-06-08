@@ -113,7 +113,7 @@ class AIService:
         return user
 
     def _ensure_house_visible_to_user(self, user: User, house: House) -> None:
-        if house.status == "listed":
+        if house.status in {"listed", "rented", "maintenance"}:
             return
         if house.status in {"draft", "offline"}:
             if user.role == "admin" or house.landlord_id == user.id:

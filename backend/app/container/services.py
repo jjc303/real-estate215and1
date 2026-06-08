@@ -11,6 +11,7 @@ from app.container.repositories import (
     get_favorite_repository,
     get_house_repository,
     get_house_image_repository,
+    get_house_video_repository,
     get_message_repository,
     get_news_repository,
     get_notification_repository,
@@ -32,6 +33,7 @@ from app.modules.conversation.service import ConversationService
 from app.modules.favorite.service import FavoriteService
 from app.modules.house.service import HouseService
 from app.modules.house_image.service import HouseImageService
+from app.modules.house_video.service import HouseVideoService
 from app.modules.news.service import NewsService
 from app.modules.notification.service import NotificationService
 from app.modules.operation_log.service import OperationLogService
@@ -50,6 +52,7 @@ _auth_service = AuthService(
 )
 _house_service = HouseService(get_house_repository(), get_house_image_repository())
 _house_image_service = HouseImageService(get_house_repository(), get_house_image_repository())
+_house_video_service = HouseVideoService(get_house_repository(), get_house_video_repository())
 _favorite_service = FavoriteService(get_favorite_repository(), get_house_repository())
 _appointment_service = AppointmentService(get_appointment_repository(), get_house_repository())
 _conversation_service = ConversationService(
@@ -141,6 +144,10 @@ def get_house_service() -> HouseService:
 
 def get_house_image_service() -> HouseImageService:
     return _house_image_service
+
+
+def get_house_video_service() -> HouseVideoService:
+    return _house_video_service
 
 
 def get_favorite_service() -> FavoriteService:

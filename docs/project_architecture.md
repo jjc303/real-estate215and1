@@ -320,6 +320,7 @@ module_name/
 | `users` | User/Auth | 用户表 |
 | `houses` | House | 房源表 |
 | `house_images` | HouseImage | 房源图片表 |
+| `house_videos` | HouseVideo | 房源视频表 |
 | `user_avatars` | UserAvatar | 用户头像表 |
 | `favorites` | Favorite | 收藏表 |
 | `appointments` | Appointment | 预约表 |
@@ -739,7 +740,7 @@ uvicorn api.main:app --host 0.0.0.0 --port 9000
 
 ### 8.2 状态流转
 
-**房源状态：** `draft → listed → offline`
+**房源状态：** `draft → listed ⇄ rented ⇢ offline`（另含 `listed ⇄ maintenance`）
 
 **预约状态：** `pending → confirmed | rejected | cancelled | expired`
 
@@ -802,6 +803,7 @@ real-estate215and1/
 │   │       ├── auth/                  # 认证
 │   │       ├── house/                 # 房源
 │   │       ├── house_image/           # 房源图片
+│   │       ├── house_video/           # 房源视频
 │   │       ├── user_avatar/           # 用户头像
 │   │       ├── favorite/              # 收藏
 │   │       ├── appointment/           # 预约

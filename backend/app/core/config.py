@@ -82,6 +82,9 @@ class BaseConfig:
     ALLOWED_IMAGE_EXTENSIONS = ("jpg", "jpeg", "png", "webp")
     HOUSE_IMAGE_MAX_COUNT = 9
     USER_AVATAR_MAX_COUNT = 5
+    HOUSE_VIDEO_MAX_COUNT = 5
+    HOUSE_VIDEO_MAX_BYTES = 200 * 1024 * 1024
+    ALLOWED_VIDEO_EXTENSIONS = ("mp4",)
 
     @classmethod
     def to_mapping(cls) -> dict[str, object]:
@@ -131,6 +134,16 @@ class BaseConfig:
             ),
             "HOUSE_IMAGE_MAX_COUNT": int(os.getenv("HOUSE_IMAGE_MAX_COUNT", str(cls.HOUSE_IMAGE_MAX_COUNT))),
             "USER_AVATAR_MAX_COUNT": int(os.getenv("USER_AVATAR_MAX_COUNT", str(cls.USER_AVATAR_MAX_COUNT))),
+            "HOUSE_VIDEO_MAX_COUNT": int(os.getenv("HOUSE_VIDEO_MAX_COUNT", str(cls.HOUSE_VIDEO_MAX_COUNT))),
+            "HOUSE_VIDEO_MAX_BYTES": int(os.getenv("HOUSE_VIDEO_MAX_BYTES", str(cls.HOUSE_VIDEO_MAX_BYTES))),
+            "ALLOWED_VIDEO_EXTENSIONS": tuple(
+                item.strip().lower()
+                for item in os.getenv(
+                    "ALLOWED_VIDEO_EXTENSIONS",
+                    ",".join(cls.ALLOWED_VIDEO_EXTENSIONS),
+                ).split(",")
+                if item.strip()
+            ),
         }
 
 

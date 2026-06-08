@@ -4,7 +4,9 @@ from __future__ import annotations
 class HouseStatus:
     DRAFT = "draft"
     LISTED = "listed"
+    RENTED = "rented"
     OFFLINE = "offline"
+    MAINTENANCE = "maintenance"
 
 
 class AppointmentStatus:

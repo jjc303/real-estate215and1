@@ -12,7 +12,9 @@ from app.common.enums import HouseStatus as HouseStatusValues
 HouseStatus = Literal[
     HouseStatusValues.DRAFT,
     HouseStatusValues.LISTED,
+    HouseStatusValues.RENTED,
     HouseStatusValues.OFFLINE,
+    HouseStatusValues.MAINTENANCE,
 ]
 
 

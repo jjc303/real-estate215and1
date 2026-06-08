@@ -1,5 +1,68 @@
 # Changelog
 
+## v1.19.0 - 2026-06-08
+
+### Added
+
+#### 房源视频上传模块
+
+- 新增 `house_video` 模块（model / schema / repository / service / router）
+- 新增表 `house_videos`（Alembic migration: `2237c8e0983e`）
+- 新增接口：
+  - `POST /api/v1/houses/{house_id}/videos/upload` — 上传视频
+  - `GET /api/v1/houses/{house_id}/videos` — 获取视频列表
+  - `DELETE /api/v1/houses/{house_id}/videos/{video_id}` — 删除视频
+- 视频存储沿用现有 `UPLOAD_DIR`，路径：`uploads/houses/{house_id}/videos/`
+- 限制：mp4、200MB、每房源最多 5 个
+- 新增配置项：`HOUSE_VIDEO_MAX_COUNT`、`HOUSE_VIDEO_MAX_BYTES`、`ALLOWED_VIDEO_EXTENSIONS`
+
+### Added Tests
+
+- `backend/tests/api/test_house_video_flow.py` — 3 个测试（上传/列表/删除、无token、非房东）
+
+### Verified
+
+- `pytest tests/api/test_house_video_flow.py -v` — 3 passed
+- `pytest tests/ -v` — 72 passed, 0 regression
+
+## v1.18.0 - 2026-06-08
+
+### Added
+
+#### 房源状态新增 RENTED / MAINTENANCE
+
+- `app/common/enums.py` — `HouseStatus` 新增 `RENTED = "rented"`、`MAINTENANCE = "maintenance"`
+- `app/modules/house/model.py` — `HouseStatus` Literal 类型同步追加
+- `app/modules/house/schema.py` — `HouseStatus` Literal 类型同步追加
+- `app/modules/house/router.py` — 新增 `PATCH /houses/{id}/maintenance`、`PATCH /houses/{id}/restore`
+- `app/modules/house/service.py` — 新增 `set_maintenance()`、`restore_from_maintenance()` 方法；更新 `publish_house`/`offline_house` 状态机约束
+
+#### 合同自动联动房源状态
+
+- `app/modules/contract/service.py` — `confirm_contract` 自动将房源设为 `rented`；`terminate_contract` 自动恢复为 `listed`
+
+### Changed
+
+#### 状态流转规则
+
+- 新建房源默认 `draft`
+- `publish`：`draft` / `offline` → `listed`
+- `offline`：`listed` / `rented` / `maintenance` → `offline`
+- `maintenance`：仅 `listed` → `maintenance`
+- `restore`：仅 `maintenance` → `listed`
+- 合同确认生效 → 房源自动 `listed` → `rented`
+- 合同终止 → 房源自动 `rented` → `listed`
+- 非法状态跳转统一返回 `400`
+
+### Added Tests
+
+- `backend/tests/api/test_house_status_flow.py` — 9 个测试覆盖全部新状态流转
+
+### Verified
+
+- `pytest tests/api/test_house_status_flow.py -v` — 9 passed
+- `pytest tests/ -v` — 69 passed, 0 regression
+
 ## v1.17.0 - 2026-05-27
 
 ### Added

@@ -211,7 +211,7 @@
   </div>
 </template>
 <script setup>
-import HouseBar from '@/components/HouseBar.vue';
+import HouseBar from '@/components/houseBar.vue';
 import SearchBar from '@/components/SearchBar.vue';
 import { ref,reactive } from 'vue';
 import { useUserStore } from '@/stores/user.js';

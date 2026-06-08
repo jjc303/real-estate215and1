@@ -438,7 +438,9 @@ Auth v1.15.0 额外事实：
 状态流：
 - `draft`
 - `listed`
+- `rented`
 - `offline`
+- `maintenance`
 
 重要约束：
 - 游客可看公开房源
@@ -785,7 +787,7 @@ HTTP 层兼容策略：
 
 `house-chat` 当前规则：
 - 需要登录
-- `listed` 房源：任意登录用户可问
+- `listed / rented / maintenance` 房源：任意登录用户可问
 - `draft / offline`：仅房东本人或 `admin` 可问
 - 房源不存在或已删除：按现有房源不存在错误处理
 - 默认 `session_id`：

@@ -6,7 +6,7 @@ from decimal import Decimal
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.common.enums import AppointmentStatus, ContractStatus
+from app.common.enums import AppointmentStatus, ContractStatus, HouseStatus
 from app.common.enums import OperationLogModule
 from app.common.pagination import build_page_result, get_offset
 from app.core.exceptions import (
@@ -173,6 +173,9 @@ class ContractService:
 
         before_status = contract.status
         contract.status = ContractStatus.ACTIVE
+
+        house = self._get_house_or_not_found(db, contract.house_id)
+        house.status = HouseStatus.RENTED
         try:
             self._notify_landlord(
                 db,
@@ -195,7 +198,6 @@ class ContractService:
             db.rollback()
             raise
 
-        house = self._get_house_or_not_found(db, contract.house_id)
         return self._serialize(contract, house)
 
     def reject_contract(
@@ -291,6 +293,8 @@ class ContractService:
         before_status = contract.status
         contract.status = ContractStatus.TERMINATED
         try:
+            house = self._get_house_or_not_found(db, contract.house_id)
+            house.status = HouseStatus.LISTED
             self._notify_tenant(
                 db,
                 contract,
@@ -312,7 +316,6 @@ class ContractService:
             db.rollback()
             raise
 
-        house = self._get_house_or_not_found(db, contract.house_id)
         return self._serialize(contract, house)
 
     def _get_house_or_not_found(self, db: Session, house_id: int) -> House:

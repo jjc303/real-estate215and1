@@ -10,6 +10,7 @@ from app.modules.conversation.repository import ConversationRepository, MessageR
 from app.modules.favorite.repository import FavoriteRepository
 from app.modules.house.repository import HouseRepository
 from app.modules.house_image.repository import HouseImageRepository
+from app.modules.house_video.repository import HouseVideoRepository
 from app.modules.news.repository import NewsRepository
 from app.modules.notification.repository import NotificationRepository
 from app.modules.operation_log.repository import OperationLogRepository
@@ -23,6 +24,7 @@ from app.modules.user_avatar.repository import UserAvatarRepository
 _user_repository = UserRepository()
 _house_repository = HouseRepository()
 _house_image_repository = HouseImageRepository()
+_house_video_repository = HouseVideoRepository()
 _favorite_repository = FavoriteRepository()
 _appointment_repository = AppointmentRepository()
 _email_verification_code_repository = EmailVerificationCodeRepository()
@@ -51,6 +53,10 @@ def get_house_repository() -> HouseRepository:
 
 def get_house_image_repository() -> HouseImageRepository:
     return _house_image_repository
+
+
+def get_house_video_repository() -> HouseVideoRepository:
+    return _house_video_repository
 
 
 def get_favorite_repository() -> FavoriteRepository:

@@ -616,9 +616,11 @@ EMAIL_CODE_RESEND_SECONDS=60
 房源模块是平台核心公开内容。普通访客可查看列表和详情，房东可创建和管理自己的房源。
 
 房源状态：
-- `draft`
-- `listed`
-- `offline`
+- `draft` — 草稿/待发布
+- `listed` — 已上架（空置可租，租客可搜索和预约）
+- `rented` — 已出租（合同生效后自动跳转）
+- `offline` — 已下架
+- `maintenance` — 维修中（房东手动设置/恢复）
 
 ### 6.2 接口列表
 
@@ -628,6 +630,8 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `PUT /api/v1/houses/{id}`
 - `PATCH /api/v1/houses/{id}/publish`
 - `PATCH /api/v1/houses/{id}/offline`
+- `PATCH /api/v1/houses/{id}/maintenance`
+- `PATCH /api/v1/houses/{id}/restore`
 - `DELETE /api/v1/houses/{id}`
 
 ### 6.3 创建房源
@@ -709,9 +713,13 @@ EMAIL_CODE_RESEND_SECONDS=60
 ### 6.7 状态流转规则
 
 - 新建房源默认进入 `draft`
-- `publish`：草稿转 `listed`
-- `offline`：已上架房源可下架
-- `delete`：逻辑删除，不推荐前端继续展示
+- `publish`：`draft` 或 `offline` → `listed`
+- `offline`：`listed` / `rented` / `maintenance` → `offline`
+- `maintenance`：仅 `listed` → `maintenance`（设为维修中）
+- `restore`：仅 `maintenance` → `listed`（恢复上架）
+- `delete`：逻辑删除，状态变为 `offline`
+- **自动跳转**：合同确认生效（`ACTIVE`）时，房源自动从 `listed` → `rented`；合同终止时，房源自动从 `rented` → `listed`
+- **公开列表**：仅展示 `listed`（空置可租）房源，`rented` 和 `maintenance` 房源不出现
 
 ### 6.8 房源图片接口
 
@@ -740,6 +748,29 @@ EMAIL_CODE_RESEND_SECONDS=60
 - `height`
 - `sort_order`
 - `is_cover`
+- `status`
+- `created_at`
+- `updated_at`
+
+### 6.9 房源视频接口
+
+接口列表：
+- `POST /api/v1/houses/{house_id}/videos/upload`
+- `GET /api/v1/houses/{house_id}/videos`
+- `DELETE /api/v1/houses/{house_id}/videos/{video_id}`
+
+上传限制：
+- 仅 mp4 格式
+- 单文件上限 200MB
+- 每房源最多 5 个视频
+
+视频对象字段：
+- `id`
+- `house_id`
+- `url`
+- `mime_type`
+- `size_bytes`
+- `duration`（秒，可选）
 - `status`
 - `created_at`
 - `updated_at`
@@ -2459,6 +2490,8 @@ type PageResult<T> = {
 - `tests/api/test_repair_flow.py`
 - `tests/api/test_complaint_flow.py`
 - `tests/api/test_admin_flow.py`
+- `tests/api/test_house_status_flow.py`
+- `tests/api/test_house_video_flow.py`
 - `tests/service/test_ai_service.py`
 - `tests/service/test_notification_service.py`
 

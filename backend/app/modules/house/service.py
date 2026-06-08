@@ -217,10 +217,50 @@ class HouseService:
         )
         if house is None:
             raise HouseNotFoundException()
-        if house.status not in {HouseStatus.LISTED, HouseStatus.DRAFT}:
+        if house.status not in {HouseStatus.LISTED, HouseStatus.RENTED, HouseStatus.MAINTENANCE}:
             raise BadRequestException(message="invalid house status transition")
 
         house.status = HouseStatus.OFFLINE
+        try:
+            db.commit()
+            db.refresh(house)
+        except Exception:
+            db.rollback()
+            raise
+        return self._serialize(db, house)
+
+    def set_maintenance(self, db: Session, house_id: int, landlord_id: int) -> dict[str, object]:
+        house = self.house_repository.get_by_id_and_landlord_id(
+            db,
+            house_id=house_id,
+            landlord_id=landlord_id,
+        )
+        if house is None:
+            raise HouseNotFoundException()
+        if house.status != HouseStatus.LISTED:
+            raise BadRequestException(message="house must be listed to set maintenance")
+
+        house.status = HouseStatus.MAINTENANCE
+        try:
+            db.commit()
+            db.refresh(house)
+        except Exception:
+            db.rollback()
+            raise
+        return self._serialize(db, house)
+
+    def restore_from_maintenance(self, db: Session, house_id: int, landlord_id: int) -> dict[str, object]:
+        house = self.house_repository.get_by_id_and_landlord_id(
+            db,
+            house_id=house_id,
+            landlord_id=landlord_id,
+        )
+        if house is None:
+            raise HouseNotFoundException()
+        if house.status != HouseStatus.MAINTENANCE:
+            raise BadRequestException(message="house must be under maintenance to restore")
+
+        house.status = HouseStatus.LISTED
         try:
             db.commit()
             db.refresh(house)

@@ -78,6 +78,22 @@ def offline_house(house_id: int):
     return success(data=result)
 
 
+@bp.patch("/<int:house_id>/maintenance")
+def set_house_maintenance(house_id: int):
+    current_user_id = get_required_current_user_id()
+    service = get_house_service()
+    result = service.set_maintenance(g.db, house_id=house_id, landlord_id=current_user_id)
+    return success(data=result)
+
+
+@bp.patch("/<int:house_id>/restore")
+def restore_house_from_maintenance(house_id: int):
+    current_user_id = get_required_current_user_id()
+    service = get_house_service()
+    result = service.restore_from_maintenance(g.db, house_id=house_id, landlord_id=current_user_id)
+    return success(data=result)
+
+
 @bp.delete("/<int:house_id>")
 def delete_house(house_id: int):
     current_user_id = get_required_current_user_id()
