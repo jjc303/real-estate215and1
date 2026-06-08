@@ -119,6 +119,32 @@
         </div>
       </div>
 
+      <!-- 租金监管看板 -->
+      <div class="income-summary">
+        <div class="summary-card total">
+          <div class="summary-icon"><i class="fa-solid fa-coins"></i></div>
+          <div class="summary-info">
+            <span class="summary-label">累计租金收入</span>
+            <span class="summary-value">¥{{ summary.totalIncome.toFixed(2) }}</span>
+          </div>
+        </div>
+        <div class="summary-card pending">
+          <div class="summary-icon"><i class="fa-solid fa-hourglass-half"></i></div>
+          <div class="summary-info">
+            <span class="summary-label">待收租金</span>
+            <span class="summary-value">¥{{ summary.pendingAmount.toFixed(2) }}</span>
+            <span class="summary-badge">共 {{ summary.unpaidCount }} 笔</span>
+          </div>
+        </div>
+        <div class="summary-card overdue">
+          <div class="summary-icon"><i class="fa-solid fa-exclamation-triangle"></i></div>
+          <div class="summary-info">
+            <span class="summary-label">逾期未收</span>
+            <span class="summary-value">¥{{ summary.overdueAmount.toFixed(2) }}</span>
+          </div>
+        </div>
+      </div>
+
       <div class="filter-tabs">
         <span 
           v-for="tab in tabs" 
@@ -200,6 +226,14 @@
               @click.stop="markOverdue(bill)"
             >
               <i class="fa-solid fa-clock"></i> 标记逾期
+            </el-button>
+            <el-button
+              v-if="bill.status === 'unpaid' || bill.status === 'overdue'"
+              type="primary"
+              size="small"
+              @click.stop="remindBill(bill)"
+            >
+              <i class="fa-solid fa-bell"></i> 催缴
             </el-button>
           </div>
         </div>
@@ -360,6 +394,7 @@ import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import service from '@/utils/request'
 import { useUserStore } from '@/stores/user'
+import { getLandlordIncomeSummary, remindBill as remindBillApi } from '@/api/bill.js'
 
 const userStore = useUserStore()
 const route = useRoute()
@@ -370,6 +405,14 @@ const pageNum = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const bills = ref([])
+
+// 房东租金统计
+const summary = reactive({
+  totalIncome: 0,
+  pendingAmount: 0,
+  overdueAmount: 0,
+  unpaidCount: 0
+})
 
 // 查看详情相关
 const detailDialogVisible = ref(false)
@@ -465,6 +508,21 @@ const fetchBills = async () => {
   }
 }
 
+const fetchSummary = async () => {
+  if (isTenant.value) return
+  try {
+    const res = await getLandlordIncomeSummary()
+    if (res.code === 0 && res.data) {
+      summary.totalIncome = res.data.total_income || 0
+      summary.pendingAmount = res.data.pending_amount || 0
+      summary.overdueAmount = res.data.overdue_amount || 0
+      summary.unpaidCount = res.data.unpaid_count || 0
+    }
+  } catch (e) {
+    console.error('加载租金统计失败', e)
+  }
+}
+
 const viewDetail = (bill) => {
   detailBill.value = bill
   detailDialogVisible.value = true
@@ -513,6 +571,7 @@ const cancelBill = async (bill) => {
     if (res.code === 0) {
       ElMessage.success('账单已取消')
       fetchBills()
+      fetchSummary()
     } else {
       ElMessage.error(res.message || '取消失败')
     }
@@ -535,12 +594,36 @@ const markOverdue = async (bill) => {
     if (res.code === 0) {
       ElMessage.success('已标记为逾期')
       fetchBills()
+      fetchSummary()
     } else {
       ElMessage.error(res.message || '操作失败')
     }
   } catch (e) {
     if (e !== 'cancel' && e !== 'close') {
       ElMessage.error(e.response?.data?.message || '操作失败，请稍后重试')
+      console.error(e)
+    }
+  }
+}
+
+const remindBill = async (bill) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定向租客发送催缴提醒吗？\n账单 #${bill.id}（¥${bill.amount}）`,
+      '催缴提醒',
+      { confirmButtonText: '发送', cancelButtonText: '取消', type: 'warning' }
+    )
+    const res = await remindBillApi(bill.id)
+    if (res.code === 0) {
+      ElMessage.success('催缴提醒已发送')
+      fetchBills()
+      fetchSummary()
+    } else {
+      ElMessage.error(res.message || '发送失败')
+    }
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') {
+      ElMessage.error(e.response?.data?.message || '发送失败，请稍后重试')
       console.error(e)
     }
   }
@@ -639,6 +722,7 @@ const handleCreateFromContract = async () => {
 
 onMounted(async () => {
   fetchBills()
+  fetchSummary()
   await handleCreateFromContract()
 })
 
@@ -687,12 +771,78 @@ watch(() => route.query, async () => {
 .header-right .el-button {
   padding: 8px 20px;
 }
+/* 收入统计卡片 */
+.income-summary {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
 
+.summary-card {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.summary-card .summary-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.summary-card.total .summary-icon {
+  background: #e6f7ff;
+  color: #1890ff;
+}
+
+.summary-card.pending .summary-icon {
+  background: #fff7e6;
+  color: #faad14;
+}
+
+.summary-card.overdue .summary-icon {
+  background: #fff2f0;
+  color: #ff4d4f;
+}
+
+.summary-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.summary-label {
+  font-size: 13px;
+  color: #8c8c8c;
+}
+
+.summary-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.summary-badge {
+  font-size: 12px;
+  color: #999;
+}
+
+/* 筛选标签 */
 .filter-tabs {
   display: flex;
-  gap: 10px;
+  gap: 16px;
   margin-bottom: 20px;
-  padding: 15px 20px;
+  padding: 16px 20px;
   background: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
