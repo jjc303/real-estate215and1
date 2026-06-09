@@ -15,9 +15,7 @@ export const useUserStore = defineStore('user', () => {
     const showLogin = ref(false);//登录模态框显示状态
     const showRegister = ref(false);//注册模态框显示状态
 
-    const token = computed(() => {
-        return localStorage.getItem('token') || '';
-    });
+    const token = ref(localStorage.getItem('token') || '');
 
     const activeTab = ref('password');
     const registerType = ref('password');
@@ -367,6 +365,7 @@ export const useUserStore = defineStore('user', () => {
                 })
             }
             localStorage.setItem('token', res.data.token)
+            token.value = res.data.token
 
             isLoggedIn.value = true;
             if (res.data.user) {
@@ -442,6 +441,7 @@ export const useUserStore = defineStore('user', () => {
                 })
 
                 localStorage.setItem('token', loginRes.data.token)
+                token.value = loginRes.data.token
                 isLoggedIn.value = true
                 if (loginRes.data.user) {
                     userInfo.value = loginRes.data.user
@@ -489,6 +489,7 @@ export const useUserStore = defineStore('user', () => {
             handleError(e, '获取用户信息失败')
             isLoggedIn.value = false
             localStorage.removeItem('token')
+            token.value = ''
             throw e
         }
     }
@@ -565,6 +566,7 @@ export const useUserStore = defineStore('user', () => {
         loginForm.value = { username: '', phone: '', code: '', password: '', email: '', emailCode: '' }
         registerForm.value = { username: '', password: '', email: '', emailCode: '', role: 'tenant' }
         localStorage.removeItem('token')
+        token.value = ''
 
         router.push('/')
     }

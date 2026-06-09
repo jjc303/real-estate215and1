@@ -178,6 +178,7 @@ import ReserveDialog from '@/components/ReserveDialog.vue';
 import AiChatDialog from '@/components/AiChatDialog.vue';
 import { getHouseImage, getDefaultHouseImage } from '@/utils/tools.js';
 import { getHouseDetail } from '@/api/house.js';
+import { addFavorite, removeFavorite } from '@/api/favorite.js';
 import { getHouseVideos } from '@/api/houseVideo.js';
 
 const route = useRoute();
@@ -220,16 +221,40 @@ const goBack = () => {
     router.back();
 };
 
-const handleCollect = () => {
-    if (!userStore.token) {
+const handleCollect = async () => {
+    if (!userStore.isLoggedIn) {
         ElMessage.warning('请先登录');
         return;
     }
-    house.value.isCollect = !house.value.isCollect;
+
+    try {
+        if (house.value.isCollect) {
+            // 取消收藏
+            const res = await removeFavorite(house.value.id);
+            if (res.code === 0) {
+                house.value.isCollect = false;
+                ElMessage.success('已取消收藏');
+            } else {
+                ElMessage.error(res.message || '取消收藏失败');
+            }
+        } else {
+            // 添加收藏
+            const res = await addFavorite(house.value.id);
+            if (res.code === 0) {
+                house.value.isCollect = true;
+                ElMessage.success('收藏成功');
+            } else {
+                ElMessage.error(res.message || '收藏失败');
+            }
+        }
+    } catch (error) {
+        console.error('收藏操作失败:', error);
+        ElMessage.error('收藏失败，请重试');
+    }
 };
 
 const openChat = () => {
-    if (!userStore.token) {
+    if (!userStore.isLoggedIn) {
         ElMessage.warning('请先登录');
         return;
     }
@@ -237,7 +262,7 @@ const openChat = () => {
 };
 
 const handleReserve = () => {
-    if (!userStore.token) {
+    if (!userStore.isLoggedIn) {
         ElMessage.warning('请先登录');
         return;
     }

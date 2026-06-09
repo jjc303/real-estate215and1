@@ -198,13 +198,13 @@ onMounted(() => {
 <style scoped>
 
 .home-container {
-  width: 1488px;
-  height: 600px;
+  width: 100%;
+  height: 100vh;
   margin: 0;
   padding: 0;
   background-image: url('@/assets/images/home.jpg');
   background-size: cover;
-  background-position: 50% 68%;
+  background-position: center center;
   background-repeat: no-repeat;
   position: relative;
 }

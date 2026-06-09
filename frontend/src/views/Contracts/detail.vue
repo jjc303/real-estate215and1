@@ -137,30 +137,34 @@
       </div>
 
       <div class="contract-actions">
-        <el-button 
-          v-if="contract.status === 'pending'" 
+        <el-button
+          v-if="contract.status === 'pending'"
           type="success"
+          :disabled="actionLoading"
           @click="confirmContract"
         >
           <i class="fa-solid fa-check"></i> 确认合同
         </el-button>
-        <el-button 
-          v-if="contract.status === 'pending'" 
+        <el-button
+          v-if="contract.status === 'pending'"
           type="danger"
+          :disabled="actionLoading"
           @click="rejectContract"
         >
           <i class="fa-solid fa-x"></i> 拒绝合同
         </el-button>
-        <el-button 
-          v-if="contract.status === 'active'" 
+        <el-button
+          v-if="contract.status === 'active'"
           type="warning"
+          :disabled="actionLoading"
           @click="terminateContract"
         >
           <i class="fa-solid fa-stop-circle"></i> 终止合同
         </el-button>
-        <el-button 
-          v-if="contract.status === 'active' || contract.status === 'pending'" 
+        <el-button
+          v-if="contract.status === 'active' || contract.status === 'pending'"
           type="info"
+          :disabled="actionLoading"
           @click="cancelContract"
         >
           <i class="fa-solid fa-ban"></i> 取消合同
@@ -186,6 +190,8 @@ import { useRouter } from 'vue-router'
 
 const userStore = useUserStore()
 const router = useRouter()
+
+const actionLoading = ref(false)
 
 const USE_MOCK_DATA = false
 
@@ -302,7 +308,8 @@ const confirmContract = async () => {
         type: 'info'
       }
     )
-    
+
+    actionLoading.value = true
     if (USE_MOCK_DATA) {
       contract.value.status = 'active'
       ElMessage.success(`合同 #${contract.value.id} 已确认生效！`)
@@ -318,6 +325,8 @@ const confirmContract = async () => {
       ElMessage.error('确认失败，请稍后重试')
       console.error(e)
     }
+  } finally {
+    actionLoading.value = false
   }
 }
 
@@ -332,7 +341,8 @@ const rejectContract = async () => {
         type: 'warning'
       }
     )
-    
+
+    actionLoading.value = true
     if (USE_MOCK_DATA) {
       contract.value.status = 'rejected'
       ElMessage.success(`合同 #${contract.value.id} 已拒绝！`)
@@ -348,6 +358,8 @@ const rejectContract = async () => {
       ElMessage.error('操作失败，请稍后重试')
       console.error(e)
     }
+  } finally {
+    actionLoading.value = false
   }
 }
 
@@ -362,7 +374,8 @@ const cancelContract = async () => {
         type: 'warning'
       }
     )
-    
+
+    actionLoading.value = true
     if (USE_MOCK_DATA) {
       contract.value.status = 'cancelled'
       ElMessage.success(`合同 #${contract.value.id} 已取消！`)
@@ -378,6 +391,8 @@ const cancelContract = async () => {
       ElMessage.error('操作失败，请稍后重试')
       console.error(e)
     }
+  } finally {
+    actionLoading.value = false
   }
 }
 
@@ -392,7 +407,8 @@ const terminateContract = async () => {
         type: 'danger'
       }
     )
-    
+
+    actionLoading.value = true
     if (USE_MOCK_DATA) {
       contract.value.status = 'terminated'
       ElMessage.success(`合同 #${contract.value.id} 已终止！`)
@@ -408,6 +424,8 @@ const terminateContract = async () => {
       ElMessage.error('操作失败，请稍后重试')
       console.error(e)
     }
+  } finally {
+    actionLoading.value = false
   }
 }
 
