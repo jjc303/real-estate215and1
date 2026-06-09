@@ -199,7 +199,7 @@ onMounted(() => {
 
 .home-container {
   width: 100%;
-  height: 100vh;
+  height: 93vh;
   margin: 0;
   padding: 0;
   background-image: url('@/assets/images/home.jpg');
