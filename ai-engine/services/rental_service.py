@@ -223,6 +223,7 @@ class RentalService(BaseService):
         if not content:
             raise ChatException("empty LLM response", 500)
 
+        # 优先尝试直接解析整个内容为 JSON
         try:
             parsed = json.loads(content)
             answer = parsed.get("answer")
@@ -230,6 +231,18 @@ class RentalService(BaseService):
                 return answer.strip()
         except json.JSONDecodeError:
             pass
+
+        # 如果整体不是 JSON，尝试从内容中提取 {...} 部分
+        import re
+        match = re.search(r"\{.*\}", content, re.DOTALL)
+        if match:
+            try:
+                parsed = json.loads(match.group())
+                answer = parsed.get("answer")
+                if isinstance(answer, str) and answer.strip():
+                    return answer.strip()
+            except (json.JSONDecodeError, KeyError):
+                pass
 
         return content
 
