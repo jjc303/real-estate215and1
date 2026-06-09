@@ -148,8 +148,14 @@ class HouseService:
                 return self._serialize(db, owned_house)
 
         house = self.house_repository.get_by_id(db, house_id)
-        if house is None or house.deleted_at is not None or house.status != HouseStatus.LISTED:
+        if house is None or house.deleted_at is not None:
             raise HouseNotFoundException()
+        if house.status == HouseStatus.LISTED:
+            return self._serialize(db, house)
+        # 已出租/维修中的房源允许已登录用户查看详情（但不出现在公开列表）
+        if current_user_id is not None and house.status in {HouseStatus.RENTED, HouseStatus.MAINTENANCE}:
+            return self._serialize(db, house)
+        raise HouseNotFoundException()
         return self._serialize(db, house)
 
     def update_house(

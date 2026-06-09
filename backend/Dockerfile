@@ -6,7 +6,9 @@ ENV PYTHONUNBUFFERED=1
 WORKDIR /app/backend
 
 COPY backend/requirements.txt /tmp/requirements.txt
-RUN apt-get update && apt-get install -y --no-install-recommends fonts-wqy-microhei && rm -rf /var/lib/apt/lists/* && pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && \
+    apt-get update && apt-get install -y --no-install-recommends fonts-wqy-microhei && \
+    rm -rf /var/lib/apt/lists/*
 
 COPY backend /app/backend
 COPY scripts /app/scripts

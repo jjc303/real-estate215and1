@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 
-from sqlalchemy import Date, cast, case, func, or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.common.base_repository import BaseRepository
@@ -106,7 +106,7 @@ class BillRepository(BaseRepository[Bill]):
     ) -> list[tuple[str, float]]:
         since = date.today() - timedelta(days=months * 30)
         stmt = select(
-            cast(func.date_format(Bill.updated_at, "%Y-%m"), Date).label("month"),
+            func.date_format(Bill.updated_at, "%Y-%m").label("month"),
             func.coalesce(func.sum(Bill.amount), 0).label("amount"),
         ).where(
             Bill.landlord_id == landlord_id,
