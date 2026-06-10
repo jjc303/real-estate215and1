@@ -1419,7 +1419,7 @@ watch(() => props.visible, async (val) => {
 .notification-card .card-title-row {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
 }
 
@@ -1427,6 +1427,8 @@ watch(() => props.visible, async (val) => {
   font-size: 15px;
   font-weight: 600;
   color: #1e293b;
+  flex: 1;
+  margin-right: 8px;
 }
 
 .notification-card .unread-tag {
@@ -1435,6 +1437,8 @@ watch(() => props.visible, async (val) => {
   color: #fff;
   padding: 2px 8px;
   border-radius: 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .notification-card .card-body {
@@ -1532,7 +1536,7 @@ watch(() => props.visible, async (val) => {
 .detail-title-row {
   flex: 1;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 10px;
 }
 
@@ -1541,6 +1545,17 @@ watch(() => props.visible, async (val) => {
   font-weight: 600;
   color: #1e293b;
   margin: 0;
+  flex: 1;
+}
+
+.detail-title-row .unread-tag {
+  font-size: 11px;
+  background: #3b82f6;
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 10px;
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .detail-body {

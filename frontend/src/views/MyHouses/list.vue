@@ -27,16 +27,25 @@
         </div>
         <div class="stat-info">
           <div class="stat-number">{{ listedCount }}</div>
-          <div class="stat-label">已上架</div>
+          <div class="stat-label">空置</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="color: #1890ff">
+          <i class="fa-solid fa-users"></i>
+        </div>
+        <div class="stat-info">
+          <div class="stat-number">{{ rentedCount }}</div>
+          <div class="stat-label">已租赁</div>
         </div>
       </div>
       <div class="stat-card">
         <div class="stat-icon" style="color: #fa8c16">
-          <i class="fa-solid fa-edit"></i>
+          <i class="fa-solid fa-wrench"></i>
         </div>
         <div class="stat-info">
-          <div class="stat-number">{{ draftCount }}</div>
-          <div class="stat-label">草稿</div>
+          <div class="stat-number">{{ maintenanceCount }}</div>
+          <div class="stat-label">维修中</div>
         </div>
       </div>
       <div class="stat-card">
@@ -177,13 +186,15 @@ const houses = ref([])
 
 const tabs = [
   { label: '全部', value: 'all' },
-  { label: '已上架', value: 'listed' },
-  { label: '草稿', value: 'draft' },
+  { label: '空置', value: 'listed' },
+  { label: '已租赁', value: 'rented' },
+  { label: '维修中', value: 'maintenance' },
   { label: '已下架', value: 'offline' }
 ]
 
 const listedCount = computed(() => houses.value.filter(h => h.status === 'listed').length)
-const draftCount = computed(() => houses.value.filter(h => h.status === 'draft').length)
+const rentedCount = computed(() => houses.value.filter(h => h.status === 'rented').length)
+const maintenanceCount = computed(() => houses.value.filter(h => h.status === 'maintenance').length)
 const offlineCount = computed(() => houses.value.filter(h => h.status === 'offline').length)
 
 const imagePrompts = [
@@ -253,7 +264,13 @@ const getTabCount = (status) => {
 }
 
 const statusText = (status) => {
-  const map = { draft: '草稿', listed: '已上架', offline: '已下架' }
+  const map = { 
+    draft: '草稿', 
+    listed: '空置', 
+    rented: '已租赁', 
+    maintenance: '维修中', 
+    offline: '已下架' 
+  }
   return map[status] || status
 }
 
@@ -375,7 +392,7 @@ onMounted(() => {
 /* 统计卡片区域 */
 .stats-section {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px;
   margin-bottom: 20px;
   padding: 20px;
@@ -597,6 +614,8 @@ onMounted(() => {
 
 .status.draft { background: #fff7e6; color: #fa8c16; }
 .status.listed { background: #f6ffed; color: #52c41a; }
+.status.rented { background: #e6f7ff; color: #1890ff; }
+.status.maintenance { background: #fff7e6; color: #fa8c16; }
 .status.offline { background: #f5f5f5; color: #8c8c8c; }
 
 .house-right {
