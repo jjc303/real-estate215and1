@@ -54,7 +54,9 @@ const changePage = (page) => {
 
 <style scoped>
 .pagination {
-  text-align: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   margin: 40px 0;
 }
 .page-btn {

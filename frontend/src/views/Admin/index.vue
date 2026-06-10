@@ -34,6 +34,16 @@
       <!-- 用户管理 -->
       <template v-if="activeMenu === 'users'">
         <div class="content-card">
+          <div class="search-bar">
+            <el-input v-model="userKeyword" placeholder="搜索用户名/姓名/手机号" clearable class="search-input" @keyup.enter="searchUsers" @clear="searchUsers"></el-input>
+            <el-select v-model="userRole" placeholder="角色筛选" clearable class="filter-select" @change="searchUsers">
+              <el-option label="全部" value=""></el-option>
+              <el-option label="租客" value="tenant"></el-option>
+              <el-option label="房东" value="landlord"></el-option>
+              <el-option label="管理员" value="admin"></el-option>
+            </el-select>
+            <el-button type="primary" @click="searchUsers">搜索</el-button>
+          </div>
           <el-table :data="users" border stripe v-loading="usersLoading" fit>
             <el-table-column prop="id" label="ID" width="70" align="center" fixed></el-table-column>
             <el-table-column prop="username" label="用户名" min-width="120" show-overflow-tooltip></el-table-column>
@@ -72,6 +82,27 @@
       <!-- 房源管理 -->
       <template v-if="activeMenu === 'houses'">
         <div class="content-card">
+          <div class="search-bar">
+            <el-input v-model="houseKeyword" placeholder="搜索房源标题/地址/小区" clearable class="search-input" @keyup.enter="searchHouses" @clear="searchHouses"></el-input>
+            <el-select v-model="houseRegion" placeholder="区域筛选" clearable class="filter-select" @change="searchHouses">
+              <el-option label="全部" value=""></el-option>
+              <el-option label="雨花区" value="雨花区"></el-option>
+              <el-option label="岳麓区" value="岳麓区"></el-option>
+              <el-option label="天心区" value="天心区"></el-option>
+              <el-option label="开福区" value="开福区"></el-option>
+              <el-option label="芙蓉区" value="芙蓉区"></el-option>
+              <el-option label="望城区" value="望城区"></el-option>
+            </el-select>
+            <el-select v-model="houseStatusFilter" placeholder="状态筛选" clearable class="filter-select" @change="searchHouses">
+              <el-option label="全部" value=""></el-option>
+              <el-option label="空闲" value="listed"></el-option>
+              <el-option label="已租赁" value="rented"></el-option>
+              <el-option label="维护中" value="maintenance"></el-option>
+              <el-option label="草稿" value="draft"></el-option>
+              <el-option label="已下架" value="offline"></el-option>
+            </el-select>
+            <el-button type="primary" @click="searchHouses">搜索</el-button>
+          </div>
           <el-table :data="houses" border stripe v-loading="housesLoading" fit>
             <el-table-column prop="id" label="ID" width="70" align="center" fixed></el-table-column>
             <el-table-column prop="title" label="标题" min-width="140" show-overflow-tooltip></el-table-column>
@@ -148,60 +179,31 @@
         </div>
       </template>
 
-      <!-- 报修管理 -->
-      <template v-if="activeMenu === 'repairs'">
-        <div class="content-card">
-          <el-table :data="repairs" border stripe v-loading="repairsLoading" fit>
-            <el-table-column prop="id" label="ID" width="70" align="center" fixed></el-table-column>
-            <el-table-column prop="title" label="报修标题" min-width="200" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="applicant_name" label="申请人" min-width="100" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="category" label="分类" width="100" align="center"></el-table-column>
-            <el-table-column prop="status" label="状态" width="90" align="center">
-              <template #default="scope">
-                <span :class="`status-badge ${scope.row.status}`">{{ getRepairStatusLabel(scope.row.status) }}</span>
-              </template>
-            </el-table-column>
-            <el-table-column prop="created_at" label="创建时间" width="175"></el-table-column>
-            <el-table-column label="操作" width="230" align="center" fixed="right">
-              <template #default="scope">
-                <el-button size="small" @click="viewRepair(scope.row)">查看</el-button>
-                <el-button 
-                  v-if="scope.row.status === 'pending'" 
-                  size="small" type="primary" 
-                  @click="handleProcessRepair(scope.row)"
-                >处理</el-button>
-                <el-button 
-                  v-if="scope.row.status === 'processing'" 
-                  size="small" type="success" 
-                  @click="handleCompleteRepair(scope.row)"
-                >完成</el-button>
-                <el-button 
-                  v-if="scope.row.status === 'pending'" 
-                  size="small" type="danger" 
-                  @click="handleRejectRepair(scope.row)"
-                >拒绝</el-button>
-              </template>
-            </el-table-column>
-          </el-table>
-          <Pagination 
-            :page-num="repairPagination.page"
-            :page-size="repairPagination.pageSize"
-            :total="repairPagination.total"
-            @change="handleRepairCurrentChange"
-          ></Pagination>
-        </div>
-      </template>
-
       <!-- 合同管理 -->
       <template v-if="activeMenu === 'contracts'">
         <div class="content-card">
+          <div class="search-bar">
+            <el-input v-model="contractKeyword" placeholder="搜索房源标题" clearable class="search-input" @keyup.enter="searchContracts" @clear="searchContracts"></el-input>
+            <el-select v-model="contractStatus" placeholder="状态筛选" clearable class="filter-select" @change="searchContracts">
+              <el-option label="全部" value=""></el-option>
+              <el-option label="待确认" value="pending"></el-option>
+              <el-option label="生效中" value="active"></el-option>
+              <el-option label="已拒绝" value="rejected"></el-option>
+              <el-option label="已取消" value="cancelled"></el-option>
+              <el-option label="已终止" value="terminated"></el-option>
+            </el-select>
+            <el-button type="primary" @click="searchContracts">搜索</el-button>
+          </div>
           <el-table :data="contracts" border stripe v-loading="contractsLoading" fit>
             <el-table-column prop="id" label="ID" width="70" align="center" fixed></el-table-column>
-            <el-table-column prop="house_title" label="房源" min-width="200" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="tenant_name" label="租客" min-width="100" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="landlord_name" label="房东" min-width="100" show-overflow-tooltip></el-table-column>
-            <el-table-column prop="monthly_rent" label="租金" width="120" align="center">
-              <template #default="scope">¥{{ scope.row.monthly_rent }}/月</template>
+            <el-table-column label="房源" min-width="160" show-overflow-tooltip>
+              <template #default="scope">{{ scope.row.house?.title || '房源#' + scope.row.house_id }}</template>
+            </el-table-column>
+            <el-table-column label="租客ID" width="90" align="center">
+              <template #default="scope">{{ scope.row.tenant_id }}</template>
+            </el-table-column>
+            <el-table-column label="房东ID" width="90" align="center">
+              <template #default="scope">{{ scope.row.landlord_id }}</template>
             </el-table-column>
             <el-table-column prop="start_date" label="起租日期" width="110"></el-table-column>
             <el-table-column prop="end_date" label="到期日期" width="110"></el-table-column>
@@ -210,7 +212,6 @@
                 <span :class="`status-badge ${scope.row.status}`">{{ getContractStatusLabel(scope.row.status) }}</span>
               </template>
             </el-table-column>
-            <el-table-column prop="created_at" label="创建时间" width="175"></el-table-column>
             <el-table-column label="操作" width="130" align="center" fixed="right">
               <template #default="scope">
                 <el-button size="small" @click="viewContract(scope.row)">查看</el-button>
@@ -227,6 +228,54 @@
             :page-size="contractPagination.pageSize"
             :total="contractPagination.total"
             @change="handleContractCurrentChange"
+          ></Pagination>
+        </div>
+      </template>
+
+      <!-- 账单管理 -->
+      <template v-if="activeMenu === 'bills'">
+        <div class="content-card">
+          <div class="search-bar">
+            <el-input v-model="billKeyword" placeholder="搜索房源标题" clearable class="search-input" @keyup.enter="searchBills" @clear="searchBills"></el-input>
+            <el-select v-model="billStatusFilter" placeholder="状态筛选" clearable class="filter-select" @change="searchBills">
+              <el-option label="全部" value=""></el-option>
+              <el-option label="未支付" value="unpaid"></el-option>
+              <el-option label="已支付" value="paid"></el-option>
+              <el-option label="逾期" value="overdue"></el-option>
+              <el-option label="已取消" value="cancelled"></el-option>
+            </el-select>
+            <el-select v-model="billTypeFilter" placeholder="类型筛选" clearable class="filter-select" @change="searchBills">
+              <el-option label="全部" value=""></el-option>
+              <el-option label="租金" value="rent"></el-option>
+              <el-option label="押金" value="deposit"></el-option>
+              <el-option label="其他" value="other"></el-option>
+            </el-select>
+            <el-button type="primary" @click="searchBills">搜索</el-button>
+          </div>
+          <el-table :data="bills" border stripe v-loading="billsLoading" fit>
+            <el-table-column prop="id" label="ID" width="70" align="center" fixed></el-table-column>
+            <el-table-column prop="contract_id" label="合同ID" width="90" align="center"></el-table-column>
+            <el-table-column prop="house_id" label="房源ID" width="90" align="center"></el-table-column>
+            <el-table-column label="类型" width="80" align="center">
+              <template #default="scope">{{ getBillTypeLabel(scope.row.bill_type) }}</template>
+            </el-table-column>
+            <el-table-column label="金额" width="120" align="center">
+              <template #default="scope">¥{{ scope.row.amount }}</template>
+            </el-table-column>
+            <el-table-column prop="due_date" label="到期日期" width="110" align="center"></el-table-column>
+            <el-table-column label="状态" width="90" align="center">
+              <template #default="scope">
+                <span :class="`status-badge ${scope.row.status}`">{{ getBillStatusLabel(scope.row.status) }}</span>
+              </template>
+            </el-table-column>
+            <el-table-column prop="remark" label="备注" min-width="150" show-overflow-tooltip></el-table-column>
+            <el-table-column prop="created_at" label="创建时间" width="175"></el-table-column>
+          </el-table>
+          <Pagination 
+            :page-num="billPagination.page"
+            :page-size="billPagination.pageSize"
+            :total="billPagination.total"
+            @change="handleBillCurrentChange"
           ></Pagination>
         </div>
       </template>
@@ -287,11 +336,11 @@
           <div class="chart-card">
             <div ref="incomeChartRef" class="chart-container"></div>
           </div>
+          <div class="chart-card tall">
+            <div ref="complaintRepairChartRef" class="chart-container tall"></div>
+          </div>
           <div class="chart-card">
             <div ref="utilizationChartRef" class="chart-container"></div>
-          </div>
-          <div class="chart-card wide">
-            <div ref="complaintRepairChartRef" class="chart-container"></div>
           </div>
         </div>
       </template>
@@ -525,44 +574,6 @@
       </div>
     </el-dialog>
 
-    <!-- 报修详情弹窗 -->
-    <el-dialog title="报修详情" v-model="showRepairDetail" width="600px">
-      <div v-if="selectedRepair" class="detail-content">
-        <div class="detail-row">
-          <span class="detail-label">ID</span>
-          <span class="detail-value">{{ selectedRepair.id }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">描述</span>
-          <span class="detail-value">{{ selectedRepair.description }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">状态</span>
-          <span :class="`status-badge ${selectedRepair.status}`">{{ getRepairStatusLabel(selectedRepair.status) }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">合同ID</span>
-          <span class="detail-value">{{ selectedRepair.contract_id }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">处理时间</span>
-          <span class="detail-value">{{ selectedRepair.processed_at || '无' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">完成时间</span>
-          <span class="detail-value">{{ selectedRepair.completed_at || '无' }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">创建时间</span>
-          <span class="detail-value">{{ selectedRepair.created_at }}</span>
-        </div>
-        <div class="detail-row">
-          <span class="detail-label">更新时间</span>
-          <span class="detail-value">{{ selectedRepair.updated_at }}</span>
-        </div>
-      </div>
-    </el-dialog>
-
     <!-- 合同详情弹窗 -->
     <el-dialog title="合同详情" v-model="showContractDetail" width="700px">
       <div v-if="selectedContract" class="detail-content">
@@ -575,8 +586,24 @@
           <span :class="`status-badge ${selectedContract.status}`">{{ getContractStatusLabel(selectedContract.status) }}</span>
         </div>
         <div class="detail-row">
-          <span class="detail-label">房源</span>
-          <span class="detail-value">{{ selectedContract.house?.title || selectedContract.id }}</span>
+          <span class="detail-label">房源标题</span>
+          <span class="detail-value">{{ selectedContract.house?.title || '房源#' + selectedContract.house_id }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">房源地址</span>
+          <span class="detail-value">{{ selectedContract.house?.address || '-' }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">户型/面积</span>
+          <span class="detail-value">{{ selectedContract.house?.house_type || '-' }} / {{ selectedContract.house?.area || '-' }}㎡</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">租客ID</span>
+          <span class="detail-value">{{ selectedContract.tenant_id }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">房东ID</span>
+          <span class="detail-value">{{ selectedContract.landlord_id }}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">开始日期</span>
@@ -593,6 +620,10 @@
         <div class="detail-row">
           <span class="detail-label">押金</span>
           <span class="detail-value">¥{{ selectedContract.deposit }}</span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">约定ID</span>
+          <span class="detail-value">{{ selectedContract.appointment_id }}</span>
         </div>
         <div class="detail-row">
           <span class="detail-label">备注</span>
@@ -668,9 +699,8 @@ import {
   listUsers, getUserDetail, updateUserStatus,
   listHouses, getHouseDetail,
   listComplaints, getComplaintDetail, processComplaint, resolveComplaint, rejectComplaint,
-  listRepairs, getRepairDetail, processRepair, completeRepair, rejectRepair,
   listContracts, getContractDetail, updateContractStatus,
-  listLogs
+  listLogs, listBills
 } from '@/api/admin.js'
 import {
   getHouseUtilization,
@@ -688,6 +718,8 @@ const activeMenu = ref('users')
 const menuItems = [
   { key: 'users', label: '用户管理', icon: 'fa-solid fa-users' },
   { key: 'houses', label: '房源监管', icon: 'fa-solid fa-home' },
+  { key: 'contracts', label: '合同管理', icon: 'fa-solid fa-file-signature' },
+  { key: 'bills', label: '账单管理', icon: 'fa-solid fa-file-invoice' },
   { key: 'complaints', label: '投诉处理', icon: 'fa-solid fa-flag' },
   { key: 'statistics', label: '报表统计', icon: 'fa-solid fa-bar-chart' },
   { key: 'logs', label: '系统监控', icon: 'fa-solid fa-shield' },
@@ -710,8 +742,6 @@ const showHouseDetail = ref(false)
 const selectedHouse = ref(null)
 const showComplaintDetail = ref(false)
 const selectedComplaint = ref(null)
-const showRepairDetail = ref(false)
-const selectedRepair = ref(null)
 const showContractDetail = ref(false)
 const selectedContract = ref(null)
 
@@ -725,11 +755,6 @@ const complaints = ref([])
 const complaintsLoading = ref(false)
 const complaintPagination = reactive({ page: 1, pageSize: 10, total: 0 })
 
-// 报修管理
-const repairs = ref([])
-const repairsLoading = ref(false)
-const repairPagination = reactive({ page: 1, pageSize: 10, total: 0 })
-
 // 合同管理
 const contracts = ref([])
 const contractsLoading = ref(false)
@@ -739,6 +764,23 @@ const contractPagination = reactive({ page: 1, pageSize: 10, total: 0 })
 const logs = ref([])
 const logsLoading = ref(false)
 const logPagination = reactive({ page: 1, pageSize: 10, total: 0 })
+
+// 搜索筛选
+const userKeyword = ref('')
+const userRole = ref('')
+const houseKeyword = ref('')
+const houseRegion = ref('')
+const houseStatusFilter = ref('')
+const contractKeyword = ref('')
+const contractStatus = ref('')
+
+// 账单管理
+const bills = ref([])
+const billsLoading = ref(false)
+const billPagination = reactive({ page: 1, pageSize: 10, total: 0 })
+const billKeyword = ref('')
+const billStatusFilter = ref('')
+const billTypeFilter = ref('')
 
 // 新闻管理
 const news = ref([])
@@ -836,6 +878,16 @@ const getStatusCN = (status) => {
   return map[status] || status
 }
 
+const getBillTypeLabel = (type) => {
+  const map = { rent: '租金', deposit: '押金', other: '其他' }
+  return map[type] || type
+}
+
+const getBillStatusLabel = (status) => {
+  const map = { unpaid: '未支付', paid: '已支付', overdue: '逾期', cancelled: '已取消' }
+  return map[status] || status
+}
+
 const formatLogTime = (dateStr) => {
   if (!dateStr) return ''
   try {
@@ -862,13 +914,8 @@ const formatLogTime = (dateStr) => {
   }
 }
 
-const getRepairStatusLabel = (status) => {
-  const map = { pending: '待处理', processing: '处理中', completed: '已完成', rejected: '已拒绝', closed: '已关闭' }
-  return map[status] || status
-}
-
 const getContractStatusLabel = (status) => {
-  const map = { pending: '待签署', active: '生效中', cancelled: '已取消', expired: '已到期' }
+  const map = { pending: '待签署', active: '生效中', rejected: '已拒绝', cancelled: '已取消', terminated: '已终止', expired: '已到期' }
   return map[status] || status
 }
 
@@ -879,6 +926,8 @@ const loadUsers = async () => {
       page: pagination.page,
       page_size: pagination.pageSize
     }
+    if (userKeyword.value) params.keyword = userKeyword.value
+    if (userRole.value) params.role = userRole.value
     
     const res = await listUsers(params)
     if (res.code === 0 && res.data) {
@@ -893,6 +942,11 @@ const loadUsers = async () => {
   }
 }
 
+const searchUsers = () => {
+  pagination.page = 1
+  loadUsers()
+}
+
 const loadHouses = async () => {
   housesLoading.value = true
   try {
@@ -900,6 +954,9 @@ const loadHouses = async () => {
       page: housePagination.page,
       page_size: housePagination.pageSize
     }
+    if (houseKeyword.value) params.keyword = houseKeyword.value
+    if (houseRegion.value) params.region = houseRegion.value
+    if (houseStatusFilter.value) params.status = houseStatusFilter.value
     
     const res = await listHouses(params)
     if (res.code === 0 && res.data) {
@@ -912,6 +969,11 @@ const loadHouses = async () => {
   } finally {
     housesLoading.value = false
   }
+}
+
+const searchHouses = () => {
+  housePagination.page = 1
+  loadHouses()
 }
 
 const loadComplaints = async () => {
@@ -935,27 +997,6 @@ const loadComplaints = async () => {
   }
 }
 
-const loadRepairs = async () => {
-  repairsLoading.value = true
-  try {
-    const params = {
-      page: repairPagination.page,
-      page_size: repairPagination.pageSize
-    }
-    
-    const res = await listRepairs(params)
-    if (res.code === 0 && res.data) {
-      repairs.value = res.data.items || res.data.list || []
-      repairPagination.total = res.data.total || 0
-    }
-  } catch (e) {
-    console.error('加载报修列表失败', e)
-    ElMessage.error('加载报修列表失败')
-  } finally {
-    repairsLoading.value = false
-  }
-}
-
 const loadContracts = async () => {
   contractsLoading.value = true
   try {
@@ -963,6 +1004,8 @@ const loadContracts = async () => {
       page: contractPagination.page,
       page_size: contractPagination.pageSize
     }
+    if (contractKeyword.value) params.keyword = contractKeyword.value
+    if (contractStatus.value) params.status = contractStatus.value
     
     const res = await listContracts(params)
     if (res.code === 0 && res.data) {
@@ -975,6 +1018,40 @@ const loadContracts = async () => {
   } finally {
     contractsLoading.value = false
   }
+}
+
+const searchContracts = () => {
+  contractPagination.page = 1
+  loadContracts()
+}
+
+const loadBills = async () => {
+  billsLoading.value = true
+  try {
+    const params = {
+      page: billPagination.page,
+      page_size: billPagination.pageSize
+    }
+    if (billKeyword.value) params.keyword = billKeyword.value
+    if (billStatusFilter.value) params.status = billStatusFilter.value
+    if (billTypeFilter.value) params.bill_type = billTypeFilter.value
+    
+    const res = await listBills(params)
+    if (res.code === 0 && res.data) {
+      bills.value = res.data.items || res.data.list || []
+      billPagination.total = res.data.total || 0
+    }
+  } catch (e) {
+    console.error('加载账单列表失败', e)
+    ElMessage.error('加载账单列表失败')
+  } finally {
+    billsLoading.value = false
+  }
+}
+
+const searchBills = () => {
+  billPagination.page = 1
+  loadBills()
 }
 
 const loadLogs = async () => {
@@ -1501,64 +1578,6 @@ const handleRejectComplaint = async (complaint) => {
   }
 }
 
-const viewRepair = async (repair) => {
-  try {
-    const res = await getRepairDetail(repair.id)
-    if (res.code === 0 && res.data) {
-      selectedRepair.value = res.data
-      showRepairDetail.value = true
-    }
-  } catch (e) {
-    console.error('获取报修详情失败', e)
-    ElMessage.error('获取报修详情失败')
-  }
-}
-
-const handleProcessRepair = async (repair) => {
-  try {
-    const res = await processRepair(repair.id)
-    if (res.code === 0) {
-      ElMessage.success('已开始处理')
-      loadRepairs()
-    } else {
-      ElMessage.error(res.message || '操作失败')
-    }
-  } catch (e) {
-    console.error('处理报修失败', e)
-    ElMessage.error('处理报修失败')
-  }
-}
-
-const handleCompleteRepair = async (repair) => {
-  try {
-    const res = await completeRepair(repair.id)
-    if (res.code === 0) {
-      ElMessage.success('已完成')
-      loadRepairs()
-    } else {
-      ElMessage.error(res.message || '操作失败')
-    }
-  } catch (e) {
-    console.error('完成报修失败', e)
-    ElMessage.error('完成报修失败')
-  }
-}
-
-const handleRejectRepair = async (repair) => {
-  try {
-    const res = await rejectRepair(repair.id)
-    if (res.code === 0) {
-      ElMessage.success('已拒绝')
-      loadRepairs()
-    } else {
-      ElMessage.error(res.message || '操作失败')
-    }
-  } catch (e) {
-    console.error('拒绝报修失败', e)
-    ElMessage.error('拒绝报修失败')
-  }
-}
-
 const viewContract = async (contract) => {
   try {
     const res = await getContractDetail(contract.id)
@@ -1610,14 +1629,14 @@ const handleComplaintCurrentChange = (page) => {
   loadComplaints()
 }
 
-const handleRepairCurrentChange = (page) => {
-  repairPagination.page = page
-  loadRepairs()
-}
-
 const handleContractCurrentChange = (page) => {
   contractPagination.page = page
   loadContracts()
+}
+
+const handleBillCurrentChange = (page) => {
+  billPagination.page = page
+  loadBills()
 }
 
 const handleLogCurrentChange = (page) => {
@@ -1638,6 +1657,12 @@ const handleMenuChange = (menu) => {
       break
     case 'houses':
       loadHouses()
+      break
+    case 'contracts':
+      loadContracts()
+      break
+    case 'bills':
+      loadBills()
       break
     case 'complaints':
       loadComplaints()
@@ -1874,14 +1899,19 @@ watch(activeMenu, (newMenu, oldMenu) => {
   color: #16a34a;
 }
 
-.status-badge.rejected {
-  background: #fee2e2;
-  color: #dc2626;
-}
-
 .status-badge.closed {
   background: #f3f4f6;
   color: #6b7280;
+}
+
+.status-badge.terminated {
+  background: #f3f4f6;
+  color: #6b7280;
+}
+
+.status-badge.rejected {
+  background: #fee2e2;
+  color: #dc2626;
 }
 
 .status-badge.listed {
@@ -1907,6 +1937,21 @@ watch(activeMenu, (newMenu, oldMenu) => {
 .status-badge.maintenance {
   background: #fff7ed;
   color: #ea580c;
+}
+
+.status-badge.unpaid {
+  background: #fef3c7;
+  color: #d97706;
+}
+
+.status-badge.overdue {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.status-badge.paid {
+  background: #dcfce7;
+  color: #16a34a;
 }
 
 .news-status-tag {
@@ -2083,8 +2128,17 @@ watch(activeMenu, (newMenu, oldMenu) => {
   padding: 20px;
 }
 
-.chart-card.wide {
-  grid-column: span 2;
+.charts-grid .chart-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-card.tall {
+  grid-row: span 2;
+}
+
+.chart-card.tall .chart-container {
+  height: 740px;
 }
 
 .log-action-text {

@@ -171,6 +171,14 @@ export const listLogs = (params) => {
   })
 }
 
+export const listBills = (params) => {
+  return request({
+    url: 'v1/admin/bills',
+    method: 'get',
+    params
+  })
+}
+
 // 管理员房源状态管理
 export const adminPublishHouse = (houseId) => {
   return request({
