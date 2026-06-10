@@ -148,6 +148,16 @@
               <el-option label="已拒绝" value="rejected"></el-option>
               <el-option label="已关闭" value="closed"></el-option>
             </el-select>
+            <el-date-picker
+              v-model="complaintDateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              class="date-picker"
+              @change="searchComplaints"
+            />
             <el-button type="primary" @click="searchComplaints">搜索</el-button>
           </div>
           <el-table :data="complaints" border stripe v-loading="complaintsLoading" fit>
@@ -258,7 +268,6 @@
       <template v-if="activeMenu === 'bills'">
         <div class="content-card">
           <div class="search-bar">
-            <el-input v-model="billKeyword" placeholder="搜索房源标题" clearable class="search-input" @keyup.enter="searchBills" @clear="searchBills"></el-input>
             <el-select v-model="billStatusFilter" placeholder="状态筛选" clearable class="filter-select" @change="searchBills">
               <el-option label="全部" value=""></el-option>
               <el-option label="未支付" value="unpaid"></el-option>
@@ -799,6 +808,7 @@ const complaintsLoading = ref(false)
 const complaintPagination = reactive({ page: 1, pageSize: 10, total: 0 })
 const complaintKeyword = ref('')
 const complaintStatusFilter = ref('')
+const complaintDateRange = ref([])
 
 // 合同管理
 const contracts = ref([])
@@ -826,7 +836,6 @@ const contractDateRange = ref([])
 const bills = ref([])
 const billsLoading = ref(false)
 const billPagination = reactive({ page: 1, pageSize: 10, total: 0 })
-const billKeyword = ref('')
 const billStatusFilter = ref('')
 const billTypeFilter = ref('')
 const billDateRange = ref([])
@@ -1034,6 +1043,12 @@ const loadComplaints = async () => {
     }
     if (complaintKeyword.value) params.keyword = complaintKeyword.value
     if (complaintStatusFilter.value) params.status = complaintStatusFilter.value
+    if (complaintDateRange.value && complaintDateRange.value.length === 2 && complaintDateRange.value[0] && complaintDateRange.value[1]) {
+      params.date_from = complaintDateRange.value[0]
+      const dateTo = new Date(complaintDateRange.value[1])
+      dateTo.setDate(dateTo.getDate() + 1)
+      params.date_to = dateTo.toISOString().split('T')[0]
+    }
     
     const res = await listComplaints(params)
     if (res.code === 0 && res.data) {
@@ -1095,7 +1110,6 @@ const loadBills = async () => {
       page: billPagination.page,
       page_size: billPagination.pageSize
     }
-    if (billKeyword.value) params.keyword = billKeyword.value
     if (billStatusFilter.value) params.status = billStatusFilter.value
     if (billTypeFilter.value) params.bill_type = billTypeFilter.value
     if (billDateRange.value && billDateRange.value.length === 2 && billDateRange.value[0] && billDateRange.value[1]) {
