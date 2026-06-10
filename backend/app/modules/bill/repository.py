@@ -115,9 +115,11 @@ class BillRepository(BaseRepository[Bill]):
         ).group_by("month").order_by("month")
         return [(str(row[0]), float(row[1])) for row in db.execute(stmt).all()]
 
-    def list_overdue_unpaid(self, db: Session) -> list[Bill]:
+    def list_overdue_unpaid(self, db: Session, landlord_id: int | None = None) -> list[Bill]:
         stmt = select(Bill).where(
             Bill.status == BillStatus.UNPAID,
             Bill.due_date < date.today(),
         )
+        if landlord_id is not None:
+            stmt = stmt.where(Bill.landlord_id == landlord_id)
         return list(db.execute(stmt).scalars().all())

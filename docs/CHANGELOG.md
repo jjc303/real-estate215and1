@@ -18,6 +18,10 @@
 - `tests/service/test_admin_search.py` — 单元测试
 - `tests/api/test_admin_search_flow.py` — 4 个集成测试（用户/角色/房源/账单搜索）
 
+### Fixed
+
+- 逾期检测 `POST /api/v1/bills/check-overdue`：房东调用时只处理自己名下的逾期账单，管理员处理全部
+
 ### Verified
 
 - `pytest tests/ -v` — 79 passed, 0 regression

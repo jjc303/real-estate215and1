@@ -229,8 +229,8 @@ class BillService:
             ],
         ).model_dump(mode="json")
 
-    def check_overdue_bills(self, db: Session) -> int:
-        overdue_bills = self.bill_repository.list_overdue_unpaid(db)
+    def check_overdue_bills(self, db: Session, landlord_id: int | None = None) -> int:
+        overdue_bills = self.bill_repository.list_overdue_unpaid(db, landlord_id=landlord_id)
         now = date.today()
         for bill in overdue_bills:
             if bill.due_date >= now:
