@@ -115,6 +115,8 @@ class AdminRepository:
         self, db: Session, offset: int, limit: int,
         keyword: str | None = None,
         status: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> list[tuple[Contract, House]]:
         stmt = (
             select(Contract, House)
@@ -125,6 +127,10 @@ class AdminRepository:
             stmt = stmt.where(House.title.ilike(pattern))
         if status is not None:
             stmt = stmt.where(Contract.status == status)
+        if date_from is not None:
+            stmt = stmt.where(Contract.created_at >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Contract.created_at <= date_to)
         stmt = stmt.order_by(Contract.created_at.desc(), Contract.id.desc()).offset(offset).limit(limit)
         return list(db.execute(stmt).all())
 
@@ -132,6 +138,8 @@ class AdminRepository:
         self, db: Session,
         keyword: str | None = None,
         status: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> int:
         stmt = select(func.count()).select_from(Contract)
         if keyword is not None:
@@ -141,6 +149,10 @@ class AdminRepository:
             ))
         if status is not None:
             stmt = stmt.where(Contract.status == status)
+        if date_from is not None:
+            stmt = stmt.where(Contract.created_at >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Contract.created_at <= date_to)
         return int(db.execute(stmt).scalar_one())
 
     def get_contract_by_id_admin(self, db: Session, contract_id: int) -> tuple[Contract, House] | None:

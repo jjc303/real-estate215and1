@@ -129,6 +129,8 @@ class ContractAdminListQuerySchema(BaseSchema):
     page_size: int = Field(default=10, ge=1, le=100)
     keyword: str | None = Field(default=None, min_length=1, max_length=255)
     status: str | None = Field(default=None, min_length=1, max_length=20)
+    date_from: date | None = None
+    date_to: date | None = None
 
 
 class ContractAdminStatusSchema(BaseSchema):
