@@ -192,6 +192,16 @@
               <el-option label="已取消" value="cancelled"></el-option>
               <el-option label="已终止" value="terminated"></el-option>
             </el-select>
+            <el-date-picker
+              v-model="contractDateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              class="date-picker"
+              @change="searchContracts"
+            />
             <el-button type="primary" @click="searchContracts">搜索</el-button>
           </div>
           <el-table :data="contracts" border stripe v-loading="contractsLoading" fit>
@@ -250,6 +260,16 @@
               <el-option label="押金" value="deposit"></el-option>
               <el-option label="其他" value="other"></el-option>
             </el-select>
+            <el-date-picker
+              v-model="billDateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              class="date-picker"
+              @change="searchBills"
+            />
             <el-button type="primary" @click="searchBills">搜索</el-button>
           </div>
           <el-table :data="bills" border stripe v-loading="billsLoading" fit>
@@ -773,6 +793,7 @@ const houseRegion = ref('')
 const houseStatusFilter = ref('')
 const contractKeyword = ref('')
 const contractStatus = ref('')
+const contractDateRange = ref([])
 
 // 账单管理
 const bills = ref([])
@@ -781,6 +802,7 @@ const billPagination = reactive({ page: 1, pageSize: 10, total: 0 })
 const billKeyword = ref('')
 const billStatusFilter = ref('')
 const billTypeFilter = ref('')
+const billDateRange = ref([])
 
 // 新闻管理
 const news = ref([])
@@ -1006,6 +1028,10 @@ const loadContracts = async () => {
     }
     if (contractKeyword.value) params.keyword = contractKeyword.value
     if (contractStatus.value) params.status = contractStatus.value
+    if (contractDateRange.value && contractDateRange.value.length === 2) {
+      params.date_from = contractDateRange.value[0]
+      params.date_to = contractDateRange.value[1]
+    }
     
     const res = await listContracts(params)
     if (res.code === 0 && res.data) {
@@ -1035,6 +1061,10 @@ const loadBills = async () => {
     if (billKeyword.value) params.keyword = billKeyword.value
     if (billStatusFilter.value) params.status = billStatusFilter.value
     if (billTypeFilter.value) params.bill_type = billTypeFilter.value
+    if (billDateRange.value && billDateRange.value.length === 2) {
+      params.date_from = billDateRange.value[0]
+      params.date_to = billDateRange.value[1]
+    }
     
     const res = await listBills(params)
     if (res.code === 0 && res.data) {
@@ -1844,6 +1874,10 @@ watch(activeMenu, (newMenu, oldMenu) => {
 
 .filter-select {
   width: 140px;
+}
+
+.date-picker {
+  width: 240px;
 }
 
 .role-badge {
