@@ -484,6 +484,34 @@ def main() -> None:
             db.commit()
             log(f"  updated {paid_count} paid bills to past months")
 
+            # 9. Create payment records for paid bills (for admin statistics)
+            log("[9/9] Creating payment records...")
+            from app.modules.payment.model import Payment
+            rows = db.execute(
+                __import__("sqlalchemy").text(
+                    "SELECT id, amount, updated_at, tenant_id, contract_id, house_id, landlord_id FROM bills WHERE status = 'paid'"
+                )
+            ).fetchall()
+            payment_count = 0
+            for bid, amount, paid_at, payer_id, cid, hid, lid in rows:
+                payment = Payment(
+                    bill_id=bid,
+                    contract_id=cid,
+                    house_id=hid,
+                    tenant_id=payer_id,
+                    landlord_id=lid,
+                    amount=amount,
+                    payment_method="mock",
+                    status="success",
+                    paid_at=paid_at,
+                )
+                db.add(payment)
+                payment_count += 1
+                if payment_count % 200 == 0:
+                    db.commit()
+            db.commit()
+            log(f"  created {payment_count} payment records")
+
             log("=" * 50)
             log("✅ Seed data complete!")
             log("=" * 50)

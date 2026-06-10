@@ -80,7 +80,10 @@ def landlord_income_summary():
 def check_overdue():
     current_user_id = get_required_current_user_id()
     service = get_bill_service()
-    count = service.check_overdue_bills(g.db)
+    from app.modules.user.model import User
+    user = g.db.get(User, current_user_id)
+    landlord_id = None if user and user.role == "admin" else current_user_id
+    count = service.check_overdue_bills(g.db, landlord_id=landlord_id)
     return success(data={"processed": count})
 
 
