@@ -12,15 +12,12 @@ from app.modules.house.model import House
 from app.modules.house.repository import HouseRepository
 from app.modules.house.schema import HouseCreateSchema, HouseReadSchema, HouseUpdateSchema
 from app.modules.house_image.repository import HouseImageRepository
-from app.modules.house_video.repository import HouseVideoRepository
 
 
 class HouseService:
-    def __init__(self, house_repository: HouseRepository, house_image_repository: HouseImageRepository,
-                 house_video_repository: HouseVideoRepository | None = None) -> None:
+    def __init__(self, house_repository: HouseRepository, house_image_repository: HouseImageRepository) -> None:
         self.house_repository = house_repository
         self.house_image_repository = house_image_repository
-        self.house_video_repository = house_video_repository
 
     def create_house(
         self,
@@ -302,12 +299,4 @@ class HouseService:
         image_urls = [item.url for item in images]
         payload["images"] = image_urls
         payload["cover_image_url"] = next((item.url for item in images if item.is_cover), None)
-        if self.house_video_repository is not None:
-            videos = self.house_video_repository.list_active_by_house_id(db=db, house_id=house.id)
-            payload["videos"] = [
-                {"id": v.id, "url": v.url, "duration": v.duration, "size_bytes": v.size_bytes}
-                for v in videos
-            ]
-        else:
-            payload["videos"] = []
         return payload

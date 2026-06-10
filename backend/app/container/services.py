@@ -50,7 +50,7 @@ _auth_service = AuthService(
     get_user_repository(),
     get_email_verification_code_repository(),
 )
-_house_service = HouseService(get_house_repository(), get_house_image_repository(), get_house_video_repository())
+_house_service = HouseService(get_house_repository(), get_house_image_repository())
 _house_image_service = HouseImageService(get_house_repository(), get_house_image_repository())
 _house_video_service = HouseVideoService(get_house_repository(), get_house_video_repository())
 _favorite_service = FavoriteService(get_favorite_repository(), get_house_repository())
