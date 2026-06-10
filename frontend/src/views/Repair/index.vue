@@ -37,10 +37,6 @@
         <div class="repair-info" @click="viewDetail(repair)">
           <div class="repair-header">
             <span class="repair-no">维修 #{{ repair.id }}</span>
-          </div>
-          
-          <div class="repair-title-row">
-            <span class="repair-title">{{ repair.title }}</span>
             <span class="repair-status" :class="repair.status">{{ getStatusText(repair.status) }}</span>
           </div>
           
@@ -52,11 +48,6 @@
           <div class="repair-tenant">
             <i class="fa-solid fa-user"></i>
             <span>租客：{{ repair.tenant_name }}</span>
-          </div>
-          
-          <div class="repair-type">
-            <i class="fa-solid fa-tag"></i>
-            <span>类型：{{ getTypeText(repair.type) }}</span>
           </div>
           
           <div class="repair-desc">
@@ -123,16 +114,6 @@
             <div class="detail-item-row">
               <span class="detail-label">维修编号</span>
               <span class="detail-value">#{{ detailRepair.id }}</span>
-            </div>
-            <div class="detail-item-row">
-              <span class="detail-label">维修标题</span>
-              <span class="detail-value">{{ detailRepair.title }}</span>
-            </div>
-            <div class="detail-item-row">
-              <span class="detail-label">维修类型</span>
-              <span class="detail-value">
-                <span class="type-tag">{{ getTypeText(detailRepair.type) }}</span>
-              </span>
             </div>
             <div class="detail-item-row">
               <span class="detail-label">维修状态</span>
@@ -243,16 +224,6 @@ const getStatusText = (status) => {
   return map[status] || status
 }
 
-const getTypeText = (type) => {
-  const map = {
-    water: '水管维修',
-    electricity: '电路维修',
-    furniture: '家具维修',
-    other: '其他维修'
-  }
-  return map[type] || type
-}
-
 const formatDateTime = (datetime) => {
   if (!datetime) return ''
   const date = new Date(datetime)
@@ -272,10 +243,8 @@ const fetchRepairs = async () => {
       if (res.code === 0) {
         repairs.value = res.data.list.map(item => ({
           ...item,
-          title: item.description ? item.description.slice(0, 20) + (item.description.length > 20 ? '...' : '') : '维修申请',
           house: { title: `房源 #${item.house_id}` },
           tenant_name: `租客 #${item.tenant_id}`,
-          type: 'other',
           created_at: formatDateTime(item.created_at),
           processed_at: item.processed_at ? formatDateTime(item.processed_at) : null
         }))
@@ -298,7 +267,7 @@ const viewDetail = (repair) => {
 const handleRepair = async (repair) => {
   try {
     await ElMessageBox.confirm(
-      `确认处理维修申请「${repair.title}」？`,
+      `确认处理维修申请「${repair.description.slice(0, 30)}」？`,
       '提示',
       {
         confirmButtonText: '确认处理',
@@ -325,7 +294,7 @@ const handleRepair = async (repair) => {
 const completeRepair = async (repair) => {
   try {
     await ElMessageBox.confirm(
-      `确认维修已完成「${repair.title}」？`,
+      `确认维修已完成「${repair.description.slice(0, 30)}」？`,
       '提示',
       {
         confirmButtonText: '确认完成',
@@ -339,9 +308,13 @@ const completeRepair = async (repair) => {
     } else {
       const res = await completeRepairApi(repair.id)
       if (res.code === 0) {
-        // 恢复房源状态为可租
+        // 尝试恢复房源状态为可租，失败不影响维修完成
         if (repair.house_id) {
-          await restoreHouseFromMaintenance(repair.house_id)
+          try {
+            await restoreHouseFromMaintenance(repair.house_id)
+          } catch {
+            console.warn('房源状态恢复失败，可能不在维修中状态')
+          }
         }
         ElMessage.success('维修已完成')
         fetchRepairs()
@@ -508,13 +481,26 @@ onMounted(() => {
 
 .repair-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
+  gap: 10px;
   margin-bottom: 12px;
 }
 
 .repair-no {
   font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.repair-title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.repair-title {
+  font-size: 16px;
   font-weight: 600;
   color: #333;
 }
@@ -538,19 +524,6 @@ onMounted(() => {
 .repair-status.completed {
   background: #f6ffed;
   color: #52c41a;
-}
-
-.repair-title-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-
-.repair-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
 }
 
 .repair-house,

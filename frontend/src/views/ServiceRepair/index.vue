@@ -45,16 +45,9 @@
             <span class="repair-status" :class="repair.status">{{ getStatusText(repair.status) }}</span>
           </div>
           
-          <div class="repair-title">{{ repair.title }}</div>
-          
           <div class="repair-house">
             <i class="fa-solid fa-home"></i>
             <span>房源：{{ repair.house?.title }}</span>
-          </div>
-          
-          <div class="repair-type">
-            <i class="fa-solid fa-tag"></i>
-            <span>类型：{{ getTypeText(repair.type) }}</span>
           </div>
           
           <div class="repair-desc">
@@ -106,17 +99,6 @@
             ></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="维修类型">
-          <el-select v-model="repairForm.type" placeholder="请选择类型" style="width: 100%">
-            <el-option label="水管维修" value="water" />
-            <el-option label="电路维修" value="electricity" />
-            <el-option label="家具维修" value="furniture" />
-            <el-option label="其他维修" value="other" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="维修标题">
-          <el-input v-model="repairForm.title" placeholder="请输入维修标题" />
-        </el-form-item>
         <el-form-item label="问题描述">
           <el-input 
             v-model="repairForm.description" 
@@ -147,16 +129,6 @@
             <div class="detail-item-row">
               <span class="detail-label">维修编号</span>
               <span class="detail-value">#{{ detailRepair.id }}</span>
-            </div>
-            <div class="detail-item-row">
-              <span class="detail-label">维修标题</span>
-              <span class="detail-value">{{ detailRepair.title }}</span>
-            </div>
-            <div class="detail-item-row">
-              <span class="detail-label">维修类型</span>
-              <span class="detail-value">
-                <span class="type-tag">{{ getTypeText(detailRepair.type) }}</span>
-              </span>
             </div>
             <div class="detail-item-row">
               <span class="detail-label">维修状态</span>
@@ -272,16 +244,6 @@ const getStatusText = (status) => {
   return map[status] || status
 }
 
-const getTypeText = (type) => {
-  const map = {
-    water: '水管维修',
-    electricity: '电路维修',
-    furniture: '家具维修',
-    other: '其他维修'
-  }
-  return map[type] || type
-}
-
 const formatDateTime = (datetime) => {
   if (!datetime) return ''
   const date = new Date(datetime)
@@ -301,9 +263,7 @@ const fetchRepairs = async () => {
       if (res.code === 0) {
         repairs.value = res.data.list.map(item => ({
           ...item,
-          title: item.description ? item.description.slice(0, 20) + (item.description.length > 20 ? '...' : '') : '维修申请',
           house: { title: `房源 #${item.house_id}` },
-          type: 'other',
           created_at: formatDateTime(item.created_at),
           processed_at: item.processed_at ? formatDateTime(item.processed_at) : null
         }))
@@ -343,8 +303,6 @@ const fetchMyHouses = async () => {
 const showRepairDialog = () => {
   repairForm.value = {
     contract_id: '',
-    type: '',
-    title: '',
     description: ''
   }
   dialogVisible.value = true
@@ -353,14 +311,6 @@ const showRepairDialog = () => {
 const submitRepair = async () => {
   if (!repairForm.value.contract_id) {
     ElMessage.warning('请选择合同')
-    return
-  }
-  if (!repairForm.value.type) {
-    ElMessage.warning('请选择维修类型')
-    return
-  }
-  if (!repairForm.value.title) {
-    ElMessage.warning('请输入维修标题')
     return
   }
   if (!repairForm.value.description) {
@@ -374,8 +324,6 @@ const submitRepair = async () => {
         id: repairs.value.length + 1,
         contract_id: repairForm.value.contract_id,
         house: myHouses.value.find(h => h.id === repairForm.value.contract_id),
-        type: repairForm.value.type,
-        title: repairForm.value.title,
         description: repairForm.value.description,
         status: 'pending',
         created_at: new Date().toLocaleString(),
@@ -575,6 +523,13 @@ onMounted(() => {
   color: #333;
 }
 
+.repair-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
 .repair-status {
   font-size: 12px;
   padding: 4px 12px;
@@ -594,13 +549,6 @@ onMounted(() => {
 .repair-status.completed {
   background: #f6ffed;
   color: #52c41a;
-}
-
-.repair-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: #333;
-  margin-bottom: 10px;
 }
 
 .repair-house,
