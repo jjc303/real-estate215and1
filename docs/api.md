@@ -1965,9 +1965,12 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - `PATCH /api/v1/admin/repairs/{id}/close`
 
 合同管理：
-- `GET /api/v1/admin/contracts`
+- `GET /api/v1/admin/contracts` — 支持 `keyword`（房源标题）、`status` 筛选
 - `GET /api/v1/admin/contracts/{id}`
 - `PATCH /api/v1/admin/contracts/{id}/status`
+
+账单管理：
+- `GET /api/v1/admin/bills` — 支持 `keyword`（房源标题）、`status`、`bill_type`、`date_from`、`date_to` 筛选
 
 操作日志：
 - `GET /api/v1/admin/logs`
@@ -1979,6 +1982,20 @@ Admin 模块是后台管理入口，全部接口仅 `admin` 可用。
 - 更新用户资料
 - 修改用户状态
 - 查看平台用户分页列表
+- 搜索用户：`GET /admin/users?keyword=xxx&role=tenant`（keyword 模糊匹配用户名/手机号/邮箱）
+
+### 20.4 房源管理说明
+
+管理员可以：
+- 按状态筛选房源：`GET /admin/houses?status=rented`
+- 其他筛选同公开房源列表（region/house_type/keyword/价格/面积）
+
+### 20.5 投诉/报修/账单搜索
+
+列表接口支持：
+- `keyword` — 模糊匹配描述（投诉/报修）或房源标题（账单）
+- `date_from` / `date_to` — 按创建日期范围筛选
+- `status` / `bill_type` — 账单额外支持按类型筛选：`GET /admin/bills?status=paid&bill_type=rent`
 
 用户对象字段：
 - `id`

@@ -1,5 +1,27 @@
 # Changelog
 
+## v1.20.0 - 2026-06-10
+
+### Added
+
+#### 管理员搜索功能
+
+- 用户管理：新增 keyword（用户名/手机号/邮箱模糊搜索）+ role（按角色筛选）
+- 房源管理：新增 status（按状态筛选：draft/listed/rented/offline/maintenance）
+- 投诉管理：新增 keyword + date_from + date_to 搜索
+- 报修管理：新增 keyword + date_from + date_to 搜索
+- 合同管理：新增 keyword（房源标题模糊搜索）+ status（按状态筛选）
+- 账单管理：新增 `GET /admin/bills` 管理接口，支持 keyword/status/bill_type/日期搜索
+
+### Added Tests
+
+- `tests/service/test_admin_search.py` — 单元测试
+- `tests/api/test_admin_search_flow.py` — 4 个集成测试（用户/角色/房源/账单搜索）
+
+### Verified
+
+- `pytest tests/ -v` — 79 passed, 0 regression
+
 ## v1.19.0 - 2026-06-08
 
 ### Added

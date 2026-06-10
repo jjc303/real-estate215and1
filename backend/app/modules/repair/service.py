@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy.orm import Session
 
@@ -98,6 +98,9 @@ class RepairService:
         page: int,
         page_size: int,
         status: str | None = None,
+        keyword: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> dict[str, object]:
         user = self._get_current_user(db, current_user_id)
         offset = get_offset(page, page_size)
@@ -108,8 +111,13 @@ class RepairService:
                 offset=offset,
                 limit=page_size,
                 status=status,
+                keyword=keyword,
+                date_from=date_from,
+                date_to=date_to,
             )
-            total = self.repair_repository.count_all_with_filters(db, status=status)
+            total = self.repair_repository.count_all_with_filters(
+                db, status=status, keyword=keyword, date_from=date_from, date_to=date_to,
+            )
         else:
             repairs = self.repair_repository.list_related_to_user(
                 db,
