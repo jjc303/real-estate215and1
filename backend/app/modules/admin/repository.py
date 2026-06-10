@@ -173,8 +173,11 @@ class AdminRepository:
     ) -> list[Bill]:
         stmt = select(Bill).join(House, House.id == Bill.house_id, isouter=True)
         if keyword is not None:
-            pattern = f"%{keyword}%"
-            stmt = stmt.where(House.title.ilike(pattern))
+            try:
+                bill_id = int(keyword)
+                stmt = stmt.where(Bill.id == bill_id)
+            except (ValueError, TypeError):
+                pass
         if status is not None:
             stmt = stmt.where(Bill.status == status)
         if bill_type is not None:
@@ -194,10 +197,13 @@ class AdminRepository:
         date_from: date | None = None,
         date_to: date | None = None,
     ) -> int:
-        stmt = select(func.count()).select_from(Bill).join(House, House.id == Bill.house_id, isouter=True)
+        stmt = select(func.count()).select_from(Bill)
         if keyword is not None:
-            pattern = f"%{keyword}%"
-            stmt = stmt.where(House.title.ilike(pattern))
+            try:
+                bill_id = int(keyword)
+                stmt = stmt.where(Bill.id == bill_id)
+            except (ValueError, TypeError):
+                pass
         if status is not None:
             stmt = stmt.where(Bill.status == status)
         if bill_type is not None:
