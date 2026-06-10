@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.common.email import normalize_email
 from app.common.base_schema import BaseSchema
-from app.common.enums import ContractStatus
+from app.common.enums import ContractStatus, HouseStatus
 from app.common.pagination import build_page_result, get_offset
 from app.common.enums import OperationLogModule
 from app.core.exceptions import (
@@ -388,30 +388,33 @@ class AdminService:
 
         if status == ContractStatus.ACTIVE and contract.status == ContractStatus.PENDING:
             contract.status = ContractStatus.ACTIVE
+            house.status = HouseStatus.RENTED
             self._notify_contract_parties(
                 db,
                 contract,
-                title="Contract activated by admin",
-                tenant_message=f"Contract #{contract.id} has been activated by admin.",
-                landlord_message=f"Contract #{contract.id} has been activated by admin.",
+                title="管理员激活合同",
+                tenant_message=f"合同 #{contract.id} 已被管理员激活。",
+                landlord_message=f"合同 #{contract.id} 已被管理员激活。",
             )
         elif status == ContractStatus.CANCELLED and contract.status == ContractStatus.PENDING:
             contract.status = ContractStatus.CANCELLED
+            house.status = HouseStatus.LISTED
             self._notify_contract_parties(
                 db,
                 contract,
-                title="Contract cancelled by admin",
-                tenant_message=f"Contract #{contract.id} has been cancelled by admin.",
-                landlord_message=f"Contract #{contract.id} has been cancelled by admin.",
+                title="管理员取消合同",
+                tenant_message=f"合同 #{contract.id} 已被管理员取消。",
+                landlord_message=f"合同 #{contract.id} 已被管理员取消。",
             )
         elif status == ContractStatus.TERMINATED and contract.status == ContractStatus.ACTIVE:
             contract.status = ContractStatus.TERMINATED
+            house.status = HouseStatus.LISTED
             self._notify_contract_parties(
                 db,
                 contract,
-                title="Contract terminated by admin",
-                tenant_message=f"Contract #{contract.id} has been terminated by admin.",
-                landlord_message=f"Contract #{contract.id} has been terminated by admin.",
+                title="管理员终止合同",
+                tenant_message=f"合同 #{contract.id} 已被管理员终止。",
+                landlord_message=f"合同 #{contract.id} 已被管理员终止。",
             )
         else:
             raise InvalidContractStatusException()
