@@ -170,3 +170,32 @@ export const listLogs = (params) => {
     params
   })
 }
+
+// 管理员房源状态管理
+export const adminPublishHouse = (houseId) => {
+  return request({
+    url: `v1/admin/houses/${houseId}/publish`,
+    method: 'patch'
+  })
+}
+
+export const adminOfflineHouse = (houseId) => {
+  return request({
+    url: `v1/admin/houses/${houseId}/offline`,
+    method: 'patch'
+  })
+}
+
+export const adminSetHouseMaintenance = (houseId) => {
+  return request({
+    url: `v1/admin/houses/${houseId}/maintenance`,
+    method: 'patch'
+  })
+}
+
+export const adminRestoreHouse = (houseId) => {
+  return request({
+    url: `v1/admin/houses/${houseId}/restore`,
+    method: 'patch'
+  })
+}

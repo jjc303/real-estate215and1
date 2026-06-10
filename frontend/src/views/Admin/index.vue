@@ -783,7 +783,7 @@ const getRoleLabel = (role) => {
 }
 
 const getHouseStatusLabel = (status) => {
-  const map = { draft: '草稿', listed: '已上架', offline: '已下架' }
+  const map = { draft: '草稿', listed: '空闲', rented: '已租赁', offline: '已下架', maintenance: '维护中' }
   return map[status] || status
 }
 
@@ -1897,6 +1897,16 @@ watch(activeMenu, (newMenu, oldMenu) => {
 .status-badge.draft {
   background: #fef3c7;
   color: #d97706;
+}
+
+.status-badge.rented {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.status-badge.maintenance {
+  background: #fff7ed;
+  color: #ea580c;
 }
 
 .news-status-tag {
