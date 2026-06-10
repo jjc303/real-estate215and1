@@ -74,8 +74,8 @@ class BillService:
             self._notify_tenant(
                 db,
                 bill,
-                title="New bill created",
-                message=f"Bill #{bill.id} has been created for your contract.",
+                title="新账单已创建",
+                message=f"账单 #{bill.id} 已创建，请及时支付。",
             )
             self.operation_log_service.log_action(
                 db,
@@ -148,8 +148,8 @@ class BillService:
             self._notify_tenant(
                 db,
                 bill,
-                title="Bill cancelled",
-                message=f"Bill #{bill.id} has been cancelled by the landlord.",
+                title="账单已取消",
+                message=f"账单 #{bill.id} 已被房东取消。",
             )
             self.operation_log_service.log_action(
                 db,
@@ -188,8 +188,8 @@ class BillService:
             self._notify_tenant(
                 db,
                 bill,
-                title="Bill overdue",
-                message=f"Bill #{bill.id} is now overdue.",
+                title="账单已逾期",
+                message=f"账单 #{bill.id} 已逾期，请尽快处理。",
             )
             self.operation_log_service.log_action(
                 db,

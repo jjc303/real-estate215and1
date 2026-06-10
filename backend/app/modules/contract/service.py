@@ -99,8 +99,8 @@ class ContractService:
             self._notify_tenant(
                 db,
                 contract,
-                title="New contract created",
-                message=f"Contract #{contract.id} is waiting for your confirmation.",
+                title="新合同已创建",
+                message=f"合同 #{contract.id} 等待您的确认。",
             )
             self.operation_log_service.log_action(
                 db,
@@ -183,8 +183,8 @@ class ContractService:
             self._notify_landlord(
                 db,
                 contract,
-                title="Contract confirmed",
-                message=f"Contract #{contract.id} has been confirmed by the tenant.",
+                title="合同已确认",
+                message=f"合同 #{contract.id} 已被租客确认。",
             )
             self.operation_log_service.log_action(
                 db,
@@ -221,8 +221,8 @@ class ContractService:
             self._notify_landlord(
                 db,
                 contract,
-                title="Contract rejected",
-                message=f"Contract #{contract.id} has been rejected by the tenant.",
+                title="合同已拒绝",
+                message=f"合同 #{contract.id} 已被租客拒绝。",
             )
             self.operation_log_service.log_action(
                 db,
@@ -260,8 +260,8 @@ class ContractService:
             self._notify_tenant(
                 db,
                 contract,
-                title="Contract cancelled",
-                message=f"Contract #{contract.id} has been cancelled by the landlord.",
+                title="合同已取消",
+                message=f"合同 #{contract.id} 已被房东取消。",
             )
             self.operation_log_service.log_action(
                 db,
@@ -301,8 +301,8 @@ class ContractService:
             self._notify_tenant(
                 db,
                 contract,
-                title="Contract terminated",
-                message=f"Contract #{contract.id} has been terminated by the landlord.",
+                title="合同已终止",
+                message=f"合同 #{contract.id} 已被房东终止。",
             )
             self.operation_log_service.log_action(
                 db,

@@ -71,8 +71,8 @@ class RepairService:
             self._notify_landlord(
                 db,
                 repair,
-                title="New repair request",
-                message=f"Repair #{repair.id} has been created by the tenant.",
+                title="新报修申请",
+                message=f"报修 #{repair.id} 已提交。",
             )
             self.operation_log_service.log_action(
                 db,
@@ -150,8 +150,8 @@ class RepairService:
         self._notify_tenant(
             db,
             repair,
-            title="Repair is being processed",
-            message=f"Repair #{repair.id} is now processing.",
+            title="报修处理中",
+            message=f"报修 #{repair.id} 正在处理中。",
         )
         self._log_status_change(db, current_user_id, repair.id, "process", before_status, repair.status)
         return self._commit_and_serialize(db, repair)
@@ -167,8 +167,8 @@ class RepairService:
         self._notify_tenant(
             db,
             repair,
-            title="Repair completed",
-            message=f"Repair #{repair.id} has been completed.",
+            title="报修已完成",
+            message=f"报修 #{repair.id} 已完成。",
         )
         self._log_status_change(db, current_user_id, repair.id, "complete", before_status, repair.status)
         return self._commit_and_serialize(db, repair)
@@ -184,8 +184,8 @@ class RepairService:
         self._notify_tenant(
             db,
             repair,
-            title="Repair rejected",
-            message=f"Repair #{repair.id} has been rejected.",
+            title="报修已驳回",
+            message=f"报修 #{repair.id} 已被驳回。",
         )
         self._log_status_change(db, current_user_id, repair.id, "reject", before_status, repair.status)
         return self._commit_and_serialize(db, repair)
@@ -201,7 +201,7 @@ class RepairService:
         self._notify_landlord(
             db,
             repair,
-            title="Repair closed",
+            title="报修已关闭",
             message=f"Repair #{repair.id} has been closed by the tenant.",
         )
         self._log_status_change(db, current_user_id, repair.id, "close", before_status, repair.status)
@@ -218,7 +218,7 @@ class RepairService:
         self._notify_landlord(
             db,
             repair,
-            title="Repair reopened",
+            title="报修已重新开启",
             message=f"Repair #{repair.id} has been reopened by the tenant.",
         )
         self._log_status_change(db, current_user_id, repair.id, "reopen", before_status, repair.status)
