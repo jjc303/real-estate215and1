@@ -180,9 +180,9 @@ class AdminRepository:
         if bill_type is not None:
             stmt = stmt.where(Bill.bill_type == bill_type)
         if date_from is not None:
-            stmt = stmt.where(Bill.created_at >= date_from)
+            stmt = stmt.where(Bill.due_date >= date_from)
         if date_to is not None:
-            stmt = stmt.where(Bill.created_at <= date_to)
+            stmt = stmt.where(Bill.due_date <= date_to)
         stmt = stmt.order_by(Bill.created_at.desc(), Bill.id.desc()).offset(offset).limit(limit)
         return list(db.execute(stmt).scalars().all())
 
@@ -203,9 +203,9 @@ class AdminRepository:
         if bill_type is not None:
             stmt = stmt.where(Bill.bill_type == bill_type)
         if date_from is not None:
-            stmt = stmt.where(Bill.created_at >= date_from)
+            stmt = stmt.where(Bill.due_date >= date_from)
         if date_to is not None:
-            stmt = stmt.where(Bill.created_at <= date_to)
+            stmt = stmt.where(Bill.due_date <= date_to)
         return int(db.execute(stmt).scalar_one())
 
     def _apply_house_filters(
