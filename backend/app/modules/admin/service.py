@@ -302,11 +302,18 @@ class AdminService:
         page_size: int,
         keyword: str | None = None,
         status: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> dict[str, object]:
         self._require_admin(db, current_user_id)
         offset = get_offset(page, page_size)
-        rows = self.admin_repository.list_all_contracts(db, offset=offset, limit=page_size, keyword=keyword, status=status)
-        total = self.admin_repository.count_all_contracts(db, keyword=keyword, status=status)
+        rows = self.admin_repository.list_all_contracts(
+            db, offset=offset, limit=page_size, keyword=keyword, status=status,
+            date_from=date_from, date_to=date_to,
+        )
+        total = self.admin_repository.count_all_contracts(
+            db, keyword=keyword, status=status, date_from=date_from, date_to=date_to,
+        )
         items = [self._serialize_contract(contract, house) for contract, house in rows]
         return build_page_result(items=items, total=total, page=page, page_size=page_size)
 

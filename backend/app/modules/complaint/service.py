@@ -71,8 +71,8 @@ class ComplaintService:
             self._notify_landlord(
                 db,
                 complaint,
-                title="New complaint submitted",
-                message=f"Complaint #{complaint.id} has been submitted by the tenant.",
+                title="新投诉已提交",
+                message=f"投诉 #{complaint.id} 已提交。",
             )
             self.operation_log_service.log_action(
                 db,
@@ -155,8 +155,8 @@ class ComplaintService:
         self._notify_tenant(
             db,
             complaint,
-            title="Complaint is being processed",
-            message=f"Complaint #{complaint.id} is now processing.",
+            title="投诉处理中",
+            message=f"投诉 #{complaint.id} 正在处理中。",
         )
         self._log_status_change(db, current_user_id, complaint.id, "process", before_status, complaint.status)
         return self._commit_and_serialize(db, complaint)
@@ -172,8 +172,8 @@ class ComplaintService:
         self._notify_tenant(
             db,
             complaint,
-            title="Complaint resolved",
-            message=f"Complaint #{complaint.id} has been resolved.",
+            title="投诉已解决",
+            message=f"投诉 #{complaint.id} 已解决。",
         )
         self._log_status_change(db, current_user_id, complaint.id, "resolve", before_status, complaint.status)
         return self._commit_and_serialize(db, complaint)
@@ -189,8 +189,8 @@ class ComplaintService:
         self._notify_tenant(
             db,
             complaint,
-            title="Complaint rejected",
-            message=f"Complaint #{complaint.id} has been rejected.",
+            title="投诉已驳回",
+            message=f"投诉 #{complaint.id} 已被驳回。",
         )
         self._log_status_change(db, current_user_id, complaint.id, "reject", before_status, complaint.status)
         return self._commit_and_serialize(db, complaint)
@@ -206,7 +206,7 @@ class ComplaintService:
         self._notify_landlord(
             db,
             complaint,
-            title="Complaint closed",
+            title="投诉已关闭",
             message=f"Complaint #{complaint.id} has been closed by the tenant.",
         )
         self._log_status_change(db, current_user_id, complaint.id, "close", before_status, complaint.status)

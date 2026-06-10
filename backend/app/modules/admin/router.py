@@ -226,6 +226,7 @@ def list_contracts():
     result = service.list_contracts(
         g.db, current_user_id=current_user_id, page=query.page, page_size=query.page_size,
         keyword=query.keyword, status=query.status,
+        date_from=query.date_from, date_to=query.date_to,
     )
     return success(data=result)
 
