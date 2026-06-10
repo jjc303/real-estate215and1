@@ -115,6 +115,9 @@ def list_complaints():
         page=query.page,
         page_size=query.page_size,
         status=query.status,
+        keyword=query.keyword,
+        date_from=query.date_from,
+        date_to=query.date_to,
     )
     return success(data=result)
 
@@ -174,6 +177,9 @@ def list_repairs():
         page=query.page,
         page_size=query.page_size,
         status=query.status,
+        keyword=query.keyword,
+        date_from=query.date_from,
+        date_to=query.date_to,
     )
     return success(data=result)
 
