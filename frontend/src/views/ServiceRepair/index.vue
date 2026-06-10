@@ -222,7 +222,6 @@ import Pagination from '@/components/Pagination.vue'
 import BackToTop from '@/components/BackToTop.vue'
 import { mockTenantRepairs, mockMyHouses } from '@/mock/serviceRepairs'
 import { getRepairList, createRepair } from '@/api/repair'
-import { setHouseMaintenance } from '@/api/house'
 import service from '@/utils/request'
 
 const USE_MOCK_DATA = false
@@ -392,11 +391,6 @@ const submitRepair = async () => {
         description: repairForm.value.description
       })
       if (res.code === 0) {
-        // 获取合同对应的房源ID并更新状态为维修中
-        const contract = myHouses.value.find(h => h.id === repairForm.value.contract_id)
-        if (contract && contract.house_id) {
-          await setHouseMaintenance(contract.house_id)
-        }
         dialogVisible.value = false
         ElMessage.success('维修申请提交成功')
         fetchRepairs()

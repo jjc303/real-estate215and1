@@ -138,28 +138,6 @@
       <!-- 投诉管理 -->
       <template v-if="activeMenu === 'complaints'">
         <div class="content-card">
-          <div class="search-bar">
-            <el-input v-model="complaintKeyword" placeholder="搜索投诉内容" clearable class="search-input" @keyup.enter="searchComplaints" @clear="searchComplaints"></el-input>
-            <el-select v-model="complaintStatusFilter" placeholder="状态筛选" clearable class="filter-select" @change="searchComplaints">
-              <el-option label="全部" value=""></el-option>
-              <el-option label="待处理" value="pending"></el-option>
-              <el-option label="处理中" value="processing"></el-option>
-              <el-option label="已解决" value="resolved"></el-option>
-              <el-option label="已拒绝" value="rejected"></el-option>
-              <el-option label="已关闭" value="closed"></el-option>
-            </el-select>
-            <el-date-picker
-              v-model="complaintDateRange"
-              type="daterange"
-              range-separator="至"
-              start-placeholder="开始日期"
-              end-placeholder="结束日期"
-              value-format="YYYY-MM-DD"
-              class="date-picker"
-              @change="searchComplaints"
-            />
-            <el-button type="primary" @click="searchComplaints">搜索</el-button>
-          </div>
           <el-table :data="complaints" border stripe v-loading="complaintsLoading" fit>
             <el-table-column prop="id" label="ID" width="70" align="center" fixed></el-table-column>
             <el-table-column prop="description" label="投诉内容" min-width="250" show-overflow-tooltip></el-table-column>
@@ -268,6 +246,7 @@
       <template v-if="activeMenu === 'bills'">
         <div class="content-card">
           <div class="search-bar">
+            <el-input v-model="billKeyword" placeholder="搜索房源标题" clearable class="search-input" @keyup.enter="searchBills" @clear="searchBills"></el-input>
             <el-select v-model="billStatusFilter" placeholder="状态筛选" clearable class="filter-select" @change="searchBills">
               <el-option label="全部" value=""></el-option>
               <el-option label="未支付" value="unpaid"></el-option>
@@ -427,17 +406,6 @@
       <!-- 操作日志 -->
       <template v-if="activeMenu === 'logs'">
         <div class="content-card">
-          <div class="search-bar">
-            <el-input v-model="logUserIdFilter" placeholder="搜索用户ID" clearable class="search-input" @keyup.enter="searchLogs" @clear="searchLogs"></el-input>
-            <el-select v-model="logModuleFilter" placeholder="模块筛选" clearable class="filter-select" @change="searchLogs">
-              <el-option label="全部" value=""></el-option>
-              <el-option label="合同" value="contract"></el-option>
-              <el-option label="账单" value="bill"></el-option>
-              <el-option label="投诉" value="complaint"></el-option>
-              <el-option label="维修" value="repair"></el-option>
-            </el-select>
-            <el-button type="primary" @click="searchLogs">搜索</el-button>
-          </div>
           <el-table :data="logs" border stripe v-loading="logsLoading" fit>
             <el-table-column prop="id" label="ID" width="70" align="center" fixed></el-table-column>
             <el-table-column prop="user_id" label="操作用户" min-width="100" align="center"></el-table-column>
@@ -806,9 +774,6 @@ const housePagination = reactive({ page: 1, pageSize: 10, total: 0 })
 const complaints = ref([])
 const complaintsLoading = ref(false)
 const complaintPagination = reactive({ page: 1, pageSize: 10, total: 0 })
-const complaintKeyword = ref('')
-const complaintStatusFilter = ref('')
-const complaintDateRange = ref([])
 
 // 合同管理
 const contracts = ref([])
@@ -819,8 +784,6 @@ const contractPagination = reactive({ page: 1, pageSize: 10, total: 0 })
 const logs = ref([])
 const logsLoading = ref(false)
 const logPagination = reactive({ page: 1, pageSize: 10, total: 0 })
-const logUserIdFilter = ref('')
-const logModuleFilter = ref('')
 
 // 搜索筛选
 const userKeyword = ref('')
@@ -836,6 +799,7 @@ const contractDateRange = ref([])
 const bills = ref([])
 const billsLoading = ref(false)
 const billPagination = reactive({ page: 1, pageSize: 10, total: 0 })
+const billKeyword = ref('')
 const billStatusFilter = ref('')
 const billTypeFilter = ref('')
 const billDateRange = ref([])
@@ -1041,14 +1005,6 @@ const loadComplaints = async () => {
       page: complaintPagination.page,
       page_size: complaintPagination.pageSize
     }
-    if (complaintKeyword.value) params.keyword = complaintKeyword.value
-    if (complaintStatusFilter.value) params.status = complaintStatusFilter.value
-    if (complaintDateRange.value && complaintDateRange.value.length === 2 && complaintDateRange.value[0] && complaintDateRange.value[1]) {
-      params.date_from = complaintDateRange.value[0]
-      const dateTo = new Date(complaintDateRange.value[1])
-      dateTo.setDate(dateTo.getDate() + 1)
-      params.date_to = dateTo.toISOString().split('T')[0]
-    }
     
     const res = await listComplaints(params)
     if (res.code === 0 && res.data) {
@@ -1063,11 +1019,6 @@ const loadComplaints = async () => {
   }
 }
 
-const searchComplaints = () => {
-  complaintPagination.page = 1
-  loadComplaints()
-}
-
 const loadContracts = async () => {
   contractsLoading.value = true
   try {
@@ -1077,12 +1028,9 @@ const loadContracts = async () => {
     }
     if (contractKeyword.value) params.keyword = contractKeyword.value
     if (contractStatus.value) params.status = contractStatus.value
-    if (contractDateRange.value && contractDateRange.value.length === 2 && contractDateRange.value[0] && contractDateRange.value[1]) {
+    if (contractDateRange.value && contractDateRange.value.length === 2) {
       params.date_from = contractDateRange.value[0]
-      // date_to 加一天，因为后端用 <= 比较 datetime，需要包含当天所有记录
-      const dateTo = new Date(contractDateRange.value[1])
-      dateTo.setDate(dateTo.getDate() + 1)
-      params.date_to = dateTo.toISOString().split('T')[0]
+      params.date_to = contractDateRange.value[1]
     }
     
     const res = await listContracts(params)
@@ -1110,14 +1058,12 @@ const loadBills = async () => {
       page: billPagination.page,
       page_size: billPagination.pageSize
     }
+    if (billKeyword.value) params.keyword = billKeyword.value
     if (billStatusFilter.value) params.status = billStatusFilter.value
     if (billTypeFilter.value) params.bill_type = billTypeFilter.value
-    if (billDateRange.value && billDateRange.value.length === 2 && billDateRange.value[0] && billDateRange.value[1]) {
+    if (billDateRange.value && billDateRange.value.length === 2) {
       params.date_from = billDateRange.value[0]
-      // date_to 加一天，因为后端用 <= 比较 datetime，需要包含当天所有记录
-      const dateTo = new Date(billDateRange.value[1])
-      dateTo.setDate(dateTo.getDate() + 1)
-      params.date_to = dateTo.toISOString().split('T')[0]
+      params.date_to = billDateRange.value[1]
     }
     
     const res = await listBills(params)
@@ -1145,8 +1091,6 @@ const loadLogs = async () => {
       page: logPagination.page,
       page_size: logPagination.pageSize
     }
-    if (logUserIdFilter.value) params.user_id = logUserIdFilter.value
-    if (logModuleFilter.value) params.module = logModuleFilter.value
     
     const res = await listLogs(params)
     if (res.code === 0 && res.data) {
@@ -1159,11 +1103,6 @@ const loadLogs = async () => {
   } finally {
     logsLoading.value = false
   }
-}
-
-const searchLogs = () => {
-  logPagination.page = 1
-  loadLogs()
 }
 
 const loadStatistics = async () => {
