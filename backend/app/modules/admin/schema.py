@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -81,6 +81,8 @@ class UserAdminStatusSchema(BaseSchema):
 class UserAdminListQuerySchema(BaseSchema):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=100)
+    keyword: str | None = Field(default=None, min_length=1, max_length=100)
+    role: str | None = Field(default=None, min_length=1, max_length=20)
 
 
 class HouseAdminSchema(HouseReadSchema):
@@ -97,6 +99,7 @@ class HouseAdminListQuerySchema(BaseSchema):
     keyword: str | None = Field(default=None, min_length=1, max_length=255)
     min_area: Decimal | None = Field(default=None, ge=0)
     max_area: Decimal | None = Field(default=None, ge=0)
+    status: str | None = Field(default=None, min_length=1, max_length=20)
 
     @field_validator("region", "house_type", "keyword", mode="before")
     @classmethod
@@ -124,7 +127,19 @@ class ContractAdminSchema(ContractReadSchema):
 class ContractAdminListQuerySchema(BaseSchema):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=100)
+    keyword: str | None = Field(default=None, min_length=1, max_length=255)
+    status: str | None = Field(default=None, min_length=1, max_length=20)
 
 
 class ContractAdminStatusSchema(BaseSchema):
     status: ContractAdminStatus
+
+
+class BillAdminListQuerySchema(BaseSchema):
+    page: int = Field(default=1, ge=1)
+    page_size: int = Field(default=10, ge=1, le=100)
+    keyword: str | None = Field(default=None, min_length=1, max_length=255)
+    status: str | None = Field(default=None, min_length=1, max_length=20)
+    bill_type: str | None = Field(default=None, min_length=1, max_length=20)
+    date_from: date | None = None
+    date_to: date | None = None

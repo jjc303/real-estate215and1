@@ -54,11 +54,15 @@ class AdminService:
         self.notification_service = notification_service
         self.operation_log_service = operation_log_service
 
-    def list_users(self, db: Session, current_user_id: int, page: int, page_size: int) -> dict[str, object]:
+    def list_users(
+        self, db: Session, current_user_id: int, page: int, page_size: int,
+        keyword: str | None = None,
+        role: str | None = None,
+    ) -> dict[str, object]:
         self._require_admin(db, current_user_id)
         offset = get_offset(page, page_size)
-        users = self.admin_repository.list_all_users(db, offset=offset, limit=page_size)
-        total = self.admin_repository.count_all_users(db)
+        users = self.admin_repository.list_all_users(db, offset=offset, limit=page_size, keyword=keyword, role=role)
+        total = self.admin_repository.count_all_users(db, keyword=keyword, role=role)
         items = [self._serialize_user(user) for user in users]
         return build_page_result(items=items, total=total, page=page, page_size=page_size)
 
@@ -160,6 +164,7 @@ class AdminService:
         keyword: str | None = None,
         min_area: object | None = None,
         max_area: object | None = None,
+        status: str | None = None,
     ) -> dict[str, object]:
         self._require_admin(db, current_user_id)
         offset = get_offset(page, page_size)
@@ -174,6 +179,7 @@ class AdminService:
             keyword=keyword,
             min_area=min_area,
             max_area=max_area,
+            status=status,
         )
         total = self.admin_repository.count_all_houses(
             db,
@@ -184,6 +190,7 @@ class AdminService:
             keyword=keyword,
             min_area=min_area,
             max_area=max_area,
+            status=status,
         )
         items = [HouseAdminSchema.model_validate(house).model_dump(mode="json") for house in houses]
         return build_page_result(items=items, total=total, page=page, page_size=page_size)
@@ -202,6 +209,9 @@ class AdminService:
         page: int,
         page_size: int,
         status: str | None = None,
+        keyword: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> dict[str, object]:
         self._require_admin(db, current_user_id)
         return self.complaint_service.list_complaints(
@@ -210,6 +220,9 @@ class AdminService:
             page=page,
             page_size=page_size,
             status=status,
+            keyword=keyword,
+            date_from=date_from,
+            date_to=date_to,
         )
 
     def get_complaint_detail(self, db: Session, current_user_id: int, complaint_id: int) -> dict[str, object]:
@@ -244,6 +257,9 @@ class AdminService:
         page: int,
         page_size: int,
         status: str | None = None,
+        keyword: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> dict[str, object]:
         self._require_admin(db, current_user_id)
         return self.repair_service.list_repairs(
@@ -252,6 +268,9 @@ class AdminService:
             page=page,
             page_size=page_size,
             status=status,
+            keyword=keyword,
+            date_from=date_from,
+            date_to=date_to,
         )
 
     def get_repair_detail(self, db: Session, current_user_id: int, repair_id: int) -> dict[str, object]:
@@ -275,13 +294,49 @@ class AdminService:
         self._require_admin(db, current_user_id)
         return self.repair_service.close_repair(db, current_user_id=current_user_id, repair_id=repair_id)
 
-    def list_contracts(self, db: Session, current_user_id: int, page: int, page_size: int) -> dict[str, object]:
+    def list_contracts(
+        self,
+        db: Session,
+        current_user_id: int,
+        page: int,
+        page_size: int,
+        keyword: str | None = None,
+        status: str | None = None,
+    ) -> dict[str, object]:
         self._require_admin(db, current_user_id)
         offset = get_offset(page, page_size)
-        rows = self.admin_repository.list_all_contracts(db, offset=offset, limit=page_size)
-        total = self.admin_repository.count_all_contracts(db)
+        rows = self.admin_repository.list_all_contracts(db, offset=offset, limit=page_size, keyword=keyword, status=status)
+        total = self.admin_repository.count_all_contracts(db, keyword=keyword, status=status)
         items = [self._serialize_contract(contract, house) for contract, house in rows]
         return build_page_result(items=items, total=total, page=page, page_size=page_size)
+
+    def list_bills(
+        self,
+        db: Session,
+        current_user_id: int,
+        page: int,
+        page_size: int,
+        keyword: str | None = None,
+        status: str | None = None,
+        bill_type: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> dict[str, object]:
+        self._require_admin(db, current_user_id)
+        offset = get_offset(page, page_size)
+        items = self.admin_repository.list_all_bills(
+            db, offset=offset, limit=page_size,
+            keyword=keyword, status=status, bill_type=bill_type,
+            date_from=date_from, date_to=date_to,
+        )
+        total = self.admin_repository.count_all_bills(
+            db,
+            keyword=keyword, status=status, bill_type=bill_type,
+            date_from=date_from, date_to=date_to,
+        )
+        from app.modules.bill.schema import BillReadSchema
+        serialized = [BillReadSchema.model_validate(b).model_dump(mode="json") for b in items]
+        return build_page_result(items=serialized, total=total, page=page, page_size=page_size)
 
     def list_logs(
         self,

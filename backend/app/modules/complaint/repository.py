@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import date
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
@@ -75,15 +77,39 @@ class ComplaintRepository(BaseRepository[Complaint]):
         offset: int,
         limit: int,
         status: str | None = None,
+        keyword: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
     ) -> list[Complaint]:
         stmt = select(Complaint)
         if status is not None:
             stmt = stmt.where(Complaint.status == status)
+        if keyword is not None:
+            pattern = f"%{keyword}%"
+            stmt = stmt.where(Complaint.description.ilike(pattern))
+        if date_from is not None:
+            stmt = stmt.where(Complaint.created_at >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Complaint.created_at <= date_to)
         stmt = stmt.order_by(Complaint.created_at.desc(), Complaint.id.desc()).offset(offset).limit(limit)
         return list(db.execute(stmt).scalars().all())
 
-    def count_all_with_filters(self, db: Session, status: str | None = None) -> int:
+    def count_all_with_filters(
+        self,
+        db: Session,
+        status: str | None = None,
+        keyword: str | None = None,
+        date_from: date | None = None,
+        date_to: date | None = None,
+    ) -> int:
         stmt = select(func.count()).select_from(Complaint)
         if status is not None:
             stmt = stmt.where(Complaint.status == status)
+        if keyword is not None:
+            pattern = f"%{keyword}%"
+            stmt = stmt.where(Complaint.description.ilike(pattern))
+        if date_from is not None:
+            stmt = stmt.where(Complaint.created_at >= date_from)
+        if date_to is not None:
+            stmt = stmt.where(Complaint.created_at <= date_to)
         return int(db.execute(stmt).scalar_one())

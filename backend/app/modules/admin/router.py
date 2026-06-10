@@ -27,7 +27,10 @@ def list_users():
     current_user_id = get_required_current_user_id()
     query = UserAdminListQuerySchema(**request.args.to_dict())
     service = get_admin_service()
-    result = service.list_users(g.db, current_user_id=current_user_id, page=query.page, page_size=query.page_size)
+    result = service.list_users(
+        g.db, current_user_id=current_user_id, page=query.page, page_size=query.page_size,
+        keyword=query.keyword, role=query.role,
+    )
     return success(data=result)
 
 
@@ -88,6 +91,7 @@ def list_houses():
         keyword=query.keyword,
         min_area=query.min_area,
         max_area=query.max_area,
+        status=query.status,
     )
     return success(data=result)
 
@@ -219,7 +223,24 @@ def list_contracts():
     current_user_id = get_required_current_user_id()
     query = ContractAdminListQuerySchema(**request.args.to_dict())
     service = get_admin_service()
-    result = service.list_contracts(g.db, current_user_id=current_user_id, page=query.page, page_size=query.page_size)
+    result = service.list_contracts(
+        g.db, current_user_id=current_user_id, page=query.page, page_size=query.page_size,
+        keyword=query.keyword, status=query.status,
+    )
+    return success(data=result)
+
+
+@bp.get("/bills")
+def list_bills():
+    current_user_id = get_required_current_user_id()
+    from app.modules.admin.schema import BillAdminListQuerySchema
+    query = BillAdminListQuerySchema(**request.args.to_dict())
+    service = get_admin_service()
+    result = service.list_bills(
+        g.db, current_user_id=current_user_id, page=query.page, page_size=query.page_size,
+        keyword=query.keyword, status=query.status, bill_type=query.bill_type,
+        date_from=query.date_from, date_to=query.date_to,
+    )
     return success(data=result)
 
 

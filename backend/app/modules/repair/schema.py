@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from pydantic import Field, field_validator
@@ -36,6 +36,9 @@ class RepairListQuerySchema(BaseSchema):
     page: int = Field(default=1, ge=1)
     page_size: int = Field(default=10, ge=1, le=100)
     status: RepairStatus | None = None
+    keyword: str | None = Field(default=None, min_length=1, max_length=255)
+    date_from: date | None = None
+    date_to: date | None = None
 
 
 class RepairReadSchema(BaseSchema):
