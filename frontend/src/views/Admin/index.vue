@@ -1629,7 +1629,7 @@ const handleCancelContract = async (contract) => {
       { type: 'warning' }
     )
     
-    const res = await updateContractStatus(contract.id, 'cancelled')
+    const res = await updateContractStatus(contract.id, 'terminated')
     if (res.code === 0) {
       ElMessage.success('已终止')
       loadContracts()
